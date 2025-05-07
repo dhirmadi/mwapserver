@@ -1,8 +1,9 @@
 # MWAP Repository Microagent Guide 
 
+[Solution Design](../../docs/v3-architecture-reference.md)
+
 ## 🛠 Project Overview
 MWAP (Modular Web Application Platform) is a fullstack, secure, scalable SaaS framework built with:
-- **Frontend**: React 18 + Vite + Mantine
 - **Backend**: Node.js (ESM) + Express + MongoDB Atlas
 - **Authentication**: Auth0 (PKCE, MFA, approval flow)
 - **Database**: MOngoDB Atlas
@@ -31,10 +32,11 @@ MWAP (Modular Web Application Platform) is a fullstack, secure, scalable SaaS fr
 ## 🔥 Coding Standards
 - **TypeScript-first**: `strict: true`, no implicit `any`
 - **Native ESM** modules only
-- **Heroku Config Vars** for secrets (Vault rollout in progress)
 - **One logical feature per file/folder** (auth, tenant, projects)
 - **Centralized error handling** via `AppError`
-- **Mandatory** GitHub CI checks: lint, typecheck, security scan
+- **No Duplication** by applying DRY principle
+- **No secrets in Code** do not comit any secrets to GitHub
+
 
 ## 🛡️ Security and Compliance
 - **GDPR-first** data practices
@@ -47,10 +49,9 @@ MWAP (Modular Web Application Platform) is a fullstack, secure, scalable SaaS fr
 - **Docs**: API specifications, architecture diagrams
 - **Scripts**: Heroku build/deploy automation
 
-Monorepo Structure:
+File Structure:
 ```
-client/   → Frontend
-server/   → Backend
+src/   → Server source code
 docs/     → API + Architecture
 scripts/  → CI/CD build tools
 ```
