@@ -1,0 +1,486 @@
+openapi: "3.1.0" 
+info:
+  title: "MWAP API"
+  version: "1.0.0"
+  description: "Full OpenAPI spec for the MWAP backend aligned with the domain model, contract, and architecture."
+servers:
+  - url: "https://api.mwap.dev/api/v1"
+security:
+  - bearerAuth: []
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  schemas:
+    Tenant:
+      type: object
+      properties:
+        _id: { type: string }
+        ownerId: { type: string }
+        name: { type: string }
+        createdAt: { type: string, format: date-time }
+        archived: { type: boolean }
+        integrations:
+          type: array
+          items: { type: string }
+
+    TenantCreate:
+      type: object
+      properties:
+        name: { type: string }
+      required: [name]
+
+    TenantUpdate:
+      type: object
+      properties:
+        name: { type: string }
+        archived: { type: boolean }
+
+    ProjectMember:
+      type: object
+      properties:
+        userId: { type: string }
+        role:
+          type: string
+          enum: [OWNER, DEPUTY, MEMBER]
+      required: [userId, role]
+
+    Project:
+      type: object
+      properties:
+        _id: { type: string }
+        tenantId: { type: string }
+        projectTypeId: { type: string }
+        cloudIntegrationId: { type: string }
+        folderpath: { type: string }
+        name: { type: string }
+        description: { type: string }
+        archived: { type: boolean }
+        members:
+          type: array
+          items:
+            $ref: '#/components/schemas/ProjectMember'
+
+    ProjectCreate:
+      type: object
+      properties:
+        tenantId: { type: string }
+        projectTypeId: { type: string }
+        cloudIntegrationId: { type: string }
+        folderpath: { type: string }
+        name: { type: string }
+        description: { type: string }
+        members:
+          type: array
+          items:
+            $ref: '#/components/schemas/ProjectMember'
+      required: [tenantId, projectTypeId, cloudIntegrationId, folderpath, name, members]
+
+    ProjectUpdate:
+      type: object
+      properties:
+        name: { type: string }
+        description: { type: string }
+
+paths:
+  /tenants:
+    post:
+      summary: Create tenant
+      security:
+        - bearerAuth: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TenantCreate'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Tenant'
+
+  /tenants/me:
+    get:
+      summary: Get current tenant
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Tenant'
+
+  /tenants/{id}:
+    patch:
+      summary: Update tenant
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TenantUpdate'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Tenant'
+    delete:
+      summary: Delete tenant
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '204':
+          description: No Content
+
+  /projects:
+    get:
+      summary: List projects
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Project'
+    post:
+      summary: Create project
+      security:
+        - bearerAuth: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ProjectCreate'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Project'
+
+  /projects/{id}:
+    get:
+      summary: Get project
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Project'
+    patch:
+      summary: Update project
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ProjectUpdate'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Project'
+    delete:
+      summary: Delete project
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '204':
+          description: No Content
+
+  /projects/{id}/members:
+    get:
+      summary: List project members
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ProjectMember'
+    post:
+      summary: Add project member
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ProjectMember'
+      responses:
+        '204':
+          description: No Content
+
+  /cloud-providers:
+    get:
+      summary: List cloud providers
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { type: object }
+
+    post:
+      summary: Create cloud provider
+      security:
+        - bearerAuth: []
+      requestBody:
+        content:
+          application/json:
+            schema: { type: object }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { type: object }
+
+  /cloud-providers/{id}:
+    patch:
+      summary: Update cloud provider
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+      requestBody:
+        content:
+          application/json:
+            schema: { type: object }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { type: object }
+
+    delete:
+      summary: Delete cloud provider
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        '204':
+          description: No Content
+
+  /tenants/{id}/integrations:
+    get:
+      summary: List tenant integrations
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { type: object }
+
+    post:
+      summary: Create tenant integration
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+      requestBody:
+        content:
+          application/json:
+            schema: { type: object }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { type: object }
+
+  /tenants/{id}/integrations/{integrationId}:
+    delete:
+      summary: Delete integration
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+        - name: integrationId
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        '204':
+          description: No Content
+
+  /project-types:
+    get:
+      summary: List project types
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { type: object }
+
+    post:
+      summary: Create project type
+      security:
+        - bearerAuth: []
+      requestBody:
+        content:
+          application/json:
+            schema: { type: object }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { type: object }
+
+  /project-types/{id}:
+    patch:
+      summary: Update project type
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+      requestBody:
+        content:
+          application/json:
+            schema: { type: object }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { type: object }
+
+    delete:
+      summary: Delete project type
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        '204':
+          description: No Content
+
+  /projects/{id}/files:
+    get:
+      summary: List project files (virtual)
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+        - name: folder
+          in: query
+          required: false
+          schema: { type: string }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { type: object }

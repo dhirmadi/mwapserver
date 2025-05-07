@@ -1,0 +1,17 @@
+{
+    "name": "schema.generator",
+    "keyword": "generate_schema",
+    "description": "Generate Mongoose schema from entity fields and validation rules.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "entityName": { "type": "string" },
+        "fields": { "type": "object" }
+      },
+      "required": ["entityName", "fields"]
+    },
+    "outputSchema": {
+      "type": "string"
+    }
+  }
+  

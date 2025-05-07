@@ -1,0 +1,6 @@
+Task: Create a Mongoose schema.
+Context: Entity "{{entityName}}" with fields {{fields}}.
+Requirements:
+- Use TypeScript strict mode
+- Define validation rules clearly
+- Follow Mongoose best practices
