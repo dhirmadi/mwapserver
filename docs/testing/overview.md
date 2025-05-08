@@ -12,9 +12,16 @@ This document outlines the testing strategy and implementation for the MWAP back
 ## Test Structure
 ```
 src/
-  __tests__/          → Global test helpers and setup
+  __tests__/          → Global test infrastructure
+    constants.ts      → Standard test constants
+    mockDb.ts         → Database mocking
+    mockAuth.ts       → Authentication mocking
+    setup.ts          → Test setup and teardown
+    app.test.ts       → Core app tests
   utils/
     __tests__/        → Utility function tests
+      errors.test.ts  → Error constructor tests
+      auth.test.ts    → Auth utility tests
   middleware/
     __tests__/        → Middleware tests
   features/
@@ -41,23 +48,29 @@ npm run coverage
 
 ## Test Categories
 
-### 1. Unit Tests
-- Individual function testing
-- Mocked dependencies
-- Fast execution
+### 1. Core Tests
+- App setup and configuration
+- Error handling
+- Security middleware
+- Health checks
+
+### 2. Unit Tests
+- Error constructors
+- Utility functions
+- Individual components
 - High coverage
 
-### 2. Integration Tests
-- Component interaction testing
-- Real database connections
-- Auth flow testing
-- API endpoint testing
+### 3. Integration Tests
+- API endpoints
+- Authentication flow
+- Database operations
+- Error handling
 
-### 3. Coverage Requirements
-- Minimum 80% coverage
-- All utilities covered
-- All middleware covered
-- Critical paths covered
+### 4. Coverage Requirements
+- Core (app.ts, errors): 100%
+- Utils and Middleware: > 90%
+- Features: > 80%
+- Overall: > 80%
 
 ## Testing Standards
 
