@@ -1,6 +1,6 @@
 # 🗺️ MWAP Backend Project Plan
 
-This document defines the execution strategy and technical expectations for building the MWAP backend API using Node.js, Express, MongoDB, Auth0, and Zod. It is designed for intelligent agents (e.g., Claude 3.5 via OpenHands) and developers to follow a staged, DRY, and testable build plan.
+This document defines the execution strategy and technical expectations for building the MWAP backend API using Node.js, Express, MongoDB, Auth0, and Zod. It is used by both developers and automated scaffolding tools (e.g., Claude via OpenHands) during code generation to follow a staged, DRY, and testable build approach.
 
 ---
 
@@ -188,8 +188,8 @@ Each phase includes a `Definition of Done` and may not be skipped or merged with
 
 ---
 
-## 🧠 Claude Notes
+## 🧠 OpenHands / Claude
 
-You are building an authenticated multi-tenant backend. Follow all security and role constraints exactly. Validate all inputs via Zod schemas. Reuse only what exists in `repo.md` — never invent.
+You are building an authenticated multi-tenant backend. Follow all security and role constraints exactly. Validate all inputs via Zod schemas. Reuse only what exists in `v3-architecture-reference.md` — never invent.
 
-When done with each phase, stop. Do not start the next one unless instructed.
+When done with each phase stop and commit the code. Do not start the next one unless instructed.
