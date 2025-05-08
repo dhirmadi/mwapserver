@@ -1,71 +1,237 @@
-# 🧱 Phase 3: Implement `/api/v1/projects` and `/projects/:id/members`
+# 🧱 Phase 3: Projects and Members Domain
 
-You are continuing work on the MWAP backend. Phases 1 and 2 are complete — the infrastructure and tenants domain are implemented and build successfully.
+You are implementing the projects domain and member management for MWAP. Follow the architecture in `/docs/v3-architecture-reference.md` and API contract in `/docs/v3-api.md`.
 
-Now implement the **projects domain and member management** following the official architecture and API contract.
+## ✅ Task
 
-📚 Follow these canonical definitions:
-- `v3-api.md` → endpoint definitions
-- `v3-domainmap.md` → entity constraints and role rules
-- `architecture-reference.md` → architecture and folder structure
-- Use only Zod for validation
-- Enforce auth via `authenticateJWT()` and roles via `requireProjectRole()` or `assertProjectAccess()`
+Implement the projects domain with member management support.
 
----
+## 🔍 Prerequisites
 
-## ✅ Required Endpoints
+- Phases 1 & 2 complete and tested
+- Tenant management operational
+- Role middleware configured
 
-Implement the following:
+## 📦 API Endpoints
 
-### `/api/v1/projects`
-- `GET` – List all accessible projects for the user
-- `GET /:id` – Get single project (must be a member)
-- `POST` – Create new project
-- `PATCH /:id` – Update project (must be OWNER or DEPUTY)
-- `DELETE /:id` – Delete project (must be OWNER or SUPERADMIN)
+### Projects API
 
-### `/api/v1/projects/:id/members`
-- `GET` – List project members (must be member)
-- `POST` – Add new member (OWNER or DEPUTY only)
-- `PATCH /:userId` – Change role of member (OWNER only)
-- `DELETE /:userId` – Remove member (OWNER or DEPUTY)
+#### GET /api/v1/projects
+```typescript
+// Query Parameters
+interface ProjectsQuery {
+  tenantId?: string;
+  type?: string;
+  status?: 'active' | 'archived';
+}
 
----
-
-## 🔐 Business Rules to Enforce
-
-- `OWNER` must always be a project member
-- No duplicate members (by userId)
-- Only `OWNER` can change member roles
-- `PROJECT.name` and `type` are **immutable** after creation
-- Every action must be audit-logged via `logAudit`
-
----
-
-## 📁 File Structure
-
-Create or complete the following:
-
-```
-/features/projects/
-  - projects.routes.ts
-  - projects.controller.ts
-  - projects.service.ts
-  - members.controller.ts
-/schemas/
-  - project.schema.ts
-  - projectMember.schema.ts
+// Response
+interface ProjectsResponse {
+  data: Array<{
+    id: string;
+    name: string;
+    description?: string;
+    type: string;
+    status: string;
+    tenantId: string;
+    ownerId: string;
+    createdAt: string;
+    updatedAt: string;
+  }>;
+  pagination: {
+    total: number;
+    page: number;
+    pageSize: number;
+  };
+}
 ```
 
----
+#### POST /api/v1/projects
+```typescript
+// Request
+interface CreateProjectRequest {
+  name: string;
+  description?: string;
+  type: string;
+  tenantId: string;
+}
 
-## 🧱 Constraints
+// Response: ProjectResponse
+```
 
-- Reuse utilities: `validateWithSchema`, `wrapAsyncHandler`, `jsonResponse`
-- Reuse middleware: `authenticateJWT`, `requireProjectRole`
-- Do NOT add new folders or change shared code
-- Log all changes via `logAudit`
-- Validate all input with Zod
-- Do not create new endpoints beyond the ones listed
+#### GET /api/v1/projects/:id
+```typescript
+// Response: ProjectResponse
+```
 
-✅ Stop once all endpoints are implemented and compile cleanly. Wait for review before starting Phase 4.
+#### PATCH /api/v1/projects/:id
+```typescript
+// Request
+interface UpdateProjectRequest {
+  description?: string;
+  status?: 'active' | 'archived';
+}
+
+// Response: ProjectResponse
+```
+
+#### DELETE /api/v1/projects/:id
+```typescript
+// Response
+{
+  "success": true
+}
+```
+
+### Members API
+
+#### GET /api/v1/projects/:id/members
+```typescript
+// Response
+interface MembersResponse {
+  data: Array<{
+    userId: string;
+    role: 'OWNER' | 'DEPUTY' | 'MEMBER';
+    addedAt: string;
+    addedBy: string;
+  }>;
+}
+```
+
+#### POST /api/v1/projects/:id/members
+```typescript
+// Request
+interface AddMemberRequest {
+  userId: string;
+  role: 'DEPUTY' | 'MEMBER';
+}
+
+// Response: MemberResponse
+```
+
+#### PATCH /api/v1/projects/:id/members/:userId
+```typescript
+// Request
+interface UpdateMemberRequest {
+  role: 'DEPUTY' | 'MEMBER';
+}
+
+// Response: MemberResponse
+```
+
+#### DELETE /api/v1/projects/:id/members/:userId
+```typescript
+// Response
+{
+  "success": true
+}
+```
+
+## 📝 Schema Definitions
+
+```typescript
+// project.schema.ts
+export const projectSchema = z.object({
+  name: z.string().min(3).max(100),
+  description: z.string().max(1000).optional(),
+  type: z.string(),
+  tenantId: z.string().uuid(),
+  status: z.enum(['active', 'archived']).default('active')
+});
+
+// projectMember.schema.ts
+export const memberSchema = z.object({
+  userId: z.string(),
+  role: z.enum(['OWNER', 'DEPUTY', 'MEMBER'])
+});
+```
+
+## ❌ Error Handling
+
+```typescript
+// Error codes
+PROJECT_NOT_FOUND = 'project/not-found'
+PROJECT_NAME_EXISTS = 'project/name-exists'
+MEMBER_EXISTS = 'project/member-exists'
+MEMBER_NOT_FOUND = 'project/member-not-found'
+INVALID_ROLE_CHANGE = 'project/invalid-role-change'
+
+// Example error
+{
+  "success": false,
+  "error": {
+    "code": "project/member-exists",
+    "message": "User is already a project member",
+    "details": { "userId": "123", "projectId": "456" }
+  }
+}
+```
+
+## 🧪 Testing Requirements
+
+1. Unit Tests (90% coverage):
+   - Schema validation
+   - Role enforcement
+   - Member management
+   - Project CRUD
+
+2. Integration Tests:
+   - Project lifecycle
+   - Member operations
+   - Role inheritance
+   - Access control
+
+## 🔒 Business Rules
+
+1. Project Rules:
+   - Names unique within tenant
+   - Type immutable after creation
+   - Only OWNER/SUPERADMIN can delete
+   - Audit log all changes
+
+2. Member Rules:
+   - One OWNER required
+   - OWNER role can't be removed
+   - Only OWNER can change roles
+   - No duplicate members
+
+## 🛠 Implementation Files
+
+```typescript
+src/features/projects/
+  - projects.routes.ts    # Route definitions
+  - projects.controller.ts# Request handling
+  - projects.service.ts   # Business logic
+  - members.controller.ts # Member operations
+  - members.service.ts    # Member management
+
+src/schemas/
+  - project.schema.ts     # Project schemas
+  - projectMember.schema.ts # Member schemas
+```
+
+## ✅ Definition of Done
+
+- All endpoints implemented
+- Schema validation complete
+- Role checks enforced
+- Tests passing with coverage
+- Documentation updated
+- Audit logging implemented
+- Error handling complete
+
+## 🧠 Claude Constraints
+
+- ❌ DO NOT modify tenant logic
+- ❌ DO NOT skip role checks
+- ❌ DO NOT return DB objects directly
+- ✅ Use Phase 1 utilities
+- ✅ STOP after testing
+
+## 📚 Documentation
+
+- Update API docs in `/docs/api.md`
+- Update progress in `/status.md`
+- Add member management guide
+- Document role hierarchy
+- Add error code reference
