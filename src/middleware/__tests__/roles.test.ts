@@ -1,68 +1,93 @@
 import { describe, it, expect, vi } from 'vitest';
 import { requireTenantRole, requireProjectRole } from '../roles.js';
 import { Request, Response } from 'express';
-import { User } from '../../utils/auth.js';
+import { AUTH, ERROR_CODES } from '../../__tests__/constants';
+import { expectError } from '../../__tests__/helpers';
+
+// Import test setup
+import '../../__tests__/setup';
 
 describe('roles middleware', () => {
-  const mockUser: User = {
-    sub: 'auth0|123',
-    email: 'test@example.com',
-    name: 'Test User'
-  };
 
   describe('requireTenantRole', () => {
-    it('should call next() when user is authenticated', async () => {
+    it('should allow access with valid user', async () => {
+      // Setup request
       const mockReq = {
-        auth: mockUser
+        auth: AUTH.USER
       } as Request;
-      const mockRes = {} as Response;
+      const mockRes = {
+        status: vi.fn().mockReturnThis(),
+        json: vi.fn()
+      } as unknown as Response;
       const mockNext = vi.fn();
 
+      // Execute
       const middleware = requireTenantRole('OWNER');
       await middleware(mockReq, mockRes, mockNext);
 
+      // Verify
       expect(mockNext).toHaveBeenCalledTimes(1);
       expect(mockNext).toHaveBeenCalledWith();
+      expect(mockRes.status).not.toHaveBeenCalled();
     });
 
-    it('should handle errors and pass to next', async () => {
+    it('should reject unauthenticated request', async () => {
+      // Setup request
       const mockReq = {} as Request;
-      const mockRes = {} as Response;
+      const mockRes = {
+        status: vi.fn().mockReturnThis(),
+        json: vi.fn()
+      } as unknown as Response;
       const mockNext = vi.fn();
 
+      // Execute
       const middleware = requireTenantRole('OWNER');
       await middleware(mockReq, mockRes, mockNext);
 
-      expect(mockNext).toHaveBeenCalledTimes(1);
-      expect(mockNext.mock.calls[0][0]).toBeInstanceOf(Error);
+      // Verify
+      expectError(mockRes, 401, ERROR_CODES.AUTH.INVALID_TOKEN);
+      expect(mockNext).not.toHaveBeenCalled();
     });
   });
 
   describe('requireProjectRole', () => {
-    it('should call next() when user is authenticated', async () => {
+    it('should allow access with valid user', async () => {
+      // Setup request
       const mockReq = {
-        auth: mockUser
+        auth: AUTH.USER
       } as Request;
-      const mockRes = {} as Response;
+      const mockRes = {
+        status: vi.fn().mockReturnThis(),
+        json: vi.fn()
+      } as unknown as Response;
       const mockNext = vi.fn();
 
+      // Execute
       const middleware = requireProjectRole('MEMBER');
       await middleware(mockReq, mockRes, mockNext);
 
+      // Verify
       expect(mockNext).toHaveBeenCalledTimes(1);
       expect(mockNext).toHaveBeenCalledWith();
+      expect(mockRes.status).not.toHaveBeenCalled();
     });
 
-    it('should handle errors and pass to next', async () => {
+    it('should reject unauthenticated request', async () => {
+      // Setup request
       const mockReq = {} as Request;
-      const mockRes = {} as Response;
+      const mockRes = {
+        status: vi.fn().mockReturnThis(),
+        json: vi.fn()
+      } as unknown as Response;
       const mockNext = vi.fn();
 
+      // Execute
       const middleware = requireProjectRole('MEMBER');
       await middleware(mockReq, mockRes, mockNext);
 
-      expect(mockNext).toHaveBeenCalledTimes(1);
-      expect(mockNext.mock.calls[0][0]).toBeInstanceOf(Error);
+      // Verify
+      expectError(mockRes, 401, ERROR_CODES.AUTH.INVALID_TOKEN);
+      expect(mockNext).not.toHaveBeenCalled();
     });
   });
 });
