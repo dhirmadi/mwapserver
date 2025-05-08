@@ -31,7 +31,11 @@ app.get('/health', (req, res) => {
 });
 
 // JWT Authentication for all other routes
-app.use(authenticateJWT);
+app.use(authenticateJWT());
+
+// API Routes
+import tenantRoutes from './features/tenants/tenants.routes';
+app.use('/api/v1/tenants', tenantRoutes);
 
 // Error handling
 app.use(errorHandler);

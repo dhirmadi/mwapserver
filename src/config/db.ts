@@ -1,9 +1,14 @@
-import mongoose from 'mongoose';
+import { MongoClient, Db } from 'mongodb';
 import { env } from './env.js';
+
+let client: MongoClient;
+let db: Db;
 
 export async function connectDB(): Promise<void> {
   try {
-    await mongoose.connect(env.MONGODB_URI);
+    client = new MongoClient(env.MONGODB_URI);
+    await client.connect();
+    db = client.db();
     console.log('Connected to MongoDB');
   } catch (error) {
     console.error('MongoDB connection error:', error);
@@ -11,10 +16,10 @@ export async function connectDB(): Promise<void> {
   }
 }
 
-mongoose.connection.on('error', (error) => {
-  console.error('MongoDB connection error:', error);
-});
+export { db };
 
-mongoose.connection.on('disconnected', () => {
+process.on('SIGINT', async () => {
+  await client?.close();
   console.log('MongoDB disconnected');
+  process.exit(0);
 });

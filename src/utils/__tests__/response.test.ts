@@ -1,7 +1,7 @@
 import { describe, it, expect, vi } from 'vitest';
 import { jsonResponse, errorResponse, wrapAsyncHandler } from '../response.js';
 import { ApiError, ValidationError } from '../errors.js';
-import { Response } from 'express';
+import { Request, Response } from 'express';
 
 describe('response utils', () => {
   describe('jsonResponse', () => {
@@ -83,13 +83,14 @@ describe('response utils', () => {
 
   describe('wrapAsyncHandler', () => {
     it('should handle successful async operation', async () => {
-      const mockReq = {};
+      const mockReq = {} as Request;
       const mockRes = {
-        json: vi.fn()
-      };
+        json: vi.fn(),
+        status: vi.fn().mockReturnThis()
+      } as unknown as Response;
       const mockNext = vi.fn();
 
-      const handler = wrapAsyncHandler(async (req, res) => {
+      const handler = wrapAsyncHandler(async (req: Request, res: Response) => {
         res.json({ success: true });
       });
 
@@ -100,8 +101,11 @@ describe('response utils', () => {
     });
 
     it('should pass error to next middleware on failure', async () => {
-      const mockReq = {};
-      const mockRes = {};
+      const mockReq = {} as Request;
+      const mockRes = {
+        json: vi.fn(),
+        status: vi.fn().mockReturnThis()
+      } as unknown as Response;
       const mockNext = vi.fn();
       const testError = new Error('Test error');
 

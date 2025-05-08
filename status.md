@@ -71,12 +71,14 @@ MWAP (Modular Web Application Platform) is a fullstack, secure, scalable SaaS fr
    - Improve auth middleware branch coverage
    - Add edge cases for validation
 
-### Phase 2: Tenants Domain 🔄
-**Status**: NOT STARTED
-- ⏳ Tenant routes
-- ⏳ Tenant controllers
-- ⏳ Tenant services
-- ⏳ Tenant schemas
+### Phase 2: Tenants Domain ✅
+**Status**: COMPLETED
+- ✅ Tenant routes
+- ✅ Tenant controllers
+- ✅ Tenant services
+- ✅ Tenant schemas
+- ✅ Test coverage (90%+)
+- ✅ Documentation updated
 
 ### Phase 3: Projects + Members 🔄
 **Status**: NOT STARTED

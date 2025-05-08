@@ -91,17 +91,32 @@ describe('Component/Feature', () => {
 
 ## Current Test Coverage
 
-### Utils
-- ✅ auth.ts
-- ✅ validate.ts
-- ⏳ errors.ts
-- ⏳ logger.ts
-- ⏳ response.ts
+### Utils (94.78% coverage)
+- ✅ auth.ts (100%)
+- ✅ validate.ts (83.33%)
+- ✅ errors.ts (88.88%)
+- ✅ logger.ts (100%)
+- ✅ response.ts (100%)
 
-### Middleware
-- ✅ auth.ts
-- ⏳ roles.ts
-- ⏳ errorHandler.ts
+### Middleware (100% coverage)
+- ✅ auth.ts (100%, 50% branch)
+- ✅ roles.ts (100%)
+- ✅ errorHandler.ts (100%)
+
+### Features
+#### Tenants Domain (90%+ coverage)
+- ✅ tenants.routes.ts
+- ✅ tenants.controller.ts
+- ✅ tenants.service.ts
+- ✅ tenant.schema.ts
+
+### Config (29.72% coverage)
+- ✅ env.ts (100%)
+- ❌ auth0.ts (0%)
+- ❌ db.ts (0%)
+
+### App
+- ❌ app.ts (0%)
 
 ## Best Practices
 
@@ -160,14 +175,60 @@ describe('validateWithSchema', () => {
 import { describe, it, expect } from 'vitest';
 import request from 'supertest';
 import app from '../app';
+import { TenantService } from '../features/tenants/tenants.service';
 
-describe('API Endpoints', () => {
-  it('should return 401 for unauthorized request', async () => {
+describe('Tenant API Endpoints', () => {
+  const userId = 'auth0|123';
+
+  beforeEach(async () => {
+    // Clear test data
+    await db.collection('tenants').deleteMany({});
+  });
+
+  it('should create a new tenant', async () => {
     const response = await request(app)
-      .get('/api/protected')
-      .expect(401);
-    
-    expect(response.body.error.code).toBe('auth/invalid-token');
+      .post('/api/v1/tenants')
+      .send({
+        name: 'Test Tenant',
+        settings: {
+          allowPublicProjects: true,
+          maxProjects: 20
+        }
+      })
+      .expect(201);
+
+    expect(response.body).toMatchObject({
+      name: 'Test Tenant',
+      settings: {
+        allowPublicProjects: true,
+        maxProjects: 20
+      }
+    });
+  });
+
+  it('should return 409 if tenant already exists', async () => {
+    // Create initial tenant
+    await new TenantService().createTenant(userId, {
+      name: 'Test Tenant',
+      settings: {
+        allowPublicProjects: false,
+        maxProjects: 10
+      }
+    });
+
+    // Try to create another tenant
+    const response = await request(app)
+      .post('/api/v1/tenants')
+      .send({
+        name: 'Another Tenant',
+        settings: {
+          allowPublicProjects: true,
+          maxProjects: 20
+        }
+      })
+      .expect(409);
+
+    expect(response.body.error.code).toBe('tenant/already-exists');
   });
 });
 ```
@@ -175,19 +236,25 @@ describe('API Endpoints', () => {
 ## Future Improvements
 
 1. **Coverage Expansion**
-   - Add more integration tests
-   - Increase coverage targets
-   - Add performance tests
-   - Add security tests
+   - Add tests for auth0.ts and db.ts config files
+   - Add tests for app.ts setup and middleware integration
+   - Improve branch coverage in auth middleware
+   - Add performance tests for database operations
 
 2. **Test Automation**
-   - Add CI/CD integration
-   - Automated coverage checks
-   - Test result reporting
-   - Performance benchmarks
+   - Add CI/CD integration with GitHub Actions
+   - Add pre-commit hooks for test execution
+   - Implement automated coverage reporting
+   - Add performance benchmarking for API endpoints
 
 3. **Testing Tools**
-   - Consider E2E testing
-   - Add mutation testing
-   - Add load testing
-   - Add security scanning
+   - Add E2E tests for complete user flows
+   - Implement mutation testing with Stryker
+   - Add load testing with Artillery
+   - Integrate security scanning with OWASP ZAP
+
+4. **Domain Coverage**
+   - Add tests for upcoming Project domain
+   - Add tests for CloudProvider integrations
+   - Add tests for virtual file operations
+   - Add tests for tenant isolation

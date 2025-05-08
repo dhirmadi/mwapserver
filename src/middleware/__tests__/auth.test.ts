@@ -42,11 +42,15 @@ describe('auth middleware', () => {
       }
     } as Partial<Request>;
 
-    const mockRes = {} as Response;
+    const mockRes = {
+      status: vi.fn().mockReturnThis(),
+      json: vi.fn()
+    } as unknown as Response;
     const mockNext = vi.fn();
 
     // Execute middleware
-    await authenticateJWT(mockReq as Request, mockRes, mockNext);
+    const middleware = authenticateJWT();
+    await middleware(mockReq as Request, mockRes, mockNext);
 
     // Verify JWKS client was called with correct key ID
     expect(jwksClient.getSigningKey).toHaveBeenCalledWith('test-key-id');
