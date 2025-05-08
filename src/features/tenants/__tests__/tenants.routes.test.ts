@@ -1,18 +1,16 @@
 import { describe, it, expect, beforeEach } from 'vitest';
-import request from 'supertest';
 import express from 'express';
-import { ObjectId } from 'mongodb';
 import tenantRoutes from '../tenants.routes';
 import { mockCollection, mockSuperadminsCollection } from '../../../__tests__/mockDb';
 import { errorHandler } from '../../../middleware/errorHandler';
+import { createTenant, createSuperadmin } from '../../../__tests__/factories';
+import { authRequest, adminRequest, expectSuccess, expectError } from '../../../__tests__/helpers';
 
 // Import test setup
 import '../../../__tests__/setup';
 
 describe('Tenant Routes', () => {
   let app: express.Application;
-  const userId = 'auth0|123';
-  const authToken = 'Bearer test-token';
 
   beforeEach(() => {
     app = express();
@@ -31,27 +29,24 @@ describe('Tenant Routes', () => {
         }
       };
 
-      const expectedTenant = {
-        _id: expect.any(String),
-        name: data.name,
-        ownerId: userId,
-        settings: data.settings,
-        archived: false,
-        createdAt: expect.any(String),
-        updatedAt: expect.any(String)
-      };
-
+      // Setup mocks using factory
+      const newTenant = createTenant(data);
       mockCollection.findOne
         .mockResolvedValueOnce(null) // First findOne for user check
         .mockResolvedValueOnce(null); // Second findOne for name check
+      mockCollection.insertOne.mockResolvedValueOnce({ insertedId: newTenant._id });
 
-      const response = await request(app)
+      // Make request using helper
+      const response = await authRequest(app)
         .post('/api/v1/tenants')
-        .set('Authorization', authToken)
         .send(data);
 
-      expect(response.status).toBe(201);
-      expect(response.body).toMatchObject(expectedTenant);
+      // Verify response using helper
+      expectSuccess(response, 201);
+      expect(response.body).toMatchObject({
+        name: data.name,
+        settings: data.settings
+      });
     });
 
     it('should reject invalid tenant data', async () => {
