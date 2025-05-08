@@ -5,6 +5,7 @@ import { mockCollection, mockSuperadminsCollection } from '../../../__tests__/mo
 import { errorHandler } from '../../../middleware/errorHandler';
 import { createTenant, createSuperadmin } from '../../../__tests__/factories';
 import { authRequest, adminRequest, expectSuccess, expectError } from '../../../__tests__/helpers';
+import { AUTH, ERROR_CODES } from '../../../__tests__/constants';
 
 // Import test setup
 import '../../../__tests__/setup';
@@ -21,6 +22,7 @@ describe('Tenant Routes', () => {
 
   describe('POST /api/v1/tenants', () => {
     it('should create a new tenant', async () => {
+      // Create test data using factory
       const data = {
         name: 'Test Tenant',
         settings: {
@@ -28,31 +30,31 @@ describe('Tenant Routes', () => {
           maxProjects: 20
         }
       };
-
-      // Setup mocks using factory
       const newTenant = createTenant(data);
+
+      // Setup mocks
       mockCollection.findOne
-        .mockResolvedValueOnce(null) // First findOne for user check
-        .mockResolvedValueOnce(null); // Second findOne for name check
+        .mockResolvedValueOnce(null) // No existing tenant for user
+        .mockResolvedValueOnce(null); // No existing tenant with same name
       mockCollection.insertOne.mockResolvedValueOnce({ insertedId: newTenant._id });
 
-      // Make request using helper
+      // Make request
       const response = await authRequest(app)
         .post('/api/v1/tenants')
         .send(data);
 
-      // Verify response using helper
+      // Verify response
       expectSuccess(response, 201);
       expect(response.body).toMatchObject({
         name: data.name,
-        settings: data.settings
+        settings: data.settings,
+        ownerId: AUTH.USER.sub
       });
     });
 
     it('should reject invalid tenant data', async () => {
-      const response = await request(app)
+      const response = await authRequest(app)
         .post('/api/v1/tenants')
-        .set('Authorization', authToken)
         .send({
           name: 'a', // Too short
           settings: {
@@ -60,54 +62,42 @@ describe('Tenant Routes', () => {
           }
         });
 
-      expect(response.status).toBe(400);
+      expectError(response, 400, ERROR_CODES.VALIDATION_ERROR);
     });
   });
 
   describe('GET /api/v1/tenants/me', () => {
     it('should return current user tenant', async () => {
-      const expectedTenant = {
-        _id: new ObjectId(),
+      // Create test data
+      const expectedTenant = createTenant({
         name: 'Test Tenant',
-        ownerId: userId,
-        settings: {
-          allowPublicProjects: false,
-          maxProjects: 10
-        },
-        archived: false,
-        createdAt: new Date(),
-        updatedAt: new Date()
-      };
+        ownerId: AUTH.USER.sub
+      });
 
+      // Setup mocks
       mockCollection.findOne.mockResolvedValue(expectedTenant);
 
-      const response = await request(app)
-        .get('/api/v1/tenants/me')
-        .set('Authorization', authToken);
+      // Make request
+      const response = await authRequest(app)
+        .get('/api/v1/tenants/me');
 
-      expect(response.status).toBe(200);
+      // Verify response
+      expectSuccess(response);
       expect(response.body).toMatchObject({
         name: expectedTenant.name,
-        ownerId: userId
+        ownerId: AUTH.USER.sub
       });
     });
   });
 
   describe('PATCH /api/v1/tenants/:id', () => {
-    const existingTenant = {
-      _id: new ObjectId(),
-      name: 'Test Tenant',
-      ownerId: userId,
-      settings: {
-        allowPublicProjects: false,
-        maxProjects: 10
-      },
-      archived: false,
-      createdAt: new Date(),
-      updatedAt: new Date()
-    };
-
     it('should update tenant as owner', async () => {
+      // Create test data
+      const existingTenant = createTenant({
+        name: 'Test Tenant',
+        ownerId: AUTH.USER.sub
+      });
+
       const updateData = {
         name: 'Updated Name',
         settings: {
@@ -115,24 +105,24 @@ describe('Tenant Routes', () => {
         }
       };
 
-      const updatedTenant = {
+      const updatedTenant = createTenant({
         ...existingTenant,
-        ...updateData,
-        updatedAt: new Date()
-      };
+        ...updateData
+      });
 
+      // Setup mocks
       mockCollection.findOne
-        .mockResolvedValueOnce(existingTenant) // First findOne for getTenantById
-        .mockResolvedValueOnce(null); // Second findOne for name check
-
+        .mockResolvedValueOnce(existingTenant) // Get tenant by ID
+        .mockResolvedValueOnce(null); // Name uniqueness check
       mockCollection.findOneAndUpdate.mockResolvedValue({ value: updatedTenant });
 
-      const response = await request(app)
+      // Make request
+      const response = await authRequest(app)
         .patch(`/api/v1/tenants/${existingTenant._id}`)
-        .set('Authorization', authToken)
         .send(updateData);
 
-      expect(response.status).toBe(200);
+      // Verify response
+      expectSuccess(response);
       expect(response.body).toMatchObject({
         name: updateData.name,
         settings: {
@@ -143,9 +133,12 @@ describe('Tenant Routes', () => {
     });
 
     it('should reject invalid update data', async () => {
-      const response = await request(app)
-        .patch(`/api/v1/tenants/${existingTenant._id}`)
-        .set('Authorization', authToken)
+      // Create test data
+      const tenant = createTenant();
+
+      // Make request
+      const response = await authRequest(app)
+        .patch(`/api/v1/tenants/${tenant._id}`)
         .send({
           name: 'a', // Too short
           settings: {
@@ -153,46 +146,44 @@ describe('Tenant Routes', () => {
           }
         });
 
-      expect(response.status).toBe(400);
+      // Verify response
+      expectError(response, 400, ERROR_CODES.VALIDATION_ERROR);
     });
   });
 
   describe('DELETE /api/v1/tenants/:id', () => {
-    const existingTenant = {
-      _id: new ObjectId(),
-      name: 'Test Tenant',
-      ownerId: userId,
-      settings: {
-        allowPublicProjects: false,
-        maxProjects: 10
-      },
-      archived: false,
-      createdAt: new Date(),
-      updatedAt: new Date()
-    };
-
     it('should delete tenant as superadmin', async () => {
-      const adminId = 'auth0|admin';
-      mockCollection.findOne.mockResolvedValue(existingTenant);
+      // Create test data
+      const tenant = createTenant();
+      const admin = createSuperadmin(AUTH.ADMIN.sub);
+
+      // Setup mocks
+      mockCollection.findOne.mockResolvedValue(tenant);
       mockCollection.deleteOne.mockResolvedValue({ deletedCount: 1 });
-      mockSuperadminsCollection.findOne.mockResolvedValue({ userId: adminId });
+      mockSuperadminsCollection.findOne.mockResolvedValue(admin);
 
-      const response = await request(app)
-        .delete(`/api/v1/tenants/${existingTenant._id}`)
-        .set('Authorization', authToken);
+      // Make request
+      const response = await adminRequest(app)
+        .delete(`/api/v1/tenants/${tenant._id}`);
 
-      expect(response.status).toBe(204);
+      // Verify response
+      expectSuccess(response, 204);
     });
 
     it('should reject deletion by non-superadmin', async () => {
-      mockCollection.findOne.mockResolvedValue(existingTenant);
+      // Create test data
+      const tenant = createTenant();
+
+      // Setup mocks
+      mockCollection.findOne.mockResolvedValue(tenant);
       mockSuperadminsCollection.findOne.mockResolvedValue(null);
 
-      const response = await request(app)
-        .delete(`/api/v1/tenants/${existingTenant._id}`)
-        .set('Authorization', authToken);
+      // Make request
+      const response = await authRequest(app)
+        .delete(`/api/v1/tenants/${tenant._id}`);
 
-      expect(response.status).toBe(403);
+      // Verify response
+      expectError(response, 403, ERROR_CODES.PERMISSION_ERROR);
     });
   });
 });

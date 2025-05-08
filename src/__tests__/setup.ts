@@ -1,6 +1,23 @@
-import { beforeEach, afterEach } from 'vitest';
-import { resetMocks } from './mockDb';
+import { beforeEach, afterEach, vi } from 'vitest';
+import { resetMocks, mockCollection, mockSuperadminsCollection, mockDb } from './mockDb';
+import { AUTH } from './constants';
 import './mockAuth';
+
+// Import mock types
+import { createMockObjectId } from './mockDb.types';
+
+// Mock MongoDB
+vi.mock('mongodb', () => ({
+  ObjectId: function(str?: string) {
+    return createMockObjectId(str);
+  }
+}));
+
+// Mock database module
+vi.mock('../config/db', () => ({
+  db: mockDb,
+  connectDB: vi.fn().mockResolvedValue(mockDb)
+}));
 
 // Mock Auth0 JWKS client
 vi.mock('../config/auth0', () => ({
@@ -12,10 +29,14 @@ vi.mock('../config/auth0', () => ({
 }));
 
 // Mock environment variables
-process.env.NODE_ENV = 'test';
-process.env.MONGODB_URI = 'mongodb://localhost:27017/mwap_test';
-process.env.AUTH0_DOMAIN = 'test.auth0.com';
-process.env.AUTH0_AUDIENCE = 'https://api.test.mwap.dev';
+process.env = {
+  ...process.env,
+  NODE_ENV: 'test',
+  PORT: '3001',
+  MONGODB_URI: 'mongodb://localhost:27017/mwap_test',
+  AUTH0_DOMAIN: AUTH.DOMAIN,
+  AUTH0_AUDIENCE: AUTH.AUDIENCE
+};
 
 // Global test setup
 beforeEach(() => {
@@ -33,7 +54,6 @@ afterEach(() => {
   vi.clearAllMocks();
   vi.useRealTimers();
   
-  // Clear test data
-  mockCollection.deleteMany({});
-  mockSuperadminsCollection.deleteMany({});
+  // Reset collections to empty state
+  resetMocks();
 });
