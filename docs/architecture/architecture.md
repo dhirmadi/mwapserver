@@ -122,11 +122,74 @@ interface ApiResponse<T> {
 - Virtual Files
 
 ## 🧪 Testing Architecture
-[To be implemented]
-- Unit testing
-- Integration testing
-- Coverage requirements
-- Test utilities
+
+### Test Infrastructure
+- **Framework**: Vitest
+- **Coverage**: @vitest/coverage-v8
+- **HTTP Testing**: Supertest
+- **Mocking**: Vitest built-in mocking
+
+### Test Organization
+```
+src/
+  __tests__/          → Global test setup
+    setup.ts          → Test configuration
+    mockDb.ts         → Database mocking
+    mockAuth.ts       → Auth mocking
+    factories.ts      → Test data factories
+    helpers.ts        → Test utilities
+    constants.ts      → Test constants
+  features/
+    {domain}/
+      __tests__/      → Domain tests
+  utils/
+    __tests__/        → Utility tests
+  middleware/
+    __tests__/        → Middleware tests
+```
+
+### Testing Layers
+1. **Unit Tests**
+   - Utility functions
+   - Error handling
+   - Data validation
+   - Service logic
+
+2. **Integration Tests**
+   - API endpoints
+   - Database operations
+   - Authentication flow
+   - Error responses
+
+3. **Component Tests**
+   - Middleware chains
+   - Feature modules
+   - Service interactions
+
+### Test Environment
+- Isolated test database
+- Mocked external services
+- Controlled test data
+- Fixed timestamps
+
+### Coverage Requirements
+- Core (app.ts, errors): 100%
+- Utils and Middleware: > 90%
+- Features: > 80%
+- Overall: > 80%
+
+### Testing Tools
+- Factory functions
+- Request helpers
+- Response assertions
+- Mock collections
+- Auth utilities
+
+### Test Automation
+- CI/CD integration
+- Pre-commit hooks
+- Coverage reporting
+- Performance testing
 
 ## 🚀 Deployment Architecture
 [To be implemented]

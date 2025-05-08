@@ -3,12 +3,41 @@ import { Tenant } from '../schemas/tenant.schema';
 import { createMockCollection, MockCollection, resetCollection } from './mockDb.types';
 import { AUTH } from './constants';
 
-// Create mock ObjectId
-const mockObjectId = (str?: string) => ({
-  toString: () => str || 'mock-id',
-  toHexString: () => str || 'mock-id',
-  equals: (other: any) => other?.toString() === (str || 'mock-id')
-});
+// Import types
+
+// Create mock ObjectId class
+export class ObjectId {
+  private value: string;
+
+  constructor(str?: string) {
+    this.value = str || 'mock-id';
+  }
+
+  toString() {
+    return this.value;
+  }
+
+  toHexString() {
+    return this.value;
+  }
+
+  equals(other: any) {
+    return other?.toString() === this.value;
+  }
+
+  // Add static methods for type checking
+  static isValid(id: string): boolean {
+    return typeof id === 'string' && id.length > 0;
+  }
+
+  // Add type check method
+  static isObjectId(obj: any): boolean {
+    return obj instanceof ObjectId;
+  }
+}
+
+// Create mock ObjectId function for backward compatibility
+export const mockObjectId = (str?: string) => new ObjectId(str);
 
 // Define Superadmin type
 interface Superadmin {

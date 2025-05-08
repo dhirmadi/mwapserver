@@ -18,8 +18,11 @@ declare global {
 
 export function getUserFromToken(req: Request): User {
   const user = req.auth;
-  if (!user || !user.sub) {
-    throw new AuthError('Invalid user token');
+  if (!user) {
+    throw new AuthError('No token provided');
+  }
+  if (!user.sub || !user.email || !user.name) {
+    throw new AuthError('Invalid token');
   }
   return user;
 }

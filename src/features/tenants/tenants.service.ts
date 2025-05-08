@@ -108,7 +108,7 @@ export class TenantService {
       { returnDocument: 'after' }
     );
 
-    if (!result) {
+    if (!result.value) {
       throw new ApiError('Failed to update tenant', 500, 'tenant/update-failed');
     }
 
@@ -116,7 +116,7 @@ export class TenantService {
       updates: data
     });
 
-    return result;
+    return result.value;
   }
 
   async deleteTenant(id: string, userId: string): Promise<void> {

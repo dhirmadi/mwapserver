@@ -2,23 +2,66 @@
 
 ## Overview
 
-The MWAP server uses a standardized test infrastructure to maintain consistency and reduce duplication.
+The MWAP server uses Vitest as its testing framework with a comprehensive mocking infrastructure for MongoDB, Auth0, and JWT validation. The test infrastructure is designed to provide consistent, isolated, and maintainable tests.
+
+## Core Components
+
+### 1. Database Mocking
+- MongoDB operations are fully mocked using typed collections
+- In-memory storage simulates database state
+- Automatic ObjectId generation and handling
+- Collection-specific mock implementations
+
+### 2. Authentication Mocking
+- JWT validation is mocked for test tokens
+- Auth0 JWKS client is mocked
+- Standard test users and admin tokens
+- Authentication middleware mocking
+
+### 3. Test Utilities
+- Factory functions for test data creation
+- Request helpers for authentication
+- Response verification helpers
+- Type-safe mock collection management
+
+## Test Setup
+
+### MongoDB Mocking
+```typescript
+import { mockCollection, mockDb, resetMocks } from '../__tests__/mockDb';
+
+// Collections are automatically mocked
+const collection = mockDb.collection('tenants');
+
+// Reset all mocks between tests
+beforeEach(() => {
+  resetMocks();
+});
+```
+
+### Authentication Constants
+```typescript
+import { AUTH } from '../__tests__/constants';
+
+// Standard test tokens
+const userToken = AUTH.TOKEN;        // 'test-token'
+const userHeader = AUTH.HEADER;      // 'Bearer test-token'
+
+// Standard test users
+const user = AUTH.USER;             // { sub: 'auth0|123', email: 'test@example.com' }
+const admin = AUTH.ADMIN;           // { sub: 'auth0|admin', email: 'admin@example.com' }
+```
 
 ## Test Factories
 
 ### Tenant Factory
 ```typescript
-import { createTenant } from '../__tests__/factories';
+import { createTenant, createTenants } from '../__tests__/factories';
 
-// Create default tenant
-const tenant = createTenant();
-
-// Create tenant with overrides
-const customTenant = createTenant({
-  name: 'Custom Name',
-  settings: {
-    maxProjects: 50
-  }
+// Create single tenant
+const tenant = createTenant({
+  name: 'Custom Tenant',
+  settings: { maxProjects: 50 }
 });
 
 // Create multiple tenants
@@ -29,33 +72,34 @@ const tenants = createTenants(3);
 ```typescript
 import { createSuperadmin } from '../__tests__/factories';
 
-// Create superadmin
+// Create superadmin with default admin ID
 const admin = createSuperadmin();
 
-// Create custom superadmin
+// Create superadmin with custom ID
 const customAdmin = createSuperadmin('custom-user-id');
 ```
 
-## Test Helpers
+## Request Helpers
 
 ### Authentication Helpers
 ```typescript
 import { authRequest, adminRequest } from '../__tests__/helpers';
 
-// Make authenticated request
+// Regular user request (uses AUTH.TOKEN)
 const response = await authRequest(app)
-  .get('/api/resource')
+  .get('/api/v1/tenants')
   .send(data);
 
-// Make admin request
+// Admin request (uses AUTH.ADMIN.sub)
 const response = await adminRequest(app)
-  .delete('/api/resource')
+  .delete('/api/v1/tenants/123')
   .send(data);
 ```
 
 ### Response Verification
 ```typescript
 import { expectSuccess, expectError } from '../__tests__/helpers';
+import { ERROR_CODES } from '../__tests__/constants';
 
 // Verify success response
 expectSuccess(response, 201);
@@ -64,131 +108,154 @@ expectSuccess(response, 201);
 expectError(response, 401, ERROR_CODES.AUTH.INVALID_TOKEN);
 ```
 
-## Test Setup & Cleanup
+## Mock Collection API
 
-### Global Setup
+### MongoDB Mocking
+
+#### ObjectId Mocking
 ```typescript
-// In src/__tests__/setup.ts
-beforeEach(() => {
-  // Reset all mocks
-  resetMocks();
-  vi.clearAllMocks();
-  
-  // Reset dates to known value
-  vi.setSystemTime(new Date('2025-05-08T12:00:00Z'));
-});
+import { ObjectId } from '../__tests__/mockDb';
+
+// Create new ObjectId
+const id = new ObjectId();  // creates with default 'mock-id'
+const id2 = new ObjectId('custom-id');  // creates with custom ID
+
+// ObjectId methods
+id.toString();     // returns 'mock-id'
+id.toHexString();  // returns 'mock-id'
+id.equals(id2);    // returns true if IDs match
 ```
 
-### Global Cleanup
+#### Collection Operations
 ```typescript
-// In src/__tests__/setup.ts
-afterEach(() => {
-  // Clear mocks
-  vi.clearAllMocks();
-  vi.useRealTimers();
-  
-  // Clear test data
-  mockCollection.deleteMany({});
-  mockSuperadminsCollection.deleteMany({});
-});
+import { mockCollection } from '../__tests__/mockDb';
+
+// Setup mock responses
+mockCollection.findOne.mockResolvedValue(tenant);
+mockCollection.find.mockReturnValue({ toArray: () => Promise.resolve([tenant]) });
+mockCollection.insertOne.mockResolvedValue({ insertedId: new ObjectId() });
+mockCollection.updateOne.mockResolvedValue({ modifiedCount: 1 });
+mockCollection.deleteOne.mockResolvedValue({ deletedCount: 1 });
 ```
+
+### Smart Defaults
+The mock collections come with smart defaults:
+- `findOne`: Returns null by default
+- `find`: Returns empty array by default
+- `insertOne`: Generates mock ObjectId
+- `updateOne`: Returns modifiedCount: 1
+- `deleteOne`: Returns deletedCount: 1
 
 ## Best Practices
 
-1. Use Factories
-   - Create test data with factories
-   - Override only what's needed
-   - Maintain data consistency
-
-2. Use Helpers
-   - Use auth helpers for requests
-   - Use verification helpers
-   - Keep tests DRY
-
-3. Test Cleanup
-   - Clean up after each test
-   - Reset mocks properly
-   - Maintain test isolation
-
-## Example Test
-
+### 1. Test Organization
 ```typescript
-import { describe, it, expect } from 'vitest';
-import { createTenant } from '../__tests__/factories';
-import { authRequest, expectSuccess } from '../__tests__/helpers';
+describe('TenantService', () => {
+  beforeEach(() => {
+    resetMocks();  // Reset all mocks before each test
+  });
 
-describe('Tenant API', () => {
-  it('should create tenant', async () => {
-    // Create test data
-    const data = createTenant({
-      name: 'New Tenant'
-    });
+  describe('createTenant', () => {
+    it('should create new tenant', async () => {
+      // Arrange: Setup test data and mocks
+      const data = createTenant({ name: 'New Tenant' });
+      mockCollection.findOne.mockResolvedValue(null);
 
-    // Setup mocks
-    mockCollection.findOne.mockResolvedValue(null);
-    mockCollection.insertOne.mockResolvedValue({ 
-      insertedId: data._id 
-    });
+      // Act: Execute the test
+      const response = await authRequest(app)
+        .post('/api/v1/tenants')
+        .send(data);
 
-    // Make request
-    const response = await authRequest(app)
-      .post('/api/v1/tenants')
-      .send(data);
-
-    // Verify response
-    expectSuccess(response, 201);
-    expect(response.body).toMatchObject({
-      name: data.name
+      // Assert: Verify the results
+      expectSuccess(response, 201);
+      expect(mockCollection.insertOne).toHaveBeenCalledWith(
+        expect.objectContaining({ name: 'New Tenant' })
+      );
     });
   });
 });
 ```
 
-## Common Patterns
+### 2. Mock Management
+- Always reset mocks in `beforeEach`
+- Use typed mock collections
+- Provide meaningful mock implementations
+- Verify mock calls when relevant
 
-1. Test Data Setup
+### 3. Test Data
+- Use factories for consistent test data
+- Override only necessary fields
+- Use constants for standard values
+- Clean up test data after each test
+
+### 4. Error Testing
 ```typescript
-// Create test data
-const tenant = createTenant();
-const admin = createSuperadmin();
+it('should handle not found error', async () => {
+  // Setup mock to return null (not found)
+  mockCollection.findOne.mockResolvedValue(null);
 
-// Setup mocks
-mockCollection.findOne.mockResolvedValue(tenant);
-mockSuperadminsCollection.findOne.mockResolvedValue(admin);
+  // Make request
+  const response = await authRequest(app)
+    .get('/api/v1/tenants/123');
+
+  // Verify error response
+  expectError(response, 404, 'tenant/not-found');
+});
 ```
 
-2. Request Making
-```typescript
-// Regular user request
-const response = await authRequest(app).get('/api/resource');
+## Common Issues & Solutions
 
-// Admin request
-const response = await adminRequest(app).delete('/api/resource');
+### 1. ObjectId Handling
+```typescript
+// Convert string to ObjectId
+import { toObjectId } from '../__tests__/helpers';
+const id = toObjectId('123');
+
+// Mock ObjectId in queries
+mockCollection.findOne.mockImplementation(({ _id }) => {
+  const idStr = _id.toString();
+  return idStr === '123' ? tenant : null;
+});
 ```
 
-3. Response Verification
+### 2. Date Handling
 ```typescript
-// Success cases
-expectSuccess(response);
-expect(response.body).toMatchObject({...});
+// Use fixed date in tests
+beforeEach(() => {
+  vi.setSystemTime(new Date('2025-05-08T12:00:00Z'));
+});
 
-// Error cases
-expectError(response, 404, ERROR_CODES.NOT_FOUND);
+afterEach(() => {
+  vi.useRealTimers();
+});
 ```
 
-## Tips
+### 3. Authentication Issues
+```typescript
+// Test invalid token
+const response = await request(app)
+  .get('/api/v1/tenants')
+  .set('Authorization', 'Bearer invalid-token');
 
-1. Keep Tests Clean
-   - Use factories for data
-   - Use helpers for common operations
-   - Follow standard patterns
+expectError(response, 401, ERROR_CODES.AUTH.INVALID_TOKEN);
+```
 
-2. Maintain Isolation
-   - Clean up after tests
-   - Reset mocks properly
-   - Don't share state
+## Test Coverage Requirements
 
-3. Write Clear Tests
-   - Use descriptive names
-   - Follow AAA pattern
-   - Keep tests focused
+1. **API Routes**
+   - Success cases
+   - Error cases
+   - Authentication/authorization
+   - Input validation
+
+2. **Services**
+   - Business logic
+   - Data access
+   - Error handling
+   - Edge cases
+
+3. **Middleware**
+   - Authentication
+   - Error handling
+   - Request processing
+   - Response formatting

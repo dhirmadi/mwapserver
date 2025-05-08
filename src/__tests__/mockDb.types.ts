@@ -1,5 +1,7 @@
 import { vi } from 'vitest';
 
+// No need for MockObjectId types anymore since we're using a proper class
+
 /**
  * MongoDB operation results with proper typing
  */

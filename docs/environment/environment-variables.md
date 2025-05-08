@@ -85,6 +85,34 @@ This document describes all environment variables used in the MWAP server applic
 | ERROR_LOGGING_ENABLED | No | true | Enable detailed error logging |
 | ERROR_NOTIFICATION_WEBHOOK | No | - | Webhook URL for error notifications |
 
+## Test Environment
+
+The test environment uses a separate configuration defined in `.env.test`:
+
+| Variable | Value | Description |
+|----------|-------|-------------|
+| NODE_ENV | test | Indicates test environment |
+| MONGODB_URI | mongodb://localhost:27017/mwap_test | Test database connection |
+| AUTH0_DOMAIN | test.auth0.com | Mock Auth0 domain |
+| AUTH0_AUDIENCE | https://api.test.mwap.dev | Mock API identifier |
+
+### Test Configuration Features
+- Separate test database
+- Mocked Auth0 configuration
+- Test-specific settings
+- Isolated environment
+
+### Environment Overrides
+Tests can override environment variables:
+```typescript
+// In test file
+process.env.NODE_ENV = 'test';
+process.env.MONGODB_URI = 'mongodb://test:27017/test_db';
+
+// After tests
+process.env = originalEnv;
+```
+
 ## Best Practices
 
 1. **Security**

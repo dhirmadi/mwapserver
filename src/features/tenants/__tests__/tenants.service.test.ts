@@ -5,6 +5,7 @@ import { ApiError } from '../../../utils/errors';
 import { createTenant, createSuperadmin } from '../../../__tests__/factories';
 import { expectSuccess, expectError } from '../../../__tests__/helpers';
 import { AUTH } from '../../../__tests__/constants';
+import { ERROR_CODES } from '../../../utils/errors';
 
 // Import test setup
 import '../../../__tests__/setup';

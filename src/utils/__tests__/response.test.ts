@@ -72,7 +72,7 @@ describe('response utils', () => {
       errorResponse(mockRes, error);
 
       // Verify
-      expectError(mockRes, 400, ERROR_CODES.VALIDATION_ERROR, { details });
+      expectError(mockRes, 400, ERROR_CODES.VALIDATION.INVALID_INPUT, { details });
     });
 
     it('should handle generic Error', () => {
@@ -88,7 +88,7 @@ describe('response utils', () => {
       errorResponse(mockRes, error);
 
       // Verify
-      expectError(mockRes, 500, ERROR_CODES.SERVER_ERROR);
+      expectError(mockRes, 500, ERROR_CODES.SERVER.INTERNAL_ERROR);
     });
   });
 

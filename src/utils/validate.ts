@@ -6,7 +6,11 @@ export function validateWithSchema<T>(schema: z.Schema<T>, input: unknown): T {
     return schema.parse(input);
   } catch (error) {
     if (error instanceof z.ZodError) {
-      throw new ValidationError('Invalid input provided', error.issues);
+      const details: Record<string, string> = {};
+      for (const issue of error.issues) {
+        details[issue.path[0] as string] = issue.message;
+      }
+      throw new ValidationError('Invalid input', details);
     }
     throw error;
   }

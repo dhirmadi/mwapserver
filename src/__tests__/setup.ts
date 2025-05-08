@@ -3,14 +3,12 @@ import { resetMocks, mockCollection, mockSuperadminsCollection, mockDb } from '.
 import { AUTH } from './constants';
 import './mockAuth';
 
-// Import mock types
-import { createMockObjectId } from './mockDb.types';
+// Import mock ObjectId
+import { ObjectId } from './mockDb';
 
 // Mock MongoDB
 vi.mock('mongodb', () => ({
-  ObjectId: function(str?: string) {
-    return createMockObjectId(str);
-  }
+  ObjectId
 }));
 
 // Mock database module

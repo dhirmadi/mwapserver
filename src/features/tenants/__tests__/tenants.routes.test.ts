@@ -62,7 +62,7 @@ describe('Tenant Routes', () => {
           }
         });
 
-      expectError(response, 400, ERROR_CODES.VALIDATION_ERROR);
+      expectError(response, 400, ERROR_CODES.VALIDATION.INVALID_INPUT);
     });
   });
 
@@ -147,7 +147,7 @@ describe('Tenant Routes', () => {
         });
 
       // Verify response
-      expectError(response, 400, ERROR_CODES.VALIDATION_ERROR);
+      expectError(response, 400, ERROR_CODES.VALIDATION.INVALID_INPUT);
     });
   });
 
@@ -183,7 +183,7 @@ describe('Tenant Routes', () => {
         .delete(`/api/v1/tenants/${tenant._id}`);
 
       // Verify response
-      expectError(response, 403, ERROR_CODES.PERMISSION_ERROR);
+      expectError(response, 403, ERROR_CODES.PERMISSION.FORBIDDEN);
     });
   });
 });

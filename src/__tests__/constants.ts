@@ -24,7 +24,22 @@ export const AUTH = {
  */
 export const ERROR_CODES = {
   AUTH: {
-    UNAUTHORIZED: 'auth/unauthorized',
-    INVALID_TOKEN: 'auth/invalid-token'
+    INVALID_TOKEN: 'auth/invalid-token',
+    INSUFFICIENT_PERMISSIONS: 'auth/insufficient-permissions'
+  },
+  VALIDATION: {
+    INVALID_INPUT: 'validation/invalid-input'
+  },
+  SERVER: {
+    INTERNAL_ERROR: 'server/internal-error'
+  },
+  RESOURCE: {
+    NOT_FOUND: 'resource/not-found'
+  },
+  TENANT: {
+    NOT_FOUND: 'tenant/not-found',
+    ALREADY_EXISTS: 'tenant/already-exists',
+    NAME_EXISTS: 'tenant/name-exists',
+    NOT_AUTHORIZED: 'tenant/not-authorized'
   }
 } as const;
