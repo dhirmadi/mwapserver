@@ -1,50 +1,38 @@
 import { vi } from 'vitest';
 import { ObjectId } from 'mongodb';
+import { Tenant } from '../schemas/tenant.schema';
+import { createMockCollection, MockCollection, resetCollection } from './mockDb.types';
 
-// Create mock collections
-const createMockCollection = () => ({
-  findOne: vi.fn(),
-  find: vi.fn(),
-  insertOne: vi.fn(),
-  updateOne: vi.fn(),
-  findOneAndUpdate: vi.fn(),
-  deleteOne: vi.fn(),
-  deleteMany: vi.fn()
-});
+// Define Superadmin type
+interface Superadmin {
+  _id: ObjectId;
+  userId: string;
+  createdAt: Date;
+}
 
-export const mockCollection = createMockCollection();
-export const mockSuperadminsCollection = createMockCollection();
+// Create typed collections
+export const mockCollection = createMockCollection<Tenant>();
+export const mockSuperadminsCollection = createMockCollection<Superadmin>();
 
-// Create a shared mock db that can be used across tests
+// Create a typed mock db
 export const mockDb = {
-  collection: vi.fn((name: string) => {
-    if (name === 'superadmins') {
-      return mockSuperadminsCollection;
+  collection: vi.fn((name: string): MockCollection<any> => {
+    switch (name) {
+      case 'superadmins':
+        return mockSuperadminsCollection;
+      default:
+        return mockCollection;
     }
-    return mockCollection;
   })
 };
 
-// Reset all mocks and set default behaviors
+// Reset all mocks with proper typing
 export function resetMocks() {
   vi.clearAllMocks();
-  
-  // Default behaviors for main collection
-  mockCollection.findOne.mockResolvedValue(null);
-  mockCollection.find.mockReturnValue({ toArray: () => Promise.resolve([]) });
-  mockCollection.insertOne.mockImplementation(async (doc) => {
-    const _id = doc._id || new ObjectId();
-    const tenant = {
-      ...doc,
-      _id,
-      createdAt: new Date(),
-      updatedAt: new Date()
-    };
-    mockCollection.findOne.mockResolvedValueOnce(tenant);
-    return { insertedId: _id };
-  });
-  mockCollection.updateOne.mockResolvedValue({ modifiedCount: 1 });
-  mockCollection.findOneAndUpdate.mockImplementation(async (query, update, options) => {
+
+  // Reset tenant collection with smart defaults
+  resetCollection(mockCollection);
+  mockCollection.findOneAndUpdate.mockImplementation(async (query, update) => {
     const doc = await mockCollection.findOne(query);
     if (!doc) return { value: null };
     const updatedDoc = {
@@ -54,17 +42,9 @@ export function resetMocks() {
     };
     return { value: updatedDoc };
   });
-  mockCollection.deleteOne.mockResolvedValue({ deletedCount: 1 });
-  mockCollection.deleteMany.mockResolvedValue({ deletedCount: 0 });
 
-  // Default behaviors for superadmins collection
-  mockSuperadminsCollection.findOne.mockResolvedValue(null);
-  mockSuperadminsCollection.find.mockReturnValue({ toArray: () => Promise.resolve([]) });
-  mockSuperadminsCollection.insertOne.mockResolvedValue({ insertedId: new ObjectId() });
-  mockSuperadminsCollection.updateOne.mockResolvedValue({ modifiedCount: 1 });
-  mockSuperadminsCollection.findOneAndUpdate.mockResolvedValue({ value: null });
-  mockSuperadminsCollection.deleteOne.mockResolvedValue({ deletedCount: 1 });
-  mockSuperadminsCollection.deleteMany.mockResolvedValue({ deletedCount: 0 });
+  // Reset superadmins collection
+  resetCollection(mockSuperadminsCollection);
 }
 
 // Mock the db module
