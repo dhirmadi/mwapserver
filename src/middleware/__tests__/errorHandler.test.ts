@@ -2,14 +2,22 @@ import { describe, it, expect, vi } from 'vitest';
 import { errorHandler } from '../errorHandler.js';
 import { ValidationError, AuthError } from '../../utils/errors.js';
 import { Request, Response } from 'express';
+import { ERROR_CODES } from '../../__tests__/constants';
+import { expectError } from '../../__tests__/helpers';
+
+// Import test setup
+import '../../__tests__/setup';
 
 describe('error handler middleware', () => {
   it('should handle ValidationError', () => {
-    const error = new ValidationError('Invalid input', {
+    // Create test data
+    const details = {
       field: 'email',
       message: 'Invalid format'
-    });
+    };
+    const error = new ValidationError('Invalid input', details);
 
+    // Setup request
     const mockReq = {} as Request;
     const mockRes = {
       status: vi.fn().mockReturnThis(),
@@ -17,25 +25,20 @@ describe('error handler middleware', () => {
     } as unknown as Response;
     const mockNext = vi.fn();
 
+    // Execute
     errorHandler(error, mockReq, mockRes, mockNext);
 
-    expect(mockRes.status).toHaveBeenCalledWith(400);
-    expect(mockRes.json).toHaveBeenCalledWith({
-      success: false,
-      error: {
-        code: 'validation/invalid-input',
-        message: 'Invalid input',
-        details: {
-          field: 'email',
-          message: 'Invalid format'
-        }
-      }
+    // Verify
+    expectError(mockRes, 400, ERROR_CODES.VALIDATION_ERROR, {
+      details
     });
   });
 
   it('should handle AuthError', () => {
+    // Create test data
     const error = new AuthError('Invalid token');
 
+    // Setup request
     const mockReq = {} as Request;
     const mockRes = {
       status: vi.fn().mockReturnThis(),
@@ -43,21 +46,18 @@ describe('error handler middleware', () => {
     } as unknown as Response;
     const mockNext = vi.fn();
 
+    // Execute
     errorHandler(error, mockReq, mockRes, mockNext);
 
-    expect(mockRes.status).toHaveBeenCalledWith(401);
-    expect(mockRes.json).toHaveBeenCalledWith({
-      success: false,
-      error: {
-        code: 'auth/invalid-token',
-        message: 'Invalid token'
-      }
-    });
+    // Verify
+    expectError(mockRes, 401, ERROR_CODES.AUTH.INVALID_TOKEN);
   });
 
   it('should handle generic Error', () => {
+    // Create test data
     const error = new Error('Something went wrong');
 
+    // Setup request
     const mockReq = {} as Request;
     const mockRes = {
       status: vi.fn().mockReturnThis(),
@@ -65,15 +65,10 @@ describe('error handler middleware', () => {
     } as unknown as Response;
     const mockNext = vi.fn();
 
+    // Execute
     errorHandler(error, mockReq, mockRes, mockNext);
 
-    expect(mockRes.status).toHaveBeenCalledWith(500);
-    expect(mockRes.json).toHaveBeenCalledWith({
-      success: false,
-      error: {
-        code: 'server/internal-error',
-        message: 'Something went wrong'
-      }
-    });
+    // Verify
+    expectError(mockRes, 500, ERROR_CODES.SERVER_ERROR);
   });
 });
