@@ -14,6 +14,8 @@ This document outlines the testing strategy and implementation for the MWAP back
 src/
   __tests__/          → Global test infrastructure
     constants.ts      → Standard test constants
+    factories.ts      → Test data factories
+    helpers.ts        → Test helpers
     mockDb.ts         → Database mocking
     mockAuth.ts       → Authentication mocking
     setup.ts          → Test setup and teardown
