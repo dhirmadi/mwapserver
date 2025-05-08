@@ -2,15 +2,14 @@
 
 ## 🎯 Purpose
 
-This document defines the **backend API server architecture** for MWAP as a general reference. It is intended to serve as the **canonical reference for OpenHands AI agents (Claude 3.5)** to understand this repository, the domain model it implements, and the coding principles it enforces.
+This document defines the **backend API server architecture** for MWAP as a general reference. It is intended to serve as the canonical reference for developers and scaffolding tools during backend generation, to understand this repository, the domain model it implements, and the coding principles it enforces.
 
 ---
 
 ## 🤖 Using with OpenHands
-
-* This file is `repo.md` for Claude microagents
+* It is intended to serve as the canonical reference for developers and scaffolding tools during backend generation.
 * All scaffolding tasks (routes, services, schemas) should reference this as source of truth
-* Claude must not generate its own folder structures or role logic — only reuse what’s defined here
+* Tools must not generate its own folder structures or role logic — only reuse what’s defined here
 
 ---
 
