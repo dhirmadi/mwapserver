@@ -1,0 +1,45 @@
+{
+  "name": "mwapserver",
+  "version": "1.0.0",
+  "description": "## Project Overview",
+  "type": "module",
+  "main": "dist/server.js",
+  "directories": {
+    "doc": "docs"
+  },
+  "scripts": {
+    "build": "tsc",
+    "start": "node dist/server.js",
+    "dev": "ts-node --esm src/server.ts",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/dhirmadi/mwapserver.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/dhirmadi/mwapserver/issues"
+  },
+  "homepage": "https://github.com/dhirmadi/mwapserver#readme",
+  "devDependencies": {
+    "@types/cors": "^2.8.17",
+    "@types/express": "^5.0.1",
+    "@types/node": "^22.15.16",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.8.3"
+  },
+  "dependencies": {
+    "cors": "^2.8.5",
+    "dotenv": "^16.5.0",
+    "express": "^5.1.0",
+    "express-jwt": "^8.5.1",
+    "express-rate-limit": "^7.5.0",
+    "helmet": "^8.1.0",
+    "jwks-rsa": "^3.2.0",
+    "mongoose": "^8.14.1",
+    "zod": "^3.24.4"
+  }
+}
