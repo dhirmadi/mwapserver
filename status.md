@@ -19,10 +19,10 @@ MWAP (Modular Web Application Platform) is a fullstack, secure, scalable SaaS fr
 
 ### Test Coverage Report (2025-05-08)
 1. **Overall Coverage**
-   - Statement Coverage: 74.43%
-   - Branch Coverage: 88.09%
-   - Function Coverage: 75%
-   - Line Coverage: 74.43%
+   - Statement Coverage: 81.25%
+   - Branch Coverage: 89.47%
+   - Function Coverage: 82.14%
+   - Line Coverage: 81.25%
 
 2. **Coverage by Component**
    - ✅ Utils (94.78%)
@@ -37,36 +37,43 @@ MWAP (Modular Web Application Platform) is a fullstack, secure, scalable SaaS fr
      - roles.ts: 100%
      - auth.ts: 100% (50% branch)
    
-   - 🟨 Config (29.72%)
+   - ✅ Config (100%)
      - env.ts: 100%
-     - auth0.ts: 0%
-     - db.ts: 0%
+     - auth0.ts: 100%
+     - db.ts: 100%
    
    - ❌ App (0%)
      - app.ts: 0%
 
 3. **Test Execution**
-   - ✅ 27 tests passing
-   - ✅ 7 test files
-   - ✅ No test failures
+   - ✅ 75 tests passing
+   - ✅ 13 test files
+   - ❌ 9 tests failing (auth middleware)
 
 ### Current Issues
 1. **Test Coverage Gaps**
-   - Config files need integration tests
    - App.ts needs coverage
    - Some error constructors untested
    - Branch coverage in auth middleware
+
+2. **Authentication Test Issues**
+   - Auth middleware mock too simplistic
+   - Inconsistent token format in tests
+   - Route tests failing with 401 errors
 
 ### Required Actions
 1. **Coverage Improvements Needed**:
    ```typescript
    // Add integration tests for:
-   - MongoDB connection (db.ts)
-   - JWKS client setup (auth0.ts)
    - Express app setup (app.ts)
    ```
 
-2. **Branch Coverage**:
+2. **Authentication Fixes**:
+   - Implement proper auth middleware mock
+   - Standardize Bearer token format
+   - Fix route test authentication
+
+3. **Branch Coverage**:
    - Add tests for error constructors
    - Improve auth middleware branch coverage
    - Add edge cases for validation
@@ -129,6 +136,12 @@ MWAP (Modular Web Application Platform) is a fullstack, secure, scalable SaaS fr
 - Implementing tenant isolation
 
 ## 🔄 Recent Updates
+- [2025-05-08] Improved Test Coverage
+  - Added comprehensive config file tests
+  - Increased overall coverage to 81.25%
+  - Identified authentication test issues
+  - Created plan for auth test improvements
+
 - [2025-05-08] Completed Phase 1: Core Infrastructure
   - Set up Express server with TypeScript
   - Implemented Auth0 JWT authentication
