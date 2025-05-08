@@ -125,7 +125,7 @@ SERVER_ERROR = 'server/internal-error'
 
 ## 📚 Documentation
 
-- Update API documentation in `/docs/api.md`
+- Update API documentation in `/docs/architecture/api.md`
 - Update progress in `/status.md`
 - Add utility function documentation
 - Document error codes and formats
