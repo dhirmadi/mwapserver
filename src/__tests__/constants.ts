@@ -16,7 +16,11 @@ export const AUTH = {
   ADMIN: {
     sub: 'auth0|admin',
     email: 'admin@example.com'
-  }
+  },
+
+  // Auth0 configuration
+  DOMAIN: 'test.auth0.com',
+  AUDIENCE: 'https://api.test.com'
 } as const;
 
 /**

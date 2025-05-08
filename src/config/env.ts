@@ -14,4 +14,12 @@ export const envSchema = z.object({
 });
 
 // Validate and export environment
-export const env = envSchema.parse(process.env);
+let validatedEnv: any = null;
+export const env = new Proxy({}, {
+  get: (target, prop) => {
+    if (!validatedEnv) {
+      validatedEnv = envSchema.parse(process.env);
+    }
+    return validatedEnv[prop];
+  }
+});

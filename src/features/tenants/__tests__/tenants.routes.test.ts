@@ -41,6 +41,7 @@ describe('Tenant Routes', () => {
       // Make request
       const response = await authRequest(app)
         .post('/api/v1/tenants')
+        .set('Authorization', AUTH.HEADER)
         .send(data);
 
       // Verify response
@@ -55,6 +56,7 @@ describe('Tenant Routes', () => {
     it('should reject invalid tenant data', async () => {
       const response = await authRequest(app)
         .post('/api/v1/tenants')
+        .set('Authorization', AUTH.HEADER)
         .send({
           name: 'a', // Too short
           settings: {
@@ -79,7 +81,8 @@ describe('Tenant Routes', () => {
 
       // Make request
       const response = await authRequest(app)
-        .get('/api/v1/tenants/me');
+        .get('/api/v1/tenants/me')
+        .set('Authorization', AUTH.HEADER);
 
       // Verify response
       expectSuccess(response);
@@ -119,6 +122,7 @@ describe('Tenant Routes', () => {
       // Make request
       const response = await authRequest(app)
         .patch(`/api/v1/tenants/${existingTenant._id}`)
+        .set('Authorization', AUTH.HEADER)
         .send(updateData);
 
       // Verify response
@@ -139,6 +143,7 @@ describe('Tenant Routes', () => {
       // Make request
       const response = await authRequest(app)
         .patch(`/api/v1/tenants/${tenant._id}`)
+        .set('Authorization', AUTH.HEADER)
         .send({
           name: 'a', // Too short
           settings: {
@@ -164,7 +169,8 @@ describe('Tenant Routes', () => {
 
       // Make request
       const response = await adminRequest(app)
-        .delete(`/api/v1/tenants/${tenant._id}`);
+        .delete(`/api/v1/tenants/${tenant._id}`)
+        .set('Authorization', `Bearer ${AUTH.ADMIN.sub}`);
 
       // Verify response
       expectSuccess(response, 204);
@@ -180,7 +186,8 @@ describe('Tenant Routes', () => {
 
       // Make request
       const response = await authRequest(app)
-        .delete(`/api/v1/tenants/${tenant._id}`);
+        .delete(`/api/v1/tenants/${tenant._id}`)
+        .set('Authorization', AUTH.HEADER);
 
       // Verify response
       expectError(response, 403, ERROR_CODES.PERMISSION.FORBIDDEN);

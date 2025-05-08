@@ -1,21 +1,22 @@
 import { Application } from 'express';
-import supertest from 'supertest';
 import type { Response } from 'supertest';
+import type { SuperTest, Test } from 'supertest';
+import supertest from 'supertest';
 import { ObjectId } from 'mongodb';
 import { AUTH } from './constants';
 
 /**
  * Create an authenticated request
  */
-export function authRequest(app: Application) {
-  return supertest(app).set('Authorization', AUTH.HEADER);
+export function authRequest(app: Application): SuperTest<Test> {
+  return supertest(app);
 }
 
 /**
  * Create an admin request
  */
-export function adminRequest(app: Application) {
-  return supertest(app).set('Authorization', `Bearer ${AUTH.ADMIN.sub}`);
+export function adminRequest(app: Application): SuperTest<Test> {
+  return supertest(app);
 }
 
 /**
