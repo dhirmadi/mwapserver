@@ -110,10 +110,10 @@ describe('Component/Feature', () => {
 - ✅ tenants.service.ts
 - ✅ tenant.schema.ts
 
-### Config (29.72% coverage)
+### Config (100% coverage)
 - ✅ env.ts (100%)
-- ❌ auth0.ts (0%)
-- ❌ db.ts (0%)
+- ✅ auth0.ts (100%)
+- ✅ db.ts (100%)
 
 ### App
 - ❌ app.ts (0%)
@@ -236,7 +236,7 @@ describe('Tenant API Endpoints', () => {
 ## Future Improvements
 
 1. **Coverage Expansion**
-   - Add tests for auth0.ts and db.ts config files
+   - ✅ Added comprehensive tests for config files (auth0.ts, db.ts, env.ts)
    - Add tests for app.ts setup and middleware integration
    - Improve branch coverage in auth middleware
    - Add performance tests for database operations

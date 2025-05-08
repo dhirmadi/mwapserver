@@ -3,11 +3,13 @@
 ## Current Test Status
 
 ### Overview
-- Total Tests: 54
-- Passing Tests: 45
+- Total Tests: 75
+- Passing Tests: 66
 - Failing Tests: 9
-- Test Files: 10 (7 passing, 3 failing)
-- Test Coverage: Partial
+- Test Files: 13 (10 passing, 3 failing)
+- Test Coverage: Improved
+  * Config files now at 100% coverage
+  * Overall statement coverage increased to 81.25%
 
 ### Known Issues
 
@@ -42,6 +44,11 @@
   - errorHandler.test.ts
   - roles.test.ts
 
+- `/src/config/__tests__/`: Configuration tests
+  - env.test.ts
+  - auth0.test.ts
+  - db.test.ts
+
 #### 2. Feature Tests
 - `/src/features/tenants/__tests__/`: Tenant feature tests
   - tenants.service.test.ts
@@ -51,7 +58,37 @@
 ### Test Environment Setup
 
 #### Mock Infrastructure
-1. Database Mocks
+1. Configuration Mocks
+   ```typescript
+   // Environment mock
+   vi.mock('../env.js', () => ({
+     env: {
+       NODE_ENV: 'test',
+       PORT: 3001,
+       MONGODB_URI: 'mongodb://localhost:27017/test',
+       AUTH0_DOMAIN: 'test.auth0.com',
+       AUTH0_AUDIENCE: 'https://api.test.com'
+     }
+   }));
+
+   // JWKS client mock
+   vi.mock('jwks-rsa', () => ({
+     JwksClient: vi.fn().mockImplementation(() => ({
+       getSigningKey: vi.fn()
+     }))
+   }));
+
+   // MongoDB client mock
+   vi.mock('mongodb', () => ({
+     MongoClient: vi.fn().mockImplementation(() => ({
+       connect: vi.fn(),
+       db: vi.fn(),
+       close: vi.fn()
+     }))
+   }));
+   ```
+
+2. Database Mocks
    ```typescript
    // Example of current mock structure
    const mockCollection = {
