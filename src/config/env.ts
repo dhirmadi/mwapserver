@@ -14,9 +14,10 @@ export const envSchema = z.object({
 });
 
 // Validate and export environment
-let validatedEnv: any = null;
-export const env = new Proxy({}, {
-  get: (target, prop) => {
+type Env = z.infer<typeof envSchema>;
+let validatedEnv: Env | null = null;
+export const env = new Proxy({} as Env, {
+  get: (target, prop: keyof Env) => {
     if (!validatedEnv) {
       validatedEnv = envSchema.parse(process.env);
     }

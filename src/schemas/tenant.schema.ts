@@ -28,7 +28,10 @@ export type Tenant = z.infer<typeof tenantSchema>;
 // Create tenant request schema
 export const createTenantSchema = z.object({
   name: z.string().min(3).max(50),
-  settings: tenantSettingsSchema.optional()
+  settings: z.object({
+    allowPublicProjects: z.boolean().optional(),
+    maxProjects: z.number().int().min(1).max(100).optional()
+  }).optional()
 });
 
 export type CreateTenantRequest = z.infer<typeof createTenantSchema>;

@@ -1,8 +1,10 @@
+import { ERROR_CODES } from './constants';
+
 export class ApiError extends Error {
   status: number;
   code: string;
 
-  constructor(message: string, status = 500, code = ERROR_CODES.SERVER.INTERNAL_ERROR) {
+  constructor(message: string, status = 500, code: string = ERROR_CODES.SERVER.INTERNAL_ERROR) {
     super(message);
     this.status = status;
     this.code = code;
@@ -36,26 +38,3 @@ export class AuthError extends ApiError {
     super(message, 401, ERROR_CODES.AUTH.INVALID_TOKEN);
   }
 }
-
-// Error codes
-export const ERROR_CODES = {
-  AUTH: {
-    INVALID_TOKEN: 'auth/invalid-token',
-    INSUFFICIENT_PERMISSIONS: 'auth/insufficient-permissions'
-  },
-  VALIDATION: {
-    INVALID_INPUT: 'validation/invalid-input'
-  },
-  SERVER: {
-    INTERNAL_ERROR: 'server/internal-error'
-  },
-  RESOURCE: {
-    NOT_FOUND: 'resource/not-found'
-  },
-  TENANT: {
-    NOT_FOUND: 'tenant/not-found',
-    ALREADY_EXISTS: 'tenant/already-exists',
-    NAME_EXISTS: 'tenant/name-exists',
-    NOT_AUTHORIZED: 'tenant/not-authorized'
-  }
-} as const;

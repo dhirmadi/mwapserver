@@ -11,8 +11,8 @@ export interface ApiResponse<T> {
   };
 }
 
-export function jsonResponse<T>(res: Response, data: T, status = 200): void {
-  res.status(status).json({
+export function jsonResponse<T>(res: Response, status: number, data?: T): Response {
+  return res.status(status).json({
     success: true,
     data
   });

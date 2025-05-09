@@ -1,6 +1,7 @@
 import { Collection, ObjectId } from 'mongodb';
 import { db } from '../../config/db';
 import { ApiError } from '../../utils/errors';
+import { ERROR_CODES } from '../../utils/constants';
 import { logAudit } from '../../utils/logger';
 import { Tenant, CreateTenantRequest, UpdateTenantRequest } from '../../schemas/tenant.schema';
 
@@ -15,13 +16,13 @@ export class TenantService {
     // Check if user already has a tenant
     const existingTenant = await this.collection.findOne({ ownerId: userId });
     if (existingTenant) {
-      throw new ApiError('User already has a tenant', 409, 'tenant/already-exists');
+      throw new ApiError('User already has a tenant', 409, ERROR_CODES.TENANT.ALREADY_EXISTS);
     }
 
     // Check if tenant name is unique
     const nameExists = await this.collection.findOne({ name: data.name });
     if (nameExists) {
-      throw new ApiError('Tenant name already exists', 409, 'tenant/name-exists');
+      throw new ApiError('Tenant name already exists', 409, ERROR_CODES.TENANT.NAME_EXISTS);
     }
 
     const now = new Date();
@@ -29,9 +30,9 @@ export class TenantService {
       _id: new ObjectId(),
       name: data.name,
       ownerId: userId,
-      settings: data.settings || {
-        allowPublicProjects: false,
-        maxProjects: 10
+      settings: {
+        allowPublicProjects: data.settings?.allowPublicProjects ?? false,
+        maxProjects: data.settings?.maxProjects ?? 10
       },
       createdAt: now,
       updatedAt: now,
@@ -51,7 +52,7 @@ export class TenantService {
   async getTenantById(id: string): Promise<Tenant> {
     const tenant = await this.collection.findOne({ _id: new ObjectId(id) });
     if (!tenant) {
-      throw new ApiError('Tenant not found', 404, 'tenant/not-found');
+      throw new ApiError('Tenant not found', 404, ERROR_CODES.TENANT.NOT_FOUND);
     }
     return tenant;
   }
@@ -59,7 +60,7 @@ export class TenantService {
   async getTenantByUserId(userId: string): Promise<Tenant> {
     const tenant = await this.collection.findOne({ ownerId: userId });
     if (!tenant) {
-      throw new ApiError('Tenant not found', 404, 'tenant/not-found');
+      throw new ApiError('Tenant not found', 404, ERROR_CODES.TENANT.NOT_FOUND);
     }
     return tenant;
   }
@@ -69,7 +70,7 @@ export class TenantService {
 
     // Only owner or superadmin can update tenant
     if (tenant.ownerId !== userId && !await this.isSuperAdmin(userId)) {
-      throw new ApiError('Not authorized to update tenant', 403, 'tenant/not-authorized');
+      throw new ApiError('Not authorized to update tenant', 403, ERROR_CODES.TENANT.NOT_AUTHORIZED);
     }
 
     // If name is being updated, check uniqueness
@@ -79,7 +80,7 @@ export class TenantService {
         name: data.name 
       });
       if (nameExists) {
-        throw new ApiError('Tenant name already exists', 409, 'tenant/name-exists');
+        throw new ApiError('Tenant name already exists', 409, ERROR_CODES.TENANT.NAME_EXISTS);
       }
     }
 
@@ -108,15 +109,15 @@ export class TenantService {
       { returnDocument: 'after' }
     );
 
-    if (!result.value) {
-      throw new ApiError('Failed to update tenant', 500, 'tenant/update-failed');
+    if (!result) {
+      throw new ApiError('Failed to update tenant', 500, ERROR_CODES.TENANT.UPDATE_FAILED);
     }
 
     logAudit('tenant.update', userId, tenant._id.toString(), {
       updates: data
     });
 
-    return result.value;
+    return result;
   }
 
   async deleteTenant(id: string, userId: string): Promise<void> {
@@ -124,7 +125,7 @@ export class TenantService {
 
     // Only superadmin can delete tenants
     if (!await this.isSuperAdmin(userId)) {
-      throw new ApiError('Not authorized to delete tenant', 403, 'tenant/not-authorized');
+      throw new ApiError('Not authorized to delete tenant', 403, ERROR_CODES.TENANT.NOT_AUTHORIZED);
     }
 
     await this.collection.deleteOne({ _id: tenant._id });
