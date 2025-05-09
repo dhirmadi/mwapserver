@@ -58,6 +58,25 @@ Full API specification available in `/docs/v3-api.md`. Key endpoints include:
 - `/api/v1/projects`: Project CRUD operations
 - `/api/v1/cloud-providers`: Cloud integration management
 
+## 🧪 Testing (Planned)
+
+> 🧼 All legacy tests and configurations have been removed to enable a clean, consistent setup.
+
+This project will use **[Vitest](https://vitest.dev/)** for unit and service-level testing, aligned with the following principles:
+
+- ✅ Pure ESM support (no CommonJS)
+- ✅ Centralized `tests/` folder (no co-located tests)
+- ✅ Simple mocks for MongoDB and Auth0 (no DB containers or test factories)
+- ✅ Focused tests for service logic, middleware, and schema validation
+
+### Planned Setup
+
+- `vitest.config.ts` with global `setupTests.ts`
+- Code coverage via `vitest run --coverage`
+- Test structure mirrors `/src/features`
+- No framework-specific dependencies like Jest or legacy mocks
+
+
 ## Documentation
 
 - [Architecture Reference](docs/v3-architecture-reference.md)
