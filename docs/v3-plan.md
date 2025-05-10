@@ -104,22 +104,7 @@ Each phase includes a `Definition of Done` and may not be skipped or merged with
 
 ---
 
-### 🟨 Phase 3: Projects + Members
-
-- `/features/projects/`
-- `/schemas/project.schema.ts`, `projectMember.schema.ts`
-- Implements:
-  - `/projects`
-  - `/projects/:id/members`
-
-✅ DoD:
-- All endpoints work
-- Role-based access and immutability rules enforced
-- Member operations protected by project roles
-
----
-
-### 🟥 Phase 4: Project Types
+### 🟥 Phase 3: Project Types
 
 - `/features/project-types/`
 - `/schemas/projectType.schema.ts`
@@ -132,7 +117,7 @@ Each phase includes a `Definition of Done` and may not be skipped or merged with
 
 ---
 
-### 🟪 Phase 5: Cloud Providers
+### 🟪 Phase 4: Cloud Providers
 
 - `/features/cloud-providers/`
 - `/schemas/cloudProvider.schema.ts`
@@ -144,7 +129,7 @@ Each phase includes a `Definition of Done` and may not be skipped or merged with
 
 ---
 
-### 🟧 Phase 6: Cloud Integrations
+### 🟧 Phase 5: Cloud Integrations
 
 - `/features/integrations/`
 - `/schemas/cloudIntegration.schema.ts`
@@ -153,6 +138,21 @@ Each phase includes a `Definition of Done` and may not be skipped or merged with
 - One integration per provider per tenant
 - OAuth fields securely handled
 - Tenant scoping enforced
+
+---
+
+### 🟨 Phase 6: Projects + Members
+
+- `/features/projects/`
+- `/schemas/project.schema.ts`, `projectMember.schema.ts`
+- Implements:
+  - `/projects`
+  - `/projects/:id/members`
+
+✅ DoD:
+- All endpoints work
+- Role-based access and immutability rules enforced
+- Member operations protected by project roles
 
 ---
 
