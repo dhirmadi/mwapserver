@@ -79,7 +79,7 @@ This document defines the **backend API server architecture** for MWAP as a gene
 
 ## 🧪 Testing
 
-* Use `vitest` or `jest` for unit tests
+* Use `vitest` for unit tests
 * All routes must have input validation tests + role enforcement tests
 
 ---
