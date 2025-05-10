@@ -70,6 +70,26 @@ This document defines the **canonical API endpoints** of the MWAP backend, based
 | `/api/v1/project-types/:id` | PATCH  | SUPERADMIN | `ProjectTypeSchema`                     | `ProjectTypeSchema`   |
 | `/api/v1/project-types/:id` | DELETE | SUPERADMIN | —                                       | `204`                 |
 
+### Project Type Schema
+```typescript
+interface ProjectType {
+  _id: string;
+  name: string;        // 3-50 chars
+  description: string; // max 500 chars
+  configSchema: Record<string, unknown>;
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
+  createdBy: string;   // Auth0 sub
+}
+```
+
+### Error Codes
+- `project-type/not-found`: Project type does not exist
+- `project-type/name-exists`: Project type name already exists
+- `project-type/in-use`: Project type is in use by existing projects
+- `project-type/invalid-schema`: Invalid configuration schema format
+
 ---
 
 ## 📂 Cloud Files (Virtual)
