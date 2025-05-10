@@ -1,4 +1,4 @@
-# 🧱 Phase 3: Projects and Members Domain
+# 🧱 Phase 6: Projects and Members Domain
 
 You are implementing the projects domain and member management for MWAP. Follow the architecture in `/docs/v3-architecture-reference.md` and API contract in `/docs/v3-api.md`.
 
@@ -8,8 +8,10 @@ Implement the projects domain with member management support.
 
 ## 🔍 Prerequisites
 
-- Phases 1 & 2 complete and tested
+- Phases 1 -5  complete and tested
 - Tenant management operational
+- Cloud Integration orperational
+- project types oeprational
 - Role middleware configured
 
 ## 📦 API Endpoints

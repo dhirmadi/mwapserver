@@ -1,4 +1,4 @@
-# 🟧 Phase 6: Cloud Integrations Domain
+# 🟧 Phase 5: Cloud Integrations Domain
 
 Implement the cloud provider integration system. Follow the architecture in `/docs/v3-architecture-reference.md`.
 
@@ -8,7 +8,7 @@ Create endpoints for managing tenant cloud provider integrations with OAuth2 and
 
 ## 🔍 Prerequisites
 
-- Phases 1-5 complete and tested
+- Phases 1-4 complete and tested
 - Cloud providers operational
 - Tenant management operational
 - Field-level encryption configured
