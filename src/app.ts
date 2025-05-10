@@ -5,6 +5,7 @@ import rateLimit from 'express-rate-limit';
 import { authenticateJWT } from './middleware/auth.js';
 import { errorHandler } from './middleware/errorHandler.js';
 import { env } from './config/env.js';
+import { db } from './config/db.js';
 
 const app = express();
 
@@ -41,7 +42,11 @@ export async function registerRoutes(): Promise<void> {
   const { getTenantRouter } = await import('./features/tenants/tenants.routes');
   console.log('[MWAP] ✅ /api/v1/tenants route loaded');
 
+  const { getProjectTypesRouter } = await import('./features/project-types/projectTypes.routes');
+  console.log('[MWAP] ✅ /api/v1/project-types route loaded');
+
   app.use('/api/v1/tenants', getTenantRouter());
+  app.use('/api/v1/project-types', getProjectTypesRouter());
 }
 
 app.use(errorHandler);
