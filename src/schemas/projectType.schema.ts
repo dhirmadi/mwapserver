@@ -2,10 +2,11 @@ import { z } from 'zod';
 
 // Base schema for project type validation
 export const projectTypeSchema = z.object({
+  _id: z.any(),
   name: z.string().min(3).max(50),
   description: z.string().max(500),
   configSchema: z.record(z.unknown()),
-  isActive: z.boolean().default(true),
+  isActive: z.boolean(),
   createdAt: z.date().optional(),
   updatedAt: z.date().optional(),
   createdBy: z.string().optional() // Auth0 sub
@@ -23,7 +24,7 @@ export const projectTypeResponseSchema = projectTypeSchema.extend({
 
 // Schema for creating a new project type
 export const createProjectTypeSchema = projectTypeSchema
-  .omit({ createdAt: true, updatedAt: true, createdBy: true });
+  .omit({ _id: true, createdAt: true, updatedAt: true, createdBy: true });
 
 // Error codes for project type operations
 export const ProjectTypeErrorCodes = {

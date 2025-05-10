@@ -23,7 +23,7 @@ export class ProjectTypesService {
     return projectType;
   }
 
-  async create(data: CreateProjectTypeRequest, userId: string): Promise<ProjectType> {
+  async create(data: Omit<ProjectType, '_id' | 'createdAt' | 'updatedAt' | 'createdBy'>, userId: string): Promise<ProjectType> {
     // Check for existing name
     const existing = await this.collection.findOne({ name: data.name });
     if (existing) {
@@ -44,6 +44,7 @@ export class ProjectTypesService {
     const projectType: ProjectType = {
       _id: new ObjectId(),
       ...data,
+      isActive: data.isActive ?? true,
       createdAt: now,
       updatedAt: now,
       createdBy: userId
@@ -113,5 +114,4 @@ export class ProjectTypesService {
     const superadmin = await getDB().collection('superadmins').findOne({ userId });
     return !!superadmin;
   }
-}
 }

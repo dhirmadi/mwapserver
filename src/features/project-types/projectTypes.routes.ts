@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { requireSuperAdmin } from '../../middleware/roles';
+import { requireTenantRole } from '../../middleware/roles';
 import { wrapAsyncHandler } from '../../utils/response';
 import {
   getAllProjectTypes,
@@ -13,7 +13,7 @@ export function getProjectTypesRouter(): Router {
   const router = Router();
 
   // All routes require SUPERADMIN role
-  router.use(requireSuperAdmin());
+  router.use(requireTenantRole('SUPERADMIN'));
 
   // GET /api/v1/project-types
   router.get('/', wrapAsyncHandler(getAllProjectTypes));

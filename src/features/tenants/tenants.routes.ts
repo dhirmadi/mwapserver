@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { initTenantRoutes, createTenant, getTenant, updateTenant, deleteTenant } from './tenants.controller';
+import { createTenant, getTenant, updateTenant, deleteTenant } from './tenants.controller';
 import { authenticateJWT } from '../../middleware/auth';
 import { wrapAsyncHandler } from '../../utils/response';
 
