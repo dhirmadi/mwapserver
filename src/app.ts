@@ -42,11 +42,11 @@ export async function registerRoutes(): Promise<void> {
   const { getTenantRouter } = await import('./features/tenants/tenants.routes');
   console.log('[MWAP] ✅ /api/v1/tenants route loaded');
 
-  const { createProjectTypesRouter } = await import('./features/project-types/projectTypes.routes');
+  const { getProjectTypesRouter } = await import('./features/project-types/projectTypes.routes');
   console.log('[MWAP] ✅ /api/v1/project-types route loaded');
 
   app.use('/api/v1/tenants', getTenantRouter());
-  app.use('/api/v1/project-types', createProjectTypesRouter(db.collection('projectTypes')));
+  app.use('/api/v1/project-types', getProjectTypesRouter());
 }
 
 app.use(errorHandler);

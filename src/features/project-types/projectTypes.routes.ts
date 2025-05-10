@@ -1,34 +1,34 @@
 import { Router } from 'express';
-import { Collection } from 'mongodb';
-import { ProjectTypesController } from './projectTypes.controller';
-import { ProjectTypesService } from './projectTypes.service';
-import { authenticateJWT } from '../../middleware/auth';
 import { requireSuperAdmin } from '../../middleware/roles';
 import { wrapAsyncHandler } from '../../utils/response';
+import {
+  getAllProjectTypes,
+  getProjectTypeById,
+  createProjectType,
+  updateProjectType,
+  deleteProjectType
+} from './projectTypes.controller';
 
-export function createProjectTypesRouter(projectTypesCollection: Collection): Router {
+export function getProjectTypesRouter(): Router {
   const router = Router();
-  const projectTypesService = new ProjectTypesService(projectTypesCollection);
-  const projectTypesController = new ProjectTypesController(projectTypesService);
 
-  // All routes require authentication and SUPERADMIN role
-  router.use(authenticateJWT());
+  // All routes require SUPERADMIN role
   router.use(requireSuperAdmin());
 
   // GET /api/v1/project-types
-  router.get('/', wrapAsyncHandler(projectTypesController.getAll));
+  router.get('/', wrapAsyncHandler(getAllProjectTypes));
 
   // GET /api/v1/project-types/:id
-  router.get('/:id', wrapAsyncHandler(projectTypesController.getById));
+  router.get('/:id', wrapAsyncHandler(getProjectTypeById));
 
   // POST /api/v1/project-types
-  router.post('/', wrapAsyncHandler(projectTypesController.create));
+  router.post('/', wrapAsyncHandler(createProjectType));
 
   // PATCH /api/v1/project-types/:id
-  router.patch('/:id', wrapAsyncHandler(projectTypesController.update));
+  router.patch('/:id', wrapAsyncHandler(updateProjectType));
 
   // DELETE /api/v1/project-types/:id
-  router.delete('/:id', wrapAsyncHandler(projectTypesController.delete));
+  router.delete('/:id', wrapAsyncHandler(deleteProjectType));
 
   return router;
 }

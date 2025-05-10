@@ -1,42 +1,54 @@
 import { Request, Response } from 'express';
 import { ProjectTypesService } from './projectTypes.service';
 import { validateWithSchema } from '../../utils/validate';
+import { getUserFromToken } from '../../utils/auth';
 import { jsonResponse } from '../../utils/response';
+import { ApiError } from '../../utils/errors';
+import { ProjectTypeErrorCodes } from '../../schemas/projectType.schema';
 import { createProjectTypeSchema, projectTypeUpdateSchema } from '../../schemas/projectType.schema';
 
-export class ProjectTypesController {
-  constructor(private projectTypesService: ProjectTypesService) {}
+const projectTypesService = new ProjectTypesService();
 
-  getAll = async (req: Request, res: Response): Promise<void> => {
-    const projectTypes = await this.projectTypesService.findAll();
-    jsonResponse(res, { data: projectTypes });
-  };
+export async function getAllProjectTypes(req: Request, res: Response) {
+  const projectTypes = await projectTypesService.findAll();
+  return jsonResponse(res, 200, projectTypes);
+}
 
-  getById = async (req: Request, res: Response): Promise<void> => {
-    const { id } = req.params;
-    const projectType = await this.projectTypesService.findById(id);
-    jsonResponse(res, { data: projectType });
-  };
+export async function getProjectTypeById(req: Request, res: Response) {
+  const projectType = await projectTypesService.findById(req.params.id);
+  return jsonResponse(res, 200, projectType);
+}
 
-  create = async (req: Request, res: Response): Promise<void> => {
+export async function createProjectType(req: Request, res: Response) {
+  try {
+    const user = getUserFromToken(req);
     const data = validateWithSchema(createProjectTypeSchema, req.body);
-    const userId = req.user.sub;
-    const projectType = await this.projectTypesService.create(data, userId);
-    jsonResponse(res, { data: projectType }, 201);
-  };
+    const projectType = await projectTypesService.create(data, user.sub);
+    return jsonResponse(res, 201, projectType);
+  } catch (error) {
+    if (error instanceof Error && error.name === 'ValidationError') {
+      throw new ApiError('Invalid input', 400, ProjectTypeErrorCodes.INVALID_CONFIG_SCHEMA);
+    }
+    throw error;
+  }
+}
 
-  update = async (req: Request, res: Response): Promise<void> => {
-    const { id } = req.params;
+export async function updateProjectType(req: Request, res: Response) {
+  try {
+    const user = getUserFromToken(req);
     const data = validateWithSchema(projectTypeUpdateSchema, req.body);
-    const userId = req.user.sub;
-    const projectType = await this.projectTypesService.update(id, data, userId);
-    jsonResponse(res, { data: projectType });
-  };
+    const projectType = await projectTypesService.update(req.params.id, data, user.sub);
+    return jsonResponse(res, 200, projectType);
+  } catch (error) {
+    if (error instanceof Error && error.name === 'ValidationError') {
+      throw new ApiError('Invalid input', 400, ProjectTypeErrorCodes.INVALID_CONFIG_SCHEMA);
+    }
+    throw error;
+  }
+}
 
-  delete = async (req: Request, res: Response): Promise<void> => {
-    const { id } = req.params;
-    const userId = req.user.sub;
-    await this.projectTypesService.delete(id, userId);
-    jsonResponse(res, { success: true }, 204);
-  };
+export async function deleteProjectType(req: Request, res: Response) {
+  const user = getUserFromToken(req);
+  await projectTypesService.delete(req.params.id, user.sub);
+  return jsonResponse(res, 204);
 }
