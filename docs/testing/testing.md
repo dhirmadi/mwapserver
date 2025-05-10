@@ -164,3 +164,66 @@ This test setup is:
 - Safe for developers and Claude to extend
 
 🔒 All tests must respect auth, role, and schema validation rules defined in /middleware/ and /schemas/.
+
+## 🔍 API Testing Guide
+
+### Tenant Endpoints
+
+| Endpoint | Method | Expected Behavior | Test Cases |
+|----------|--------|------------------|------------|
+| `/api/v1/tenants` | POST | - Creates new tenant for user<br>- Prevents duplicate tenants per user<br>- Validates tenant settings | - ✅ Create with valid data<br>- ✅ Attempt duplicate (should fail)<br>- ✅ Invalid settings validation |
+| `/api/v1/tenants/me` | GET | - Returns current user's tenant<br>- 404 if no tenant exists | - ✅ Get existing tenant<br>- ✅ Get non-existent tenant |
+| `/api/v1/tenants/:id` | PATCH | - Updates tenant name/settings<br>- Only owner/superadmin can update<br>- Validates settings | - ✅ Update name<br>- ✅ Update settings<br>- ✅ Unauthorized update |
+| `/api/v1/tenants/:id` | DELETE | - Only superadmin can delete<br>- Returns 403 for non-superadmin | - ✅ Delete as non-admin (should fail)<br>- ✅ Delete as superadmin |
+
+#### Test Data Examples
+
+1. Create Tenant Request:
+```json
+{
+  "name": "Test Tenant",
+  "settings": {
+    "allowPublicProjects": true,
+    "maxProjects": 20
+  }
+}
+```
+
+2. Update Tenant Request:
+```json
+{
+  "name": "Updated Tenant Name",
+  "settings": {
+    "allowPublicProjects": false,
+    "maxProjects": 25
+  }
+}
+```
+
+#### Response Format
+All successful responses follow this structure:
+```json
+{
+  "success": true,
+  "data": {
+    "_id": "tenant_id",
+    "name": "Tenant Name",
+    "ownerId": "user_id",
+    "settings": {
+      "allowPublicProjects": boolean,
+      "maxProjects": number
+    },
+    "createdAt": "ISO-8601-date",
+    "updatedAt": "ISO-8601-date",
+    "archived": boolean
+  }
+}
+```
+
+#### Error Responses
+Common error scenarios:
+- 401: Invalid/expired token
+- 403: Not authorized (e.g., non-superadmin trying to delete)
+- 404: Tenant not found
+- 409: Tenant already exists
+- 422: Invalid input data
