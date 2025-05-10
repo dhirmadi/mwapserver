@@ -12,15 +12,7 @@ import {
   tenantResponseSchema 
 } from '../../schemas/tenant.schema';
 
-let tenantService: TenantService;
-
-export function initTenantRoutes(): Router {
-  tenantService = new TenantService();
-  const router = Router();
-
-  // define routes here using `tenantService`
-  return router;
-}
+const tenantService = new TenantService();
 
 
 export async function createTenant(req: Request, res: Response) {
