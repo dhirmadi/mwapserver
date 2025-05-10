@@ -45,7 +45,7 @@ export function requireSuperAdminRole() {
       console.log('[MWAP] User is a superadmin:', user.sub);
       next();
     } catch (error) {
-      console.log('[MWAP] Superadmin check failed:', error.message);
+      console.log('[MWAP] Superadmin check failed:', error instanceof Error ? error.message : 'Unknown error');
       next(error);
     }
   };
