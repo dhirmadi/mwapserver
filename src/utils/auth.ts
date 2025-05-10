@@ -21,8 +21,8 @@ export function getUserFromToken(req: Request): User {
   if (!user) {
     throw new AuthError('No token provided');
   }
-  if (!user.sub || !user.email || !user.name) {
-    throw new AuthError('Invalid token');
+  if (!user.sub) {
+    throw new AuthError('Invalid token - missing sub claim');
   }
   return user;
 }
