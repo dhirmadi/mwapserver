@@ -1,7 +1,7 @@
-import {app, registerRoutes} from './app.js';
-import { env } from './config/env.js';
-import { connectDB } from './config/db.js';
-import { logInfo, logError } from './utils/logger.js';
+import {app, registerRoutes} from './app';
+import { env } from './config/env';
+import { connectDB } from './config/db';
+import { logInfo, logError } from './utils/logger';
 
 async function startServer() {
   try {
