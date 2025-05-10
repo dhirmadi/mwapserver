@@ -21,23 +21,29 @@ app.use(cors({
 
 // Rate limiting
 app.use(rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 100 // limit each IP to 100 requests per windowMs
+  windowMs: 15 * 60 * 1000,
+  max: 100
 }));
 
-// Health check endpoint (no auth required)
+// Health check (open endpoint)
 app.get('/health', (req, res) => {
   res.json({ status: 'ok' });
 });
 
-// JWT Authentication for all other routes
+// JWT Middleware
 app.use(authenticateJWT());
 
-// API Routes
-import tenantRoutes from './features/tenants/tenants.routes';
-app.use('/api/v1/tenants', tenantRoutes);
+// ❗ Do not import tenant routes at the top level
+// Instead expose a function that can register them later
+export async function registerRoutes(): Promise<void> {
+  console.log('[MWAP] 🔁 Registering routes...');
+  
+  const { getTenantRouter } = await import('./features/tenants/tenants.routes');
+  console.log('[MWAP] ✅ /api/v1/tenants route loaded');
 
-// Error handling
+  app.use('/api/v1/tenants', getTenantRouter());
+}
+
 app.use(errorHandler);
 
-export default app;
+export { app };

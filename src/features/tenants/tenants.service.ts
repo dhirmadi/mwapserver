@@ -1,5 +1,5 @@
 import { Collection, ObjectId } from 'mongodb';
-import { db } from '../../config/db';
+import { getDB } from '../../config/db';
 import { ApiError } from '../../utils/errors';
 import { ERROR_CODES } from '../../utils/constants';
 import { logAudit } from '../../utils/logger';
@@ -9,7 +9,7 @@ export class TenantService {
   private collection: Collection<Tenant>;
 
   constructor() {
-    this.collection = db.collection<Tenant>('tenants');
+    this.collection = getDB().collection<Tenant>('tenants');
   }
 
   async createTenant(userId: string, data: CreateTenantRequest): Promise<Tenant> {
@@ -136,7 +136,7 @@ export class TenantService {
   }
 
   private async isSuperAdmin(userId: string): Promise<boolean> {
-    const superadmin = await db.collection('superadmins').findOne({ userId });
+    const superadmin = await getDB().collection('superadmins').findOne({ userId });
     return !!superadmin;
   }
 }

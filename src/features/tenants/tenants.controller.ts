@@ -1,3 +1,4 @@
+import { Router } from 'express';
 import { Request, Response } from 'express';
 import { TenantService } from './tenants.service';
 import { validateWithSchema } from '../../utils/validate';
@@ -11,9 +12,23 @@ import {
   tenantResponseSchema 
 } from '../../schemas/tenant.schema';
 
-const tenantService = new TenantService();
+let tenantService: TenantService;
+
+export function initTenantRoutes(): Router {
+  tenantService = new TenantService();
+  const router = Router();
+
+  // define routes here using `tenantService`
+  return router;
+}
+
 
 export async function createTenant(req: Request, res: Response) {
+  console.log('Creating tenant');
+  console.log('Request body:', req.body);
+  console.log('Request params:', req.params);
+  console.log('Request query:', req.query);
+  console.log('Request headers:', req.headers);
   try {
     const user = getUserFromToken(req);
     const data = validateWithSchema(createTenantSchema, req.body);

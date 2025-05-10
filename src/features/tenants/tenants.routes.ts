@@ -1,9 +1,10 @@
 import { Router } from 'express';
-import { createTenant, getTenant, updateTenant, deleteTenant } from './tenants.controller';
+import { initTenantRoutes, createTenant, getTenant, updateTenant, deleteTenant } from './tenants.controller';
 import { authenticateJWT } from '../../middleware/auth';
 import { wrapAsyncHandler } from '../../utils/response';
 
 const router = Router();
+
 
 // Apply JWT authentication to all routes
 router.use(authenticateJWT());
@@ -20,4 +21,7 @@ router.patch('/:id', wrapAsyncHandler(updateTenant));
 // Delete tenant (superadmin only)
 router.delete('/:id', wrapAsyncHandler(deleteTenant));
 
-export default router;
+// export default tenantRouter;
+export function getTenantRouter(): Router {
+    return initTenantRoutes(); // this must run *after* DB is connected
+  }
