@@ -44,7 +44,7 @@ This document defines the **backend API server architecture** for MWAP as a gene
   /features
     /tenants              → tenant logic, routes, services
     /projects             → project logic and member APIs
-    /project-types        → admin CRUD + runtime config
+    /project-types        → project type management and configuration schemas
     /integrations         → cloud provider integrations (OAuth)
     /cloud                → file listing, metadata, and sorting
   /middleware             → auth, role, request validation

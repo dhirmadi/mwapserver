@@ -1,6 +1,6 @@
 # 📘 MWAP Feature Implementation Pattern
 
-This document defines the standard pattern for implementing new features in the MWAP backend. This pattern is based on the proven implementation of the tenants and project-types features.
+This document defines the standard pattern for implementing new features in the MWAP backend. This pattern is based on the proven implementation of the tenants and project-types features. For a complete example, see the [Project Type Feature Documentation](./project-type.md).
 
 ## 📁 Feature Structure
 
