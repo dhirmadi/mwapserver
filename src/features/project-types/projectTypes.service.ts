@@ -2,6 +2,7 @@ import { Collection, ObjectId } from 'mongodb';
 import { getDB } from '../../config/db';
 import { ApiError } from '../../utils/errors';
 import { logAudit } from '../../utils/logger';
+import { z } from 'zod';
 import { ProjectTypeErrorCodes, CreateProjectTypeRequest, UpdateProjectTypeRequest, ProjectType } from '../../schemas/projectType.schema';
 
 export class ProjectTypesService {
@@ -31,13 +32,8 @@ export class ProjectTypesService {
     }
 
     // Validate config schema structure
-    try {
-      // Basic validation that it's a valid JSON object
-      if (typeof data.configSchema !== 'object' || Array.isArray(data.configSchema)) {
-        throw new Error('Invalid schema format');
-      }
-    } catch (error) {
-      throw new ApiError('Invalid configuration schema', 400, ProjectTypeErrorCodes.INVALID_CONFIG_SCHEMA);
+    if (!this.validateZodSchema(data.configSchema)) {
+      throw new ApiError('Invalid Zod schema configuration', 400, ProjectTypeErrorCodes.INVALID_CONFIG_SCHEMA);
     }
 
     const now = new Date();
@@ -98,16 +94,34 @@ export class ProjectTypesService {
   async delete(id: string, userId: string): Promise<void> {
     const projectType = await this.findById(id);
 
-    // TODO: Check if type is in use by any projects
-    // This will be implemented when project collection is available
-    // const projectsUsingType = await getDB().collection('projects').countDocuments({ projectTypeId: id });
-    // if (projectsUsingType > 0) {
-    //   throw new ApiError('Project type is in use by existing projects', 409, ProjectTypeErrorCodes.IN_USE);
-    // }
+    // Check if type is in use by any projects
+    const projectsUsingType = await getDB().collection('projects').countDocuments({ projectTypeId: id });
+    if (projectsUsingType > 0) {
+      throw new ApiError('Project type is in use by existing projects', 409, ProjectTypeErrorCodes.IN_USE);
+    }
 
     await this.collection.deleteOne({ _id: projectType._id });
 
     logAudit('project-type.delete', userId, id);
+  }
+
+  private validateZodSchema(schema: unknown): boolean {
+    try {
+      // 1. Basic structure check
+      if (typeof schema !== 'object' || schema === null) {
+        throw new Error('Schema must be an object');
+      }
+
+      // 2. Try to create a Zod schema from the definition
+      const zodSchema = z.object(schema as any);
+      
+      // 3. Basic validation test
+      zodSchema.safeParse({});  // If it can parse, it's a valid schema
+
+      return true;
+    } catch (error) {
+      return false;
+    }
   }
 
   private async isSuperAdmin(userId: string): Promise<boolean> {
