@@ -94,11 +94,41 @@ interface ProjectType {
 
 ## 📂 Cloud Files (Virtual)
 
-| Endpoint                     | Method | Role                        | Request Schema               | Response Schema |
-| ---------------------------- | ------ | --------------------------- | ---------------------------- | --------------- |
-| `/api/v1/projects/:id/files` | GET    | `OWNER`, `DEPUTY`, `MEMBER` | `query: { folder?: string }` | `FileSchema[]`  |
+| Endpoint                     | Method | Role                        | Request Schema                                                                                                | Response Schema |
+| ---------------------------- | ------ | --------------------------- | ------------------------------------------------------------------------------------------------------------- | --------------- |
+| `/api/v1/projects/:id/files` | GET    | `OWNER`, `DEPUTY`, `MEMBER` | `query: { folder?: string, recursive?: boolean, fileTypes?: string[], limit?: number, page?: number }` | `FileSchema[]`  |
 
 > Files are derived at runtime via CloudProviderIntegration. Not persisted in the DB.
+
+### File Schema
+```typescript
+interface File {
+  fileId: string;         // ID from the cloud provider
+  name: string;           // File name
+  mimeType: string;       // MIME type
+  path: string;           // Path in the cloud storage
+  status: 'pending' | 'processed' | 'error'; // Processing status
+  size?: number;          // File size in bytes
+  createdAt?: Date;       // Creation timestamp
+  modifiedAt?: Date;      // Last modification timestamp
+  metadata?: {            // Provider-specific metadata
+    isFolder?: boolean;   // Whether the item is a folder
+    webViewLink?: string; // Link to view in browser
+    [key: string]: any;   // Other provider-specific fields
+  };
+}
+```
+
+### Error Codes
+- `file/not-found`: The requested file does not exist
+- `file/project-not-found`: The referenced project does not exist
+- `file/cloud-integration-not-found`: The cloud integration does not exist
+- `file/cloud-provider-error`: Error communicating with the cloud provider
+- `file/unauthorized`: The user is not authorized for this operation
+- `file/invalid-path`: The specified path is invalid
+- `file/invalid-query`: The query parameters are invalid
+- `file/integration-error`: Error with the cloud integration
+- `file/token-expired`: The cloud provider access token has expired
 
 
 ---

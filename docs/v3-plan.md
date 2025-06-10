@@ -158,13 +158,18 @@ Each phase includes a `Definition of Done` and may not be skipped or merged with
 
 ### 🟫 Phase 7: Virtual Files
 
-- `/features/cloud/files.controller.ts`
+- `/features/files/files.service.ts`
+- `/features/files/files.controller.ts`
+- `/features/files/files.routes.ts`
 - `/schemas/file.schema.ts`
 
 ✅ DoD:
-- Read-only
+- Read-only file listing
 - Files fetched dynamically via cloud integration
 - Project access required
+- Support for multiple cloud providers (Google Drive, Dropbox, OneDrive)
+- Role-based access control
+- Query parameters for folder navigation and filtering
 
 ---
 
