@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { wrapAsyncHandler } from '../../utils/response.js';
 import { authenticateJWT } from '../../middleware/auth.js';
 import { requireProjectRole } from '../../middleware/roles.js';
+import { getFilesRouter } from '../files/files.routes.js';
 import {
   getProjects,
   getProjectById,
@@ -34,7 +35,6 @@ export function getProjectsRouter(): Router {
   router.delete('/:id/members/:userId', requireProjectRole('OWNER'), wrapAsyncHandler(removeProjectMember));
   
   // Mount files router
-  const { getFilesRouter } = require('../files/files.routes.js');
   router.use('/:id/files', getFilesRouter());
   
   return router;
