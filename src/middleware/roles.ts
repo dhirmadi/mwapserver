@@ -2,6 +2,7 @@ import { Request, Response, NextFunction } from 'express';
 import { PermissionError } from '../utils/errors.js';
 import { getUserFromToken } from '../utils/auth.js';
 import { getDB } from '../config/db.js';
+import { ObjectId } from 'mongodb';
 
 export type Role = 'OWNER' | 'DEPUTY' | 'MEMBER' | 'SUPERADMIN';
 
@@ -21,7 +22,43 @@ export function requireProjectRole(role: Role) {
   return async (req: Request, res: Response, next: NextFunction) => {
     try {
       const user = getUserFromToken(req);
-      // Role check logic will be implemented in Phase 3
+      const projectId = req.params.id;
+      
+      if (!projectId) {
+        throw new PermissionError('Project ID is required');
+      }
+      
+      // Check if user is a superadmin (they bypass project role checks)
+      const superadmin = await getDB().collection('superadmins').findOne({ userId: user.sub });
+      if (superadmin) {
+        return next();
+      }
+      
+      // Find the project and check if user has the required role
+      const project = await getDB().collection('projects').findOne({
+        _id: new ObjectId(projectId),
+        'members.userId': user.sub
+      });
+      
+      if (!project) {
+        throw new PermissionError('Project not found or user not a member');
+      }
+      
+      const member = project.members.find((m: any) => m.userId === user.sub);
+      
+      if (!member) {
+        throw new PermissionError('User is not a member of this project');
+      }
+      
+      // Check if user has the required role or higher
+      const roles: Role[] = ['MEMBER', 'DEPUTY', 'OWNER'];
+      const requiredRoleIndex = roles.indexOf(role);
+      const userRoleIndex = roles.indexOf(member.role as Role);
+      
+      if (userRoleIndex < requiredRoleIndex) {
+        throw new PermissionError(`Requires ${role} role or higher`);
+      }
+      
       next();
     } catch (error) {
       next(error);
