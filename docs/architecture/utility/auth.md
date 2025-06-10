@@ -59,7 +59,8 @@ declare global {
 
 1. **Token Validation**
    - Always use within authenticated routes
-   - Token must be validated by `authenticateJWT` middleware first
+   - Token is validated by the global `authenticateJWT` middleware in `app.ts`
+   - Do not apply `authenticateJWT` middleware in individual route files
    - Throws if token is missing or invalid
 
 2. **Error Handling**
@@ -72,12 +73,21 @@ declare global {
    - Validate user permissions before operations
    - Use with role middleware for access control
 
+4. **Authentication Flow**
+   - JWT authentication is applied globally in `app.ts` for all routes except `/health`
+   - Individual route files should NOT apply the `authenticateJWT` middleware again
+   - Role-based middleware should be applied in route files after authentication
+
 ## Integration Example
 ```typescript
 import { getUserFromToken } from '../utils/auth.js';
 import { AuthError } from '../utils/errors.js';
 
-app.get('/api/profile', authenticateJWT, (req, res, next) => {
+// In app.ts, authentication is already applied globally:
+// app.use(authenticateJWT());
+
+// In your route file, just use the authenticated request:
+router.get('/profile', (req, res, next) => {
   try {
     const user = getUserFromToken(req);
     res.json({
