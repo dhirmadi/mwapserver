@@ -33,5 +33,9 @@ export function getProjectsRouter(): Router {
   router.patch('/:id/members/:userId', requireProjectRole('OWNER'), wrapAsyncHandler(updateProjectMember));
   router.delete('/:id/members/:userId', requireProjectRole('OWNER'), wrapAsyncHandler(removeProjectMember));
   
+  // Mount files router
+  const { getFilesRouter } = require('../files/files.routes.js');
+  router.use('/:id/files', getFilesRouter());
+  
   return router;
 }
