@@ -1,14 +1,13 @@
 import { Router } from 'express';
 import { createTenant, getTenant, updateTenant, deleteTenant } from './tenants.controller.js';
-import { authenticateJWT } from '../../middleware/auth.js';
 import { wrapAsyncHandler } from '../../utils/response.js';
 import { getCloudIntegrationsRouter } from '../cloud-integrations/cloudIntegrations.routes.js';
 
 export function getTenantRouter(): Router {
   const router = Router();
 
-  // Apply JWT authentication to all routes
-  router.use(authenticateJWT());
+  // JWT authentication is already applied globally in app.ts
+  // No need to apply it again here
 
   // Create tenant
   router.post('/', wrapAsyncHandler(createTenant));
