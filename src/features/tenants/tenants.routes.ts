@@ -1,7 +1,8 @@
 import { Router } from 'express';
-import { createTenant, getTenant, updateTenant, deleteTenant } from './tenants.controller';
-import { authenticateJWT } from '../../middleware/auth';
-import { wrapAsyncHandler } from '../../utils/response';
+import { createTenant, getTenant, updateTenant, deleteTenant } from './tenants.controller.js';
+import { authenticateJWT } from '../../middleware/auth.js';
+import { wrapAsyncHandler } from '../../utils/response.js';
+import { getCloudIntegrationsRouter } from '../cloud-integrations/cloudIntegrations.routes.js';
 
 export function getTenantRouter(): Router {
   const router = Router();
@@ -20,6 +21,9 @@ export function getTenantRouter(): Router {
 
   // Delete tenant (superadmin only)
   router.delete('/:id', wrapAsyncHandler(deleteTenant));
+
+  // Cloud integrations routes
+  router.use('/:tenantId/integrations', getCloudIntegrationsRouter());
 
   return router;
 }
