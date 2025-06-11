@@ -301,7 +301,17 @@ export function getDocsRouter(): Router {
     
     // If all dependencies are installed, try to load the full documentation
     try {
-      // Dynamically import the full documentation module
+      // First try to load the compatible version (without zod-to-openapi dependency)
+      try {
+        const compatibleModule = await import('./docs-full-compatible.js');
+        if (typeof compatibleModule.getFullDocsRouter === 'function') {
+          return compatibleModule.getFullDocsRouter()(req, res);
+        }
+      } catch (compatibleError) {
+        console.warn('Could not load compatible docs module:', compatibleError.message);
+      }
+      
+      // If compatible version fails, try the full version
       const fullDocsModule = await import('./docs-full.js');
       
       // If the module exports a router function, use it
