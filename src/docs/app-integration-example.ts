@@ -1,12 +1,14 @@
+// Example of how to integrate the API documentation into app.ts
+
 import express from 'express';
 import helmet from 'helmet';
 import cors from 'cors';
 import rateLimit from 'express-rate-limit';
 import { authenticateJWT } from './middleware/auth.js';
 import { errorHandler } from './middleware/errorHandler.js';
-import { getDocsRouter } from './docs/docs.js';
 import { env } from './config/env.js';
 import { db } from './config/db.js';
+import { getDocsRouter } from './docs/docs.js'; // Import the docs router
 
 const app = express();
 
@@ -32,6 +34,9 @@ app.get('/health', (req, res) => {
   res.json({ status: 'ok' });
 });
 
+// API Documentation (only available in non-production environments)
+app.use('/docs', getDocsRouter()); // Mount the docs router at /docs
+
 // JWT Middleware
 app.use(authenticateJWT());
 
@@ -56,8 +61,6 @@ export async function registerRoutes(): Promise<void> {
   app.use('/api/v1/project-types', getProjectTypesRouter());
   app.use('/api/v1/cloud-providers', getCloudProviderRouter());
   app.use('/api/v1/projects', getProjectsRouter());
-
-  app.use('/docs', getDocsRouter());
 }
 
 app.use(errorHandler);

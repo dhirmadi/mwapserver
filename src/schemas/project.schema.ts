@@ -8,12 +8,18 @@ export const projectMemberSchema = z.object({
   role: z.enum(['OWNER', 'DEPUTY', 'MEMBER'])
 });
 
+const objectIdSchema = z
+  .string()
+  .refine((val) => ObjectId.isValid(val), {
+    message: 'Invalid ObjectId',
+  });
+
 // Base schema for project validation
 export const projectSchema = z.object({
-  _id: z.instanceof(ObjectId),
-  tenantId: z.instanceof(ObjectId),
-  projectTypeId: z.instanceof(ObjectId),
-  cloudIntegrationId: z.instanceof(ObjectId),
+  _id: objectIdSchema,
+  tenantId: objectIdSchema,
+  projectTypeId: objectIdSchema,
+  cloudIntegrationId: objectIdSchema,
   folderpath: z.string().min(1),
   name: z.string().min(1).max(100),
   description: z.string().max(500).optional(),
