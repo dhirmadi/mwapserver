@@ -79,10 +79,12 @@ This project will use **[Vitest](https://vitest.dev/)** for unit and service-lev
 
 ## Documentation
 
+- [Documentation Guide](docs/documentation-guide.md)
 - [Architecture Reference](docs/v3-architecture-reference.md)
 - [Domain Map](docs/v3-domainmap.md)
 - [API Contract](docs/v3-api.md)
 - [OpenAPI Schema](docs/v3-openAPI-schema.md)
+- [Project Status](docs/STATUS.md)
 
 ### API Documentation
 
@@ -100,6 +102,14 @@ To access the API documentation:
 3. For a raw OpenAPI specification: `http://localhost:3000/docs/json`
 
 **Security Note**: API documentation is protected by authentication to prevent exposing sensitive system information. This is a security best practice to reduce attack surface and limit information disclosure.
+
+### Documentation Structure
+
+- **Architecture Documentation**: Detailed information about the system architecture, design patterns, and coding standards
+- **API Documentation**: Interactive documentation for all API endpoints with request/response schemas
+- **Domain Model**: Comprehensive documentation of the domain entities and their relationships
+- **Status Updates**: Current project status, completed features, and planned enhancements
+- **Security Guidelines**: Best practices for securing the application and protecting sensitive information
 
 ## Getting Started
 

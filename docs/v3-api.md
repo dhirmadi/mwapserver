@@ -2,12 +2,15 @@
 
 This document defines the **canonical API endpoints** of the MWAP backend, based on the updated domain model and backend architecture. All endpoints are authenticated, role-based, and return Zod-validated responses.
 
+> **Note**: For interactive API documentation, start the server and navigate to `/docs` (requires authentication). This provides a Swagger UI interface for exploring and testing the API endpoints.
+
 ---
 
 ## 🔐 Authentication
 
 * All routes require Auth0 JWT (Bearer token)
 * Roles are enforced per tenant and/or project scope via middleware (`verifyProjectRole`, `requireRoles`)
+* API documentation is protected by authentication to prevent information disclosure
 
 ---
 

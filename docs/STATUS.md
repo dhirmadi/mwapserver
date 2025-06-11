@@ -2,7 +2,7 @@
 
 ## Current Status: Active Development
 
-Last Updated: June 11, 2025
+Last Updated: June 11, 2025 (Updated documentation)
 
 ## Completed Features
 
@@ -75,11 +75,15 @@ Last Updated: June 11, 2025
 - Simplified API documentation with a reliable, static approach
 - Enhanced security for API documentation
 - Updated documentation to reflect security considerations
+- Improved documentation structure and organization
+- Added comprehensive documentation for API endpoints
+- Created STATUS.md to track project progress
 
 ### June 10, 2025
 - Removed redundant authentication checks
 - Created cloud-provider branch for cloud integration features
 - Updated documentation
+- Fixed authentication flow in tenants router
 
 ## Next Steps
 
