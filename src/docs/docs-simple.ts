@@ -23,8 +23,18 @@ const REQUIRED_PACKAGES = [
  */
 function isPackageInstalled(packageName: string): boolean {
   try {
-    const nodeModulesPath = path.resolve(__dirname, '../../node_modules', packageName);
-    return fs.existsSync(nodeModulesPath);
+    // Check in the project's node_modules directory
+    const projectNodeModulesPath = path.resolve(__dirname, '../../node_modules', packageName);
+    
+    // Check in the parent directory's node_modules (for monorepo setups)
+    const parentNodeModulesPath = path.resolve(__dirname, '../../../node_modules', packageName);
+    
+    // Check in the global node_modules directory
+    const globalNodeModulesPath = path.resolve(process.env.NODE_PATH || '/usr/local/lib/node_modules', packageName);
+    
+    return fs.existsSync(projectNodeModulesPath) || 
+           fs.existsSync(parentNodeModulesPath) || 
+           fs.existsSync(globalNodeModulesPath);
   } catch (error) {
     return false;
   }
@@ -41,16 +51,37 @@ async function installMissingPackages(): Promise<{ success: boolean, output: str
   }
   
   try {
+    // First try to install locally
+    const projectRoot = path.resolve(__dirname, '../..');
     const command = `npm install ${missingPackages.join(' ')}`;
-    const { stdout, stderr } = await execAsync(command, { cwd: path.resolve(__dirname, '../..') });
-    return { 
-      success: true, 
-      output: `Installed packages: ${missingPackages.join(', ')}\n${stdout}` 
-    };
+    
+    try {
+      const { stdout } = await execAsync(command, { cwd: projectRoot });
+      return { 
+        success: true, 
+        output: `Installed packages: ${missingPackages.join(', ')}\n${stdout}` 
+      };
+    } catch (localError: any) {
+      // If local installation fails due to permissions, try with --no-save
+      if (localError.message.includes('EACCES') || localError.message.includes('permission')) {
+        try {
+          const fallbackCommand = `npm install --no-save ${missingPackages.join(' ')}`;
+          const { stdout } = await execAsync(fallbackCommand, { cwd: projectRoot });
+          return { 
+            success: true, 
+            output: `Installed packages (without saving to package.json): ${missingPackages.join(', ')}\n${stdout}\n\nNote: Due to permission restrictions, packages were installed without updating package.json.` 
+          };
+        } catch (fallbackError: any) {
+          throw new Error(`Failed to install packages: ${fallbackError.message}\n\nYou may need to run the installation manually with elevated permissions.`);
+        }
+      } else {
+        throw localError;
+      }
+    }
   } catch (error: any) {
     return { 
       success: false, 
-      output: `Failed to install packages: ${error.message}` 
+      output: `Failed to install packages: ${error.message}\n\nYou can install them manually with:\nnpm install ${missingPackages.join(' ')}` 
     };
   }
 }
