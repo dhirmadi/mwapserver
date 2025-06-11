@@ -4,6 +4,7 @@ import cors from 'cors';
 import rateLimit from 'express-rate-limit';
 import { authenticateJWT } from './middleware/auth.js';
 import { errorHandler } from './middleware/errorHandler.js';
+import { getDocsRouter } from './docs/docs.js';
 import { env } from './config/env.js';
 import { db } from './config/db.js';
 
@@ -55,6 +56,8 @@ export async function registerRoutes(): Promise<void> {
   app.use('/api/v1/project-types', getProjectTypesRouter());
   app.use('/api/v1/cloud-providers', getCloudProviderRouter());
   app.use('/api/v1/projects', getProjectsRouter());
+
+  app.use('/docs', getDocsRouter());
 }
 
 app.use(errorHandler);
