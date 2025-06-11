@@ -32,9 +32,10 @@ export class ProjectTypesService {
     }
 
     // Validate config schema structure
+   /* commented out for now
     if (!this.validateZodSchema(data.configSchema)) {
       throw new ApiError('Invalid Zod schema configuration', 400, ProjectTypeErrorCodes.INVALID_CONFIG_SCHEMA);
-    }
+    }*/
 
     const now = new Date();
     const projectType: ProjectType = {

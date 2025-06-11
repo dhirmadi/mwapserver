@@ -135,3 +135,5 @@ dist
 .yarn/install-state.gz
 .pnp.*
 .DS_Store
+tests/apitest.py
+tests/apiquick.py

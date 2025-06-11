@@ -1,11 +1,17 @@
 import { z } from 'zod';
 import { ObjectId } from 'mongodb';
 
+const objectIdSchema = z
+  .string()
+  .refine((val) => ObjectId.isValid(val), {
+    message: 'Invalid ObjectId',
+  });
+
 // Base schema for cloud provider integration validation
 export const cloudProviderIntegrationSchema = z.object({
-  _id: z.instanceof(ObjectId),
-  tenantId: z.instanceof(ObjectId),
-  providerId: z.instanceof(ObjectId),
+  _id: objectIdSchema,
+  tenantId: objectIdSchema,
+  providerId: objectIdSchema,
   clientId: z.string().min(1),
   clientSecret: z.string().min(1),
   redirectUri: z.string().url(),
