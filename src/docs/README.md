@@ -8,6 +8,24 @@ This module provides API documentation for the MWAP (Modular Web Application Pla
 - Provides interactive API documentation via Swagger UI
 - Secures documentation in production environments
 - Includes authentication, request/response examples, and error handling
+- Gracefully handles missing dependencies
+
+## Installation
+
+First, install the required dependencies:
+
+```bash
+npm install swagger-ui-express @asteasolutions/zod-to-openapi
+```
+
+Or add them to your package.json:
+
+```json
+"dependencies": {
+  "swagger-ui-express": "^5.0.0",
+  "@asteasolutions/zod-to-openapi": "^6.0.0"
+}
+```
 
 ## Usage
 
@@ -23,6 +41,10 @@ app.use('/docs', getDocsRouter());
 
 // ... register other routes
 ```
+
+### Fallback Mode
+
+If the `swagger-ui-express` package is not installed, the documentation will still be available as a raw JSON endpoint at `/docs`. This allows you to view the API structure even without the UI component.
 
 ## Security
 
