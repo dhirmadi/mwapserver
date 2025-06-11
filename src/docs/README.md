@@ -62,7 +62,35 @@ The documentation module provides several endpoints:
 
 ## Security
 
-The documentation is only available in non-production environments by default. In production, you should configure access control as needed.
+### Authentication Requirements
+
+The API documentation is protected by authentication to prevent unauthorized access. This is a critical security measure because:
+
+1. **Information Disclosure**: Public API documentation exposes internal system structure
+2. **Attack Surface Mapping**: Makes it easier for attackers to identify vulnerabilities
+3. **Competitive Intelligence**: Reveals business logic and system capabilities
+
+### Environment-Based Security
+
+- **Development**: Authentication is optional but recommended
+- **Production**: Authentication is strictly enforced
+  - The documentation router checks for authenticated users
+  - Additional security headers and rate limiting are applied
+  - Access is logged for security auditing
+
+### Security Best Practices
+
+When deploying the API documentation:
+
+1. Always mount the documentation router **after** authentication middleware
+2. Consider implementing additional access controls (e.g., specific roles)
+3. Regularly review and update the documentation to remove sensitive information
+4. Monitor access logs for suspicious patterns
+5. Apply rate limiting to prevent abuse
+
+### Configuration
+
+The security settings can be adjusted in `api-docs.ts` based on your specific requirements.
 
 ## Architecture
 

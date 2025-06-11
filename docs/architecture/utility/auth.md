@@ -72,11 +72,19 @@ declare global {
    - Don't expose full user object in responses
    - Validate user permissions before operations
    - Use with role middleware for access control
+   - Protect sensitive information like API documentation
 
 4. **Authentication Flow**
    - JWT authentication is applied globally in `app.ts` for all routes except `/health`
    - Individual route files should NOT apply the `authenticateJWT` middleware again
    - Role-based middleware should be applied in route files after authentication
+   - API documentation is protected by authentication to prevent information disclosure
+
+5. **Securing API Documentation**
+   - API documentation at `/docs` is mounted after authentication middleware
+   - This ensures that only authenticated users can access API structure details
+   - In production, additional checks ensure the user is authenticated
+   - This prevents information disclosure and reduces attack surface
 
 ## Integration Example
 ```typescript

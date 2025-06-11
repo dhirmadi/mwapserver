@@ -32,8 +32,12 @@ app.get('/health', (req, res) => {
   res.json({ status: 'ok' });
 });
 
-// JWT Middleware
+// JWT Middleware - Apply authentication to all routes below this line
 app.use(authenticateJWT());
+
+// API Documentation - Protected by authentication in production
+// In development, this provides interactive API documentation
+app.use('/docs', getDocsRouter());
 
 // ❗ Do not import tenant routes at the top level
 // Instead expose a function that can register them later
@@ -56,8 +60,6 @@ export async function registerRoutes(): Promise<void> {
   app.use('/api/v1/project-types', getProjectTypesRouter());
   app.use('/api/v1/cloud-providers', getCloudProviderRouter());
   app.use('/api/v1/projects', getProjectsRouter());
-
-  app.use('/docs', getDocsRouter());
 }
 
 app.use(errorHandler);

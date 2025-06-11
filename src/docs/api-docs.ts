@@ -666,9 +666,36 @@ async function installSwaggerUI(): Promise<{ success: boolean, output: string }>
 
 /**
  * Create a router for the API documentation
+ * 
+ * SECURITY NOTE:
+ * This router should be mounted AFTER authentication middleware in production
+ * to prevent unauthorized access to API structure and implementation details.
+ * 
+ * In development environments, you may choose to make it available without
+ * authentication for easier development, but this is not recommended for
+ * production deployments.
  */
 export function getDocsRouter(): Router {
   const router = Router();
+  
+  // Security middleware to check environment
+  router.use((req: Request, res: Response, next: NextFunction) => {
+    // In production, ensure the user is authenticated
+    if (process.env.NODE_ENV === 'production') {
+      // The authentication check should happen at the app level
+      // This is just an additional security check
+      if (!req.user) {
+        return res.status(401).json({
+          error: {
+            message: 'Authentication required to access API documentation',
+            code: 'UNAUTHORIZED',
+            status: 401
+          }
+        });
+      }
+    }
+    next();
+  });
   
   // Serve the OpenAPI JSON
   router.get('/json', (req: Request, res: Response) => {
