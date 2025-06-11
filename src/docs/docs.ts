@@ -183,6 +183,28 @@ registry.registerPath({
 });
 
 registry.registerPath({
+  method: 'get',
+  path: '/api/v1/tenants/me',
+  tags: ['Tenants'],
+  summary: 'Get current user\'s tenant',
+  security: [{ bearerAuth: [] }],
+  responses: {
+    '200': {
+      description: 'Current user\'s tenant',
+      content: {
+        'application/json': {
+          schema: z.object({
+            data: tenantSchema
+          })
+        }
+      }
+    },
+    '401': unauthorizedResponse,
+    '404': notFoundResponse
+  }
+});
+
+registry.registerPath({
   method: 'patch',
   path: '/api/v1/tenants/{id}',
   tags: ['Tenants'],
@@ -250,6 +272,63 @@ registry.registerPath({
 
 // Cloud Integration endpoints
 registry.registerPath({
+  method: 'get',
+  path: '/api/v1/tenants/{tenantId}/integrations',
+  tags: ['Cloud Integrations'],
+  summary: 'Get all cloud provider integrations for a tenant',
+  security: [{ bearerAuth: [] }],
+  request: {
+    params: z.object({
+      tenantId: z.string().describe('Tenant ID')
+    })
+  },
+  responses: {
+    '200': {
+      description: 'List of cloud provider integrations',
+      content: {
+        'application/json': {
+          schema: z.object({
+            data: z.array(cloudProviderIntegrationSchema)
+          })
+        }
+      }
+    },
+    '401': unauthorizedResponse,
+    '403': forbiddenResponse,
+    '404': notFoundResponse
+  }
+});
+
+registry.registerPath({
+  method: 'get',
+  path: '/api/v1/tenants/{tenantId}/integrations/{integrationId}',
+  tags: ['Cloud Integrations'],
+  summary: 'Get a specific cloud provider integration',
+  security: [{ bearerAuth: [] }],
+  request: {
+    params: z.object({
+      tenantId: z.string().describe('Tenant ID'),
+      integrationId: z.string().describe('Integration ID')
+    })
+  },
+  responses: {
+    '200': {
+      description: 'Cloud provider integration details',
+      content: {
+        'application/json': {
+          schema: z.object({
+            data: cloudProviderIntegrationSchema
+          })
+        }
+      }
+    },
+    '401': unauthorizedResponse,
+    '403': forbiddenResponse,
+    '404': notFoundResponse
+  }
+});
+
+registry.registerPath({
   method: 'post',
   path: '/api/v1/tenants/{tenantId}/integrations',
   tags: ['Cloud Integrations'],
@@ -285,7 +364,126 @@ registry.registerPath({
   }
 });
 
+registry.registerPath({
+  method: 'patch',
+  path: '/api/v1/tenants/{tenantId}/integrations/{integrationId}',
+  tags: ['Cloud Integrations'],
+  summary: 'Update a cloud provider integration',
+  security: [{ bearerAuth: [] }],
+  request: {
+    params: z.object({
+      tenantId: z.string().describe('Tenant ID'),
+      integrationId: z.string().describe('Integration ID')
+    }),
+    body: {
+      content: {
+        'application/json': {
+          schema: z.object({
+            name: z.string().optional(),
+            credentials: z.record(z.string()).optional()
+          })
+        }
+      }
+    }
+  },
+  responses: {
+    '200': {
+      description: 'Cloud provider integration updated successfully',
+      content: {
+        'application/json': {
+          schema: z.object({
+            data: cloudProviderIntegrationSchema
+          })
+        }
+      }
+    },
+    '400': badRequestResponse,
+    '401': unauthorizedResponse,
+    '403': forbiddenResponse,
+    '404': notFoundResponse
+  }
+});
+
+registry.registerPath({
+  method: 'delete',
+  path: '/api/v1/tenants/{tenantId}/integrations/{integrationId}',
+  tags: ['Cloud Integrations'],
+  summary: 'Delete a cloud provider integration',
+  security: [{ bearerAuth: [] }],
+  request: {
+    params: z.object({
+      tenantId: z.string().describe('Tenant ID'),
+      integrationId: z.string().describe('Integration ID')
+    })
+  },
+  responses: {
+    '200': {
+      description: 'Cloud provider integration deleted successfully',
+      content: {
+        'application/json': {
+          schema: z.object({
+            data: z.object({
+              success: z.boolean()
+            })
+          })
+        }
+      }
+    },
+    '401': unauthorizedResponse,
+    '403': forbiddenResponse,
+    '404': notFoundResponse
+  }
+});
+
 // Project endpoints
+registry.registerPath({
+  method: 'get',
+  path: '/api/v1/projects',
+  tags: ['Projects'],
+  summary: 'Get all projects',
+  security: [{ bearerAuth: [] }],
+  responses: {
+    '200': {
+      description: 'List of projects',
+      content: {
+        'application/json': {
+          schema: z.object({
+            data: z.array(projectSchema)
+          })
+        }
+      }
+    },
+    '401': unauthorizedResponse
+  }
+});
+
+registry.registerPath({
+  method: 'get',
+  path: '/api/v1/projects/{id}',
+  tags: ['Projects'],
+  summary: 'Get a project by ID',
+  security: [{ bearerAuth: [] }],
+  request: {
+    params: z.object({
+      id: z.string().describe('Project ID')
+    })
+  },
+  responses: {
+    '200': {
+      description: 'Project details',
+      content: {
+        'application/json': {
+          schema: z.object({
+            data: projectSchema
+          })
+        }
+      }
+    },
+    '401': unauthorizedResponse,
+    '404': notFoundResponse
+  }
+});
+
 registry.registerPath({
   method: 'post',
   path: '/api/v1/projects',
@@ -385,7 +583,190 @@ registry.registerPath({
   }
 });
 
+// Project Members endpoints
+registry.registerPath({
+  method: 'get',
+  path: '/api/v1/projects/{id}/members',
+  tags: ['Project Members'],
+  summary: 'Get all members of a project',
+  security: [{ bearerAuth: [] }],
+  request: {
+    params: z.object({
+      id: z.string().describe('Project ID')
+    })
+  },
+  responses: {
+    '200': {
+      description: 'List of project members',
+      content: {
+        'application/json': {
+          schema: z.object({
+            data: z.array(projectMemberOperationSchemaRef)
+          })
+        }
+      }
+    },
+    '401': unauthorizedResponse,
+    '403': forbiddenResponse,
+    '404': notFoundResponse
+  }
+});
+
+registry.registerPath({
+  method: 'post',
+  path: '/api/v1/projects/{id}/members',
+  tags: ['Project Members'],
+  summary: 'Add a member to a project',
+  security: [{ bearerAuth: [] }],
+  request: {
+    params: z.object({
+      id: z.string().describe('Project ID')
+    }),
+    body: {
+      content: {
+        'application/json': {
+          schema: projectMemberOperationSchemaRef
+        }
+      }
+    }
+  },
+  responses: {
+    '201': {
+      description: 'Member added to project successfully',
+      content: {
+        'application/json': {
+          schema: z.object({
+            data: projectMemberOperationSchemaRef
+          })
+        }
+      }
+    },
+    '400': badRequestResponse,
+    '401': unauthorizedResponse,
+    '403': forbiddenResponse,
+    '404': notFoundResponse
+  }
+});
+
+registry.registerPath({
+  method: 'patch',
+  path: '/api/v1/projects/{id}/members/{userId}',
+  tags: ['Project Members'],
+  summary: 'Update a project member\'s role',
+  security: [{ bearerAuth: [] }],
+  request: {
+    params: z.object({
+      id: z.string().describe('Project ID'),
+      userId: z.string().describe('User ID')
+    }),
+    body: {
+      content: {
+        'application/json': {
+          schema: updateProjectMemberSchemaRef
+        }
+      }
+    }
+  },
+  responses: {
+    '200': {
+      description: 'Project member updated successfully',
+      content: {
+        'application/json': {
+          schema: z.object({
+            data: projectMemberOperationSchemaRef
+          })
+        }
+      }
+    },
+    '400': badRequestResponse,
+    '401': unauthorizedResponse,
+    '403': forbiddenResponse,
+    '404': notFoundResponse
+  }
+});
+
+registry.registerPath({
+  method: 'delete',
+  path: '/api/v1/projects/{id}/members/{userId}',
+  tags: ['Project Members'],
+  summary: 'Remove a member from a project',
+  security: [{ bearerAuth: [] }],
+  request: {
+    params: z.object({
+      id: z.string().describe('Project ID'),
+      userId: z.string().describe('User ID')
+    })
+  },
+  responses: {
+    '200': {
+      description: 'Member removed from project successfully',
+      content: {
+        'application/json': {
+          schema: z.object({
+            data: z.object({
+              success: z.boolean()
+            })
+          })
+        }
+      }
+    },
+    '401': unauthorizedResponse,
+    '403': forbiddenResponse,
+    '404': notFoundResponse
+  }
+});
+
 // Project Type endpoints
+registry.registerPath({
+  method: 'get',
+  path: '/api/v1/project-types',
+  tags: ['Project Types'],
+  summary: 'Get all project types',
+  security: [{ bearerAuth: [] }],
+  responses: {
+    '200': {
+      description: 'List of project types',
+      content: {
+        'application/json': {
+          schema: z.object({
+            data: z.array(projectTypeSchema)
+          })
+        }
+      }
+    },
+    '401': unauthorizedResponse,
+    '403': forbiddenResponse
+  }
+});
+
+registry.registerPath({
+  method: 'get',
+  path: '/api/v1/project-types/{id}',
+  tags: ['Project Types'],
+  summary: 'Get a project type by ID',
+  security: [{ bearerAuth: [] }],
+  request: {
+    params: z.object({
+      id: z.string().describe('Project Type ID')
+    })
+  },
+  responses: {
+    '200': {
+      description: 'Project type details',
+      content: {
+        'application/json': {
+          schema: z.object({
+            data: projectTypeSchema
+          })
+        }
+      }
+    },
+    '401': unauthorizedResponse,
+    '403': forbiddenResponse,
+    '404': notFoundResponse
+  }
+});
+
 registry.registerPath({
   method: 'post',
   path: '/api/v1/project-types',
@@ -418,7 +799,129 @@ registry.registerPath({
   }
 });
 
+registry.registerPath({
+  method: 'patch',
+  path: '/api/v1/project-types/{id}',
+  tags: ['Project Types'],
+  summary: 'Update a project type',
+  security: [{ bearerAuth: [] }],
+  request: {
+    params: z.object({
+      id: z.string().describe('Project Type ID')
+    }),
+    body: {
+      content: {
+        'application/json': {
+          schema: z.object({
+            name: z.string().optional(),
+            description: z.string().optional(),
+            icon: z.string().optional(),
+            color: z.string().optional(),
+            enabled: z.boolean().optional()
+          })
+        }
+      }
+    }
+  },
+  responses: {
+    '200': {
+      description: 'Project type updated successfully',
+      content: {
+        'application/json': {
+          schema: z.object({
+            data: projectTypeSchema
+          })
+        }
+      }
+    },
+    '400': badRequestResponse,
+    '401': unauthorizedResponse,
+    '403': forbiddenResponse,
+    '404': notFoundResponse
+  }
+});
+
+registry.registerPath({
+  method: 'delete',
+  path: '/api/v1/project-types/{id}',
+  tags: ['Project Types'],
+  summary: 'Delete a project type',
+  security: [{ bearerAuth: [] }],
+  request: {
+    params: z.object({
+      id: z.string().describe('Project Type ID')
+    })
+  },
+  responses: {
+    '200': {
+      description: 'Project type deleted successfully',
+      content: {
+        'application/json': {
+          schema: z.object({
+            data: z.object({
+              success: z.boolean()
+            })
+          })
+        }
+      }
+    },
+    '401': unauthorizedResponse,
+    '403': forbiddenResponse,
+    '404': notFoundResponse
+  }
+});
+
 // Cloud Provider endpoints
+registry.registerPath({
+  method: 'get',
+  path: '/api/v1/cloud-providers',
+  tags: ['Cloud Providers'],
+  summary: 'Get all cloud providers',
+  security: [{ bearerAuth: [] }],
+  responses: {
+    '200': {
+      description: 'List of cloud providers',
+      content: {
+        'application/json': {
+          schema: z.object({
+            data: z.array(cloudProviderSchema)
+          })
+        }
+      }
+    },
+    '401': unauthorizedResponse,
+    '403': forbiddenResponse
+  }
+});
+
+registry.registerPath({
+  method: 'get',
+  path: '/api/v1/cloud-providers/{id}',
+  tags: ['Cloud Providers'],
+  summary: 'Get a cloud provider by ID',
+  security: [{ bearerAuth: [] }],
+  request: {
+    params: z.object({
+      id: z.string().describe('Cloud Provider ID')
+    })
+  },
+  responses: {
+    '200': {
+      description: 'Cloud provider details',
+      content: {
+        'application/json': {
+          schema: z.object({
+            data: cloudProviderSchema
+          })
+        }
+      }
+    },
+    '401': unauthorizedResponse,
+    '403': forbiddenResponse,
+    '404': notFoundResponse
+  }
+});
+
 registry.registerPath({
   method: 'post',
   path: '/api/v1/cloud-providers',
@@ -448,6 +951,78 @@ registry.registerPath({
     '400': badRequestResponse,
     '401': unauthorizedResponse,
     '403': forbiddenResponse
+  }
+});
+
+registry.registerPath({
+  method: 'patch',
+  path: '/api/v1/cloud-providers/{id}',
+  tags: ['Cloud Providers'],
+  summary: 'Update a cloud provider',
+  security: [{ bearerAuth: [] }],
+  request: {
+    params: z.object({
+      id: z.string().describe('Cloud Provider ID')
+    }),
+    body: {
+      content: {
+        'application/json': {
+          schema: z.object({
+            name: z.string().optional(),
+            description: z.string().optional(),
+            icon: z.string().optional(),
+            enabled: z.boolean().optional(),
+            requiredCredentials: z.array(z.string()).optional()
+          })
+        }
+      }
+    }
+  },
+  responses: {
+    '200': {
+      description: 'Cloud provider updated successfully',
+      content: {
+        'application/json': {
+          schema: z.object({
+            data: cloudProviderSchema
+          })
+        }
+      }
+    },
+    '400': badRequestResponse,
+    '401': unauthorizedResponse,
+    '403': forbiddenResponse,
+    '404': notFoundResponse
+  }
+});
+
+registry.registerPath({
+  method: 'delete',
+  path: '/api/v1/cloud-providers/{id}',
+  tags: ['Cloud Providers'],
+  summary: 'Delete a cloud provider',
+  security: [{ bearerAuth: [] }],
+  request: {
+    params: z.object({
+      id: z.string().describe('Cloud Provider ID')
+    })
+  },
+  responses: {
+    '200': {
+      description: 'Cloud provider deleted successfully',
+      content: {
+        'application/json': {
+          schema: z.object({
+            data: z.object({
+              success: z.boolean()
+            })
+          })
+        }
+      }
+    },
+    '401': unauthorizedResponse,
+    '403': forbiddenResponse,
+    '404': notFoundResponse
   }
 });
 
