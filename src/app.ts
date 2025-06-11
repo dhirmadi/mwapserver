@@ -4,7 +4,7 @@ import cors from 'cors';
 import rateLimit from 'express-rate-limit';
 import { authenticateJWT } from './middleware/auth.js';
 import { errorHandler } from './middleware/errorHandler.js';
-import { getDocsRouter } from './docs/docs.js';
+import { getDocsRouter } from './docs/index.js';
 import { env } from './config/env.js';
 import { db } from './config/db.js';
 

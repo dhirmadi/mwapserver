@@ -8,7 +8,7 @@ import { authenticateJWT } from './middleware/auth.js';
 import { errorHandler } from './middleware/errorHandler.js';
 import { env } from './config/env.js';
 import { db } from './config/db.js';
-import { getDocsRouter } from './docs/docs.js'; // Import the docs router
+import { getDocsRouter } from './docs/index.js'; // Import the docs router
 
 const app = express();
 

@@ -1,3 +1,3 @@
-import { getDocsRouter } from './docs-simple.js';
+import { getDocsRouter, openApiDocument } from './api-docs.js';
 
-export { getDocsRouter };
+export { getDocsRouter, openApiDocument };

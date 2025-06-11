@@ -1,11 +1,11 @@
 # MWAP API Documentation
 
-This module provides API documentation for the MWAP (Modular Web Application Platform) using Swagger UI and zod-to-openapi.
+This module provides API documentation for the MWAP (Modular Web Application Platform) using a simple, reliable approach with Swagger UI.
 
 ## Features
 
-- Automatically generates OpenAPI documentation from Zod schemas
-- Provides interactive API documentation via Swagger UI
+- Provides comprehensive OpenAPI documentation for all API endpoints
+- Delivers interactive API documentation via Swagger UI when available
 - Secures documentation in production environments
 - Includes authentication, request/response examples, and error handling
 - **Auto-installs missing dependencies** with a user-friendly interface
@@ -18,7 +18,7 @@ No manual installation is required! The module will automatically detect missing
 However, if you prefer to install the dependencies manually:
 
 ```bash
-npm install swagger-ui-express @asteasolutions/zod-to-openapi
+npm install swagger-ui-express
 ```
 
 ## Usage
@@ -38,17 +38,17 @@ app.use('/docs', getDocsRouter());
 
 ## How It Works
 
-The documentation system uses a two-tier approach:
+The documentation system uses a simple, reliable approach:
 
-1. **Simple Mode**: Always works without any external dependencies
-   - Provides basic OpenAPI JSON
-   - Offers dependency installation UI
-   - Handles dependency checking
+1. **Static OpenAPI Document**: A comprehensive, manually maintained OpenAPI document
+   - Covers all API endpoints
+   - Includes schemas, responses, and security definitions
+   - No dependency on external schema generators
 
-2. **Full Mode**: Loaded dynamically when dependencies are available
-   - Complete Swagger UI experience
-   - Comprehensive API documentation
-   - Generated from Zod schemas
+2. **Dynamic UI Loading**: Swagger UI is loaded only if available
+   - Falls back to a simple HTML interface if Swagger UI is not installed
+   - Provides a way to install Swagger UI directly from the interface
+   - Always serves the raw OpenAPI JSON
 
 This approach ensures that the documentation is always accessible, even if the dependencies are not installed.
 
@@ -56,37 +56,32 @@ This approach ensures that the documentation is always accessible, even if the d
 
 The documentation module provides several endpoints:
 
-- **`/docs`**: Main documentation UI (simple or full, depending on dependencies)
+- **`/docs`**: Main documentation UI (Swagger UI if available, or simple HTML)
 - **`/docs/json`**: Raw OpenAPI JSON (always available)
-- **`/docs/check`**: Check dependency status
-- **`/docs/install`**: Install missing dependencies (POST endpoint)
+- **`/docs/install-swagger`**: Install Swagger UI
 
 ## Security
 
-The documentation is only available in non-production environments. In production, the `/docs` endpoint will return a 404 error.
+The documentation is only available in non-production environments by default. In production, you should configure access control as needed.
 
 ## Architecture
 
-The module consists of three main components:
+The module consists of two main components:
 
-1. **docs-simple.ts**: Core module that works without dependencies
-   - Provides dependency checking and installation
-   - Serves basic OpenAPI JSON
-   - Dynamically loads the full documentation when possible
+1. **api-docs.ts**: Single, comprehensive module that:
+   - Provides a static OpenAPI document
+   - Handles dependency checking and installation
+   - Serves Swagger UI when available
+   - Falls back to simple HTML/JSON when needed
 
-2. **docs-full.ts**: Full documentation with Swagger UI
-   - Requires external dependencies
-   - Generates comprehensive OpenAPI documentation from Zod schemas
-   - Provides interactive Swagger UI
-
-3. **index.ts**: Entry point that exports the main router
+2. **index.ts**: Simple entry point that exports the main router
 
 This architecture ensures that the documentation is always available, with graceful degradation when dependencies are missing.
 
 ## Benefits
 
-- **Zero Dependencies**: The core module works without any external dependencies
+- **Simplicity**: Single file approach with no complex dependencies
+- **Reliability**: Works consistently across different environments
 - **Self-Healing**: Automatically installs missing dependencies
-- **Type Safety**: Documentation is generated from the same Zod schemas used for validation
 - **Developer Experience**: Provides an interactive way to explore and test the API
-- **Maintainability**: Documentation is updated automatically when schemas change
+- **Maintainability**: Single source of truth for API documentation
