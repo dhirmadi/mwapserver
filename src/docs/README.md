@@ -42,9 +42,19 @@ app.use('/docs', getDocsRouter());
 // ... register other routes
 ```
 
-### Fallback Mode
+### Fallback Modes
 
-If the `swagger-ui-express` package is not installed, the documentation will still be available as a raw JSON endpoint at `/docs`. This allows you to view the API structure even without the UI component.
+The documentation system has several fallback mechanisms:
+
+1. **Full Swagger UI**: If `swagger-ui-express` is installed, the interactive Swagger UI will be available at `/docs`.
+
+2. **Raw JSON**: The raw OpenAPI specification is always available at `/docs/json`, regardless of whether Swagger UI is installed.
+
+3. **HTML Fallback**: If `swagger-ui-express` is not installed, a simple HTML page will be shown at `/docs` with instructions on how to install the package and a link to the raw JSON.
+
+4. **Loading State**: If `swagger-ui-express` is being loaded asynchronously, a loading message will be displayed until it's ready.
+
+These fallback mechanisms ensure that the API documentation is always accessible in some form, even if the dependencies are not fully installed.
 
 ## Security
 
