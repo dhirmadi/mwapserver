@@ -1,8 +1,22 @@
 import { Router } from 'express';
-import swaggerUi from 'swagger-ui-express';
 import { OpenAPIRegistry, OpenApiGeneratorV3 } from '@asteasolutions/zod-to-openapi';
 import { z } from 'zod';
 import { env } from '../config/env.js';
+
+// Dynamic import for swagger-ui-express to handle cases where it's not installed
+let swaggerUi: any = null;
+try {
+  // This will be properly resolved at runtime if the package is installed
+  swaggerUi = await import('swagger-ui-express');
+} catch (error) {
+  console.warn('swagger-ui-express package not found. API documentation UI will not be available.');
+  console.warn('Run "npm install swagger-ui-express" to enable the Swagger UI.');
+  // Create a minimal mock to prevent errors
+  swaggerUi = {
+    serve: (req: any, res: any, next: any) => next(),
+    setup: () => (req: any, res: any) => res.json({ error: 'Swagger UI not available' })
+  };
+}
 
 // Import schemas
 import { 
@@ -1060,18 +1074,39 @@ export function getDocsRouter(): Router {
   
   // Only enable in non-production environments
   if (env.NODE_ENV !== 'production') {
-    router.use('/', swaggerUi.serve);
-    router.get('/', swaggerUi.setup(openApiDocument, {
-      customCss: '.swagger-ui .topbar { display: none }',
-      customSiteTitle: 'MWAP API Documentation',
-      customfavIcon: '/favicon.ico',
-      swaggerOptions: {
-        persistAuthorization: true,
-        tagsSorter: 'alpha',
-        operationsSorter: 'alpha',
-        docExpansion: 'list'
-      }
-    }));
+    if (swaggerUi) {
+      // If swagger-ui-express is available, use it to serve the UI
+      router.use('/', swaggerUi.serve);
+      router.get('/', swaggerUi.setup(openApiDocument, {
+        customCss: '.swagger-ui .topbar { display: none }',
+        customSiteTitle: 'MWAP API Documentation',
+        customfavIcon: '/favicon.ico',
+        swaggerOptions: {
+          persistAuthorization: true,
+          tagsSorter: 'alpha',
+          operationsSorter: 'alpha',
+          docExpansion: 'list'
+        }
+      }));
+    } else {
+      // If swagger-ui-express is not available, serve the raw OpenAPI JSON
+      router.get('/', (req, res) => {
+        res.setHeader('Content-Type', 'application/json');
+        res.send(openApiDocument);
+      });
+      
+      // Add a message to inform about missing swagger-ui-express
+      router.get('/ui', (req, res) => {
+        res.status(503).json({
+          error: {
+            message: 'Swagger UI is not available. Please install swagger-ui-express package.',
+            code: 'docs/missing-dependency',
+            status: 503,
+            details: 'Run "npm install swagger-ui-express" to enable the Swagger UI.'
+          }
+        });
+      });
+    }
   } else {
     // In production, return a 404 or redirect
     router.use('/', (req, res) => {
