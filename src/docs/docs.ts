@@ -1,10 +1,10 @@
 import { Router } from 'express';
-import { OpenAPIRegistry, OpenApiGeneratorV3 } from '@asteasolutions/zod-to-openapi';
 import { z } from 'zod';
 import { env } from '../config/env.js';
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import { exec } from 'child_process';
 
 // Get the directory name in ESM
 const __filename = fileURLToPath(import.meta.url);

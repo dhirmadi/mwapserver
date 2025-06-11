@@ -8,33 +8,17 @@ This module provides API documentation for the MWAP (Modular Web Application Pla
 - Provides interactive API documentation via Swagger UI
 - Secures documentation in production environments
 - Includes authentication, request/response examples, and error handling
-- Gracefully handles missing dependencies
+- **Auto-installs missing dependencies** with a user-friendly interface
+- Works even when dependencies are not installed
 
 ## Installation
 
-First, install the required dependencies:
+No manual installation is required! The module will automatically detect missing dependencies and provide an installation interface.
+
+However, if you prefer to install the dependencies manually:
 
 ```bash
 npm install swagger-ui-express @asteasolutions/zod-to-openapi
-```
-
-Or add them to your package.json:
-
-```json
-"dependencies": {
-  "swagger-ui-express": "^5.0.0",
-  "@asteasolutions/zod-to-openapi": "^6.0.0"
-}
-```
-
-### ESM Compatibility
-
-This module is designed for ESM-only projects. Make sure you're using a version of swagger-ui-express that supports ESM. The latest versions (4.6.x and above) should work with ESM projects.
-
-If you encounter issues with ESM compatibility, you can try:
-
-```bash
-npm install swagger-ui-express@latest
 ```
 
 ## Usage
@@ -42,7 +26,7 @@ npm install swagger-ui-express@latest
 To add the API documentation to your Express application, add the following line to your `app.ts` file:
 
 ```typescript
-import { getDocsRouter } from './docs/docs.js';
+import { getDocsRouter } from './docs/index.js';
 
 // ... other imports and setup
 
@@ -52,44 +36,57 @@ app.use('/docs', getDocsRouter());
 // ... register other routes
 ```
 
-### Fallback Modes
+## How It Works
 
-The documentation system has several fallback mechanisms:
+The documentation system uses a two-tier approach:
 
-1. **Full Swagger UI**: If `swagger-ui-express` is installed, the interactive Swagger UI will be available at `/docs`.
+1. **Simple Mode**: Always works without any external dependencies
+   - Provides basic OpenAPI JSON
+   - Offers dependency installation UI
+   - Handles dependency checking
 
-2. **Raw JSON**: The raw OpenAPI specification is always available at `/docs/json`, regardless of whether Swagger UI is installed.
+2. **Full Mode**: Loaded dynamically when dependencies are available
+   - Complete Swagger UI experience
+   - Comprehensive API documentation
+   - Generated from Zod schemas
 
-3. **HTML Fallback**: If `swagger-ui-express` is not installed, a simple HTML page will be shown at `/docs` with instructions on how to install the package and a link to the raw JSON.
+This approach ensures that the documentation is always accessible, even if the dependencies are not installed.
 
-4. **Loading State**: If `swagger-ui-express` is being loaded asynchronously, a loading message will be displayed until it's ready.
+## API Endpoints
 
-These fallback mechanisms ensure that the API documentation is always accessible in some form, even if the dependencies are not fully installed.
+The documentation module provides several endpoints:
+
+- **`/docs`**: Main documentation UI (simple or full, depending on dependencies)
+- **`/docs/json`**: Raw OpenAPI JSON (always available)
+- **`/docs/check`**: Check dependency status
+- **`/docs/install`**: Install missing dependencies (POST endpoint)
 
 ## Security
 
 The documentation is only available in non-production environments. In production, the `/docs` endpoint will return a 404 error.
 
-## Customization
+## Architecture
 
-You can customize the documentation by:
+The module consists of three main components:
 
-1. Adding more endpoints to the `docs.ts` file
-2. Modifying the Swagger UI options
-3. Changing the security settings
+1. **docs-simple.ts**: Core module that works without dependencies
+   - Provides dependency checking and installation
+   - Serves basic OpenAPI JSON
+   - Dynamically loads the full documentation when possible
 
-## How It Works
+2. **docs-full.ts**: Full documentation with Swagger UI
+   - Requires external dependencies
+   - Generates comprehensive OpenAPI documentation from Zod schemas
+   - Provides interactive Swagger UI
 
-The documentation is generated using the following process:
+3. **index.ts**: Entry point that exports the main router
 
-1. Zod schemas are registered with the OpenAPI registry
-2. API endpoints are defined with their request/response schemas
-3. The OpenAPI document is generated from the registry
-4. Swagger UI is used to render the documentation
+This architecture ensures that the documentation is always available, with graceful degradation when dependencies are missing.
 
 ## Benefits
 
+- **Zero Dependencies**: The core module works without any external dependencies
+- **Self-Healing**: Automatically installs missing dependencies
 - **Type Safety**: Documentation is generated from the same Zod schemas used for validation
-- **Consistency**: Ensures API documentation matches the actual implementation
 - **Developer Experience**: Provides an interactive way to explore and test the API
 - **Maintainability**: Documentation is updated automatically when schemas change
