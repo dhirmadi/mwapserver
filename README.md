@@ -84,12 +84,29 @@ This project will use **[Vitest](https://vitest.dev/)** for unit and service-lev
 - [API Contract](docs/v3-api.md)
 - [OpenAPI Schema](docs/v3-openAPI-schema.md)
 
+### API Documentation
+
+The project includes interactive API documentation accessible at `/docs` when the server is running. This documentation:
+
+- Provides a comprehensive overview of all API endpoints
+- Includes request/response schemas and authentication requirements
+- Supports interactive testing via Swagger UI (when installed)
+- Is secured behind authentication to prevent information disclosure
+
+To access the API documentation:
+
+1. Start the server: `npm run dev`
+2. Navigate to `http://localhost:3000/docs` (requires authentication)
+3. For a raw OpenAPI specification: `http://localhost:3000/docs/json`
+
+**Security Note**: API documentation is protected by authentication to prevent exposing sensitive system information. This is a security best practice to reduce attack surface and limit information disclosure.
+
 ## Getting Started
 
 1. Clone the repository
 2. Install dependencies: `npm install`
 3. Set up environment variables
-4. Run the server: `npm start`
+4. Run the server: `npm run dev` for development or `npm start` for production
 
 ## Contributing
 

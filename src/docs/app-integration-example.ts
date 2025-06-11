@@ -1,12 +1,14 @@
+// Example of how to integrate the API documentation into app.ts
+
 import express from 'express';
 import helmet from 'helmet';
 import cors from 'cors';
 import rateLimit from 'express-rate-limit';
 import { authenticateJWT } from './middleware/auth.js';
 import { errorHandler } from './middleware/errorHandler.js';
-import { getDocsRouter } from './docs/index.js';
 import { env } from './config/env.js';
 import { db } from './config/db.js';
+import { getDocsRouter } from './docs/index.js'; // Import the docs router
 
 const app = express();
 
@@ -32,12 +34,11 @@ app.get('/health', (req, res) => {
   res.json({ status: 'ok' });
 });
 
-// JWT Middleware - Apply authentication to all routes below this line
-app.use(authenticateJWT());
+// API Documentation (only available in non-production environments)
+app.use('/docs', getDocsRouter()); // Mount the docs router at /docs
 
-// API Documentation - Protected by authentication in production
-// In development, this provides interactive API documentation
-app.use('/docs', getDocsRouter());
+// JWT Middleware
+app.use(authenticateJWT());
 
 // ❗ Do not import tenant routes at the top level
 // Instead expose a function that can register them later
