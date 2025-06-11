@@ -4,14 +4,19 @@ import { z } from 'zod';
 import { env } from '../config/env.js';
 import fs from 'fs';
 import path from 'path';
+import { fileURLToPath } from 'url';
+
+// Get the directory name in ESM
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 /**
  * Helper function to check if a package is installed
  */
 function isPackageInstalled(packageName: string): boolean {
   try {
-    // Check if the package exists in node_modules
-    const nodeModulesPath = path.resolve(process.cwd(), 'node_modules', packageName);
+    // Check if the package exists in node_modules relative to this file
+    const nodeModulesPath = path.resolve(__dirname, '../../node_modules', packageName);
     return fs.existsSync(nodeModulesPath);
   } catch (error) {
     return false;
@@ -24,43 +29,27 @@ let swaggerUi: any = null;
 // Check if swagger-ui-express is installed
 const isSwaggerInstalled = isPackageInstalled('swagger-ui-express');
 
-if (isSwaggerInstalled) {
-  try {
-    // Try to import the module using dynamic import (works in ESM)
-    import('swagger-ui-express')
-      .then(module => {
-        swaggerUi = module.default || module;
-      })
-      .catch(error => {
-        console.warn('Failed to import swagger-ui-express:', error.message);
-      });
-    
-    // For immediate use, also try require (works in CommonJS)
-    try {
-      // @ts-ignore - Dynamic require
-      swaggerUi = require('swagger-ui-express');
-    } catch (requireError) {
-      // If require fails but dynamic import succeeds, that's fine
-    }
-  } catch (error) {
-    console.warn('Error loading swagger-ui-express:', error);
-  }
-}
+// Flag to track if we're still loading the module
+let isLoadingSwaggerUi = false;
 
-// If swagger-ui-express is not available, create a mock implementation
-if (!swaggerUi) {
-  console.warn('swagger-ui-express package not found or could not be loaded.');
+if (isSwaggerInstalled) {
+  isLoadingSwaggerUi = true;
+  
+  // Use dynamic import for ESM
+  import('swagger-ui-express')
+    .then(module => {
+      swaggerUi = module.default || module;
+      isLoadingSwaggerUi = false;
+      console.log('Swagger UI module loaded successfully');
+    })
+    .catch(error => {
+      console.warn('Failed to import swagger-ui-express:', error.message);
+      isLoadingSwaggerUi = false;
+    });
+} else {
+  console.warn('swagger-ui-express package not found.');
   console.warn('API documentation UI will not be available.');
   console.warn('Run "npm install swagger-ui-express" to enable the Swagger UI.');
-  
-  // Create a minimal mock to prevent errors
-  swaggerUi = {
-    serve: (req: any, res: any, next: any) => next(),
-    setup: () => (req: any, res: any) => res.json({ 
-      error: 'Swagger UI not available',
-      message: 'Install swagger-ui-express to enable the UI'
-    })
-  };
 }
 
 // Import schemas
@@ -1125,79 +1114,29 @@ export function getDocsRouter(): Router {
       res.send(openApiDocument);
     });
     
-    // Setup the UI if swagger-ui-express is available
-    if (isSwaggerInstalled) {
-      // Handle the case where swaggerUi might be loaded asynchronously
-      router.get('/', (req, res, next) => {
-        if (swaggerUi && swaggerUi.serve && swaggerUi.setup) {
-          // If swagger-ui-express is fully loaded, use it
-          swaggerUi.serve(req, res, () => {
-            swaggerUi.setup(openApiDocument, {
-              customCss: '.swagger-ui .topbar { display: none }',
-              customSiteTitle: 'MWAP API Documentation',
-              customfavIcon: '/favicon.ico',
-              swaggerOptions: {
-                persistAuthorization: true,
-                tagsSorter: 'alpha',
-                operationsSorter: 'alpha',
-                docExpansion: 'list'
-              }
-            })(req, res, next);
-          });
-        } else {
-          // If swagger-ui-express is not fully loaded yet, show a loading message
-          res.send(`
-            <html>
-              <head>
-                <title>MWAP API Documentation</title>
-                <style>
-                  body { font-family: Arial, sans-serif; margin: 40px; line-height: 1.6; }
-                  h1 { color: #333; }
-                  .loading { background: #f8f9fa; padding: 20px; border-radius: 5px; }
-                  .links { margin-top: 30px; }
-                  a { color: #0366d6; text-decoration: none; margin-right: 20px; }
-                  a:hover { text-decoration: underline; }
-                </style>
-              </head>
-              <body>
-                <h1>MWAP API Documentation</h1>
-                <div class="loading">
-                  <p>Swagger UI is initializing or not fully loaded yet.</p>
-                  <p>If this message persists, the swagger-ui-express package might not be installed correctly.</p>
-                  <p>Run <code>npm install swagger-ui-express</code> to install it.</p>
-                </div>
-                <div class="links">
-                  <a href="/docs/json">View Raw OpenAPI JSON</a>
-                  <a href="javascript:location.reload()">Refresh Page</a>
-                </div>
-              </body>
-            </html>
-          `);
-        }
-      });
-    } else {
-      // If swagger-ui-express is not installed, redirect to the JSON endpoint
-      router.get('/', (req, res) => {
-        res.send(`
+    // Main documentation endpoint
+    router.get('/', async (req, res, next) => {
+      // If swagger-ui-express is installed but still loading
+      if (isSwaggerInstalled && isLoadingSwaggerUi) {
+        return res.send(`
           <html>
             <head>
               <title>MWAP API Documentation</title>
+              <meta http-equiv="refresh" content="2">
               <style>
                 body { font-family: Arial, sans-serif; margin: 40px; line-height: 1.6; }
                 h1 { color: #333; }
-                .message { background: #f8f9fa; padding: 20px; border-radius: 5px; }
+                .loading { background: #f8f9fa; padding: 20px; border-radius: 5px; }
                 .links { margin-top: 30px; }
                 a { color: #0366d6; text-decoration: none; margin-right: 20px; }
                 a:hover { text-decoration: underline; }
-                pre { background: #f1f1f1; padding: 10px; border-radius: 5px; overflow-x: auto; }
               </style>
             </head>
             <body>
               <h1>MWAP API Documentation</h1>
-              <div class="message">
-                <p>Swagger UI is not available because the <code>swagger-ui-express</code> package is not installed.</p>
-                <p>To enable the interactive API documentation, install the required package:</p>
-                <pre>npm install swagger-ui-express</pre>
+              <div class="loading">
+                <p>Loading Swagger UI...</p>
+                <p>This page will automatically refresh in 2 seconds.</p>
               </div>
               <div class="links">
                 <a href="/docs/json">View Raw OpenAPI JSON</a>
@@ -1205,8 +1144,76 @@ export function getDocsRouter(): Router {
             </body>
           </html>
         `);
-      });
-    }
+      }
+      
+      // If swagger-ui-express is loaded and ready
+      if (swaggerUi && swaggerUi.serve && swaggerUi.setup) {
+        // Use middleware array pattern for Express
+        const middlewares = [
+          ...swaggerUi.serve,
+          swaggerUi.setup(openApiDocument, {
+            customCss: '.swagger-ui .topbar { display: none }',
+            customSiteTitle: 'MWAP API Documentation',
+            customfavIcon: '/favicon.ico',
+            swaggerOptions: {
+              persistAuthorization: true,
+              tagsSorter: 'alpha',
+              operationsSorter: 'alpha',
+              docExpansion: 'list'
+            }
+          })
+        ];
+        
+        // Apply all middlewares in sequence
+        let idx = 0;
+        const runMiddleware = () => {
+          if (idx < middlewares.length) {
+            middlewares[idx](req, res, () => {
+              idx++;
+              runMiddleware();
+            });
+          } else {
+            next();
+          }
+        };
+        
+        runMiddleware();
+        return;
+      }
+      
+      // If swagger-ui-express is not installed or failed to load
+      return res.send(`
+        <html>
+          <head>
+            <title>MWAP API Documentation</title>
+            <style>
+              body { font-family: Arial, sans-serif; margin: 40px; line-height: 1.6; }
+              h1 { color: #333; }
+              .message { background: #f8f9fa; padding: 20px; border-radius: 5px; }
+              .links { margin-top: 30px; }
+              a { color: #0366d6; text-decoration: none; margin-right: 20px; }
+              a:hover { text-decoration: underline; }
+              pre { background: #f1f1f1; padding: 10px; border-radius: 5px; overflow-x: auto; }
+              .note { color: #664d03; background-color: #fff3cd; padding: 15px; border-radius: 5px; margin-top: 20px; }
+            </style>
+          </head>
+          <body>
+            <h1>MWAP API Documentation</h1>
+            <div class="message">
+              <p>Swagger UI is not available because the <code>swagger-ui-express</code> package is not installed.</p>
+              <p>To enable the interactive API documentation, install the required package:</p>
+              <pre>npm install swagger-ui-express</pre>
+              <div class="note">
+                <strong>Note:</strong> This is an ESM-only project. Make sure you're using a version of swagger-ui-express that supports ESM.
+              </div>
+            </div>
+            <div class="links">
+              <a href="/docs/json">View Raw OpenAPI JSON</a>
+            </div>
+          </body>
+        </html>
+      `);
+    });
   } else {
     // In production, return a 404 or redirect
     router.use('/', (req, res) => {

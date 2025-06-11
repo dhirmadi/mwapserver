@@ -27,6 +27,16 @@ Or add them to your package.json:
 }
 ```
 
+### ESM Compatibility
+
+This module is designed for ESM-only projects. Make sure you're using a version of swagger-ui-express that supports ESM. The latest versions (4.6.x and above) should work with ESM projects.
+
+If you encounter issues with ESM compatibility, you can try:
+
+```bash
+npm install swagger-ui-express@latest
+```
+
 ## Usage
 
 To add the API documentation to your Express application, add the following line to your `app.ts` file:
