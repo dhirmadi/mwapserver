@@ -1,10 +1,10 @@
-import { ProjectTypesService } from './projectTypes.service';
-import { validateWithSchema } from '../../utils/validate';
-import { getUserFromToken } from '../../utils/auth';
-import { jsonResponse } from '../../utils/response';
-import { ApiError } from '../../utils/errors';
-import { ProjectTypeErrorCodes } from '../../schemas/projectType.schema';
-import { createProjectTypeSchema, projectTypeUpdateSchema } from '../../schemas/projectType.schema';
+import { ProjectTypesService } from './projectTypes.service.js';
+import { validateWithSchema } from '../../utils/validate.js';
+import { getUserFromToken } from '../../utils/auth.js';
+import { jsonResponse } from '../../utils/response.js';
+import { ApiError } from '../../utils/errors.js';
+import { ProjectTypeErrorCodes } from '../../schemas/projectType.schema.js';
+import { createProjectTypeSchema, projectTypeUpdateSchema } from '../../schemas/projectType.schema.js';
 const projectTypesService = new ProjectTypesService();
 export async function getAllProjectTypes(req, res) {
     const projectTypes = await projectTypesService.findAll();

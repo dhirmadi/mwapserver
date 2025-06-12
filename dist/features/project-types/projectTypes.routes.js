@@ -1,7 +1,7 @@
 import { Router } from 'express';
-import { requireSuperAdminRole } from '../../middleware/roles';
-import { wrapAsyncHandler } from '../../utils/response';
-import { getAllProjectTypes, getProjectTypeById, createProjectType, updateProjectType, deleteProjectType } from './projectTypes.controller';
+import { requireSuperAdminRole } from '../../middleware/roles.js';
+import { wrapAsyncHandler } from '../../utils/response.js';
+import { getAllProjectTypes, getProjectTypeById, createProjectType, updateProjectType, deleteProjectType } from './projectTypes.controller.js';
 export function getProjectTypesRouter() {
     const router = Router();
     // All routes require SUPERADMIN role

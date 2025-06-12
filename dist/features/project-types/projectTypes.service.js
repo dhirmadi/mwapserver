@@ -1,9 +1,9 @@
 import { ObjectId } from 'mongodb';
-import { getDB } from '../../config/db';
-import { ApiError } from '../../utils/errors';
-import { logAudit } from '../../utils/logger';
+import { getDB } from '../../config/db.js';
+import { ApiError } from '../../utils/errors.js';
+import { logAudit } from '../../utils/logger.js';
 import { z } from 'zod';
-import { ProjectTypeErrorCodes } from '../../schemas/projectType.schema';
+import { ProjectTypeErrorCodes } from '../../schemas/projectType.schema.js';
 export class ProjectTypesService {
     constructor() {
         this.collection = getDB().collection('projectTypes');
