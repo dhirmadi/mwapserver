@@ -1,7 +1,7 @@
 import { Router, Request, Response, NextFunction } from 'express';
 import { OpenAPIRegistry, OpenApiGeneratorV3 } from '@asteasolutions/zod-to-openapi';
 import { z } from 'zod';
-import { env } from '../config/env.js';
+import { env } from '../config/env';
 import swaggerUi from 'swagger-ui-express';
 
 // Import schemas

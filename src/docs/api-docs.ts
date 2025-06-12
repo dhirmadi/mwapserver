@@ -14,7 +14,7 @@ const execAsync = promisify(exec);
 
 // Define the OpenAPI document
 const openApiDocument = {
-  openapi: '3.0.0',
+  openapi: '3.0.3',
   info: {
     title: 'MWAP API',
     version: '1.0.0',
