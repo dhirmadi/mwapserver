@@ -13,6 +13,9 @@
     "dev": "tsx src/server.ts",
     "heroku-postbuild": "npm run build"
   },
+  "engines": {
+    "node": "20.19.0"
+  },
   "repository": {
     "type": "git",
     "url": "git+https://github.com/dhirmadi/mwapserver.git"
