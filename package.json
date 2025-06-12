@@ -13,8 +13,7 @@
   "scripts": {
     "build": "tsc --noEmitOnError false",
     "start": "node dist/server.js",
-    "dev": "tsx src/server.ts",
-    "heroku-postbuild": "npm run build"
+    "dev": "tsx src/server.ts"
   },
   "repository": {
     "type": "git",

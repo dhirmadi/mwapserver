@@ -1,0 +1,148 @@
+import { ObjectId } from 'mongodb';
+import { getDB } from '../../config/db.js';
+import { ApiError } from '../../utils/errors.js';
+import { logAudit } from '../../utils/logger.js';
+import { CloudProviderIntegrationErrorCodes } from '../../schemas/cloudProviderIntegration.schema.js';
+export class CloudIntegrationsService {
+    constructor() {
+        this.collection = getDB().collection('cloudProviderIntegrations');
+    }
+    async findByTenantId(tenantId) {
+        try {
+            const tenantObjectId = new ObjectId(tenantId);
+            // Verify tenant exists
+            const tenant = await getDB().collection('tenants').findOne({ _id: tenantObjectId });
+            if (!tenant) {
+                throw new ApiError('Tenant not found', 404, CloudProviderIntegrationErrorCodes.TENANT_NOT_FOUND);
+            }
+            return this.collection.find({ tenantId: tenantObjectId }).toArray();
+        }
+        catch (error) {
+            if (error instanceof ApiError) {
+                throw error;
+            }
+            throw new ApiError('Invalid tenant ID', 400, CloudProviderIntegrationErrorCodes.INVALID_INPUT);
+        }
+    }
+    async findById(id, tenantId) {
+        try {
+            const integrationObjectId = new ObjectId(id);
+            const tenantObjectId = new ObjectId(tenantId);
+            const integration = await this.collection.findOne({
+                _id: integrationObjectId,
+                tenantId: tenantObjectId
+            });
+            if (!integration) {
+                throw new ApiError('Cloud provider integration not found', 404, CloudProviderIntegrationErrorCodes.NOT_FOUND);
+            }
+            return integration;
+        }
+        catch (error) {
+            if (error instanceof ApiError) {
+                throw error;
+            }
+            throw new ApiError('Invalid integration ID', 400, CloudProviderIntegrationErrorCodes.INVALID_INPUT);
+        }
+    }
+    async create(tenantId, data, userId) {
+        try {
+            const tenantObjectId = new ObjectId(tenantId);
+            const providerObjectId = new ObjectId(data.providerId);
+            // Verify tenant exists
+            const tenant = await getDB().collection('tenants').findOne({ _id: tenantObjectId });
+            if (!tenant) {
+                throw new ApiError('Tenant not found', 404, CloudProviderIntegrationErrorCodes.TENANT_NOT_FOUND);
+            }
+            // Verify cloud provider exists
+            const provider = await getDB().collection('cloudProviders').findOne({ _id: providerObjectId });
+            if (!provider) {
+                throw new ApiError('Cloud provider not found', 404, CloudProviderIntegrationErrorCodes.PROVIDER_NOT_FOUND);
+            }
+            // Check if integration already exists for this tenant and provider
+            const existingIntegration = await this.collection.findOne({
+                tenantId: tenantObjectId,
+                providerId: providerObjectId
+            });
+            if (existingIntegration) {
+                throw new ApiError('Integration already exists for this tenant and provider', 409, CloudProviderIntegrationErrorCodes.ALREADY_EXISTS);
+            }
+            const now = new Date();
+            const integration = {
+                _id: new ObjectId(),
+                tenantId: tenantObjectId,
+                providerId: providerObjectId,
+                clientId: data.clientId,
+                clientSecret: data.clientSecret, // In production, this should be encrypted
+                redirectUri: data.redirectUri,
+                metadata: data.metadata,
+                createdAt: now,
+                updatedAt: now,
+                createdBy: userId
+            };
+            await this.collection.insertOne(integration);
+            logAudit('cloud-integration.create', userId, integration._id.toString(), {
+                tenantId,
+                providerId: data.providerId
+            });
+            return integration;
+        }
+        catch (error) {
+            if (error instanceof ApiError) {
+                throw error;
+            }
+            throw new ApiError('Failed to create integration', 500, CloudProviderIntegrationErrorCodes.INVALID_INPUT);
+        }
+    }
+    async update(id, tenantId, data, userId) {
+        const integration = await this.findById(id, tenantId);
+        const updates = {
+            ...data,
+            updatedAt: new Date()
+        };
+        const result = await this.collection.findOneAndUpdate({ _id: integration._id }, { $set: updates }, { returnDocument: 'after' });
+        if (!result) {
+            throw new ApiError('Failed to update integration', 500, CloudProviderIntegrationErrorCodes.NOT_FOUND);
+        }
+        logAudit('cloud-integration.update', userId, id, {
+            tenantId,
+            updates: Object.keys(data)
+        });
+        return result;
+    }
+    async delete(id, tenantId, userId) {
+        const integration = await this.findById(id, tenantId);
+        // Check if integration is in use by any projects
+        const projectsUsingIntegration = await getDB().collection('projects').countDocuments({
+            cloudIntegrationId: integration._id
+        });
+        if (projectsUsingIntegration > 0) {
+            throw new ApiError('Integration is in use by existing projects', 409, CloudProviderIntegrationErrorCodes.IN_USE);
+        }
+        await this.collection.deleteOne({ _id: integration._id });
+        logAudit('cloud-integration.delete', userId, id, {
+            tenantId,
+            providerId: integration.providerId.toString()
+        });
+    }
+    // Method to update OAuth tokens after successful authentication
+    async updateTokens(id, tenantId, accessToken, refreshToken, expiresIn, userId) {
+        const integration = await this.findById(id, tenantId);
+        const expiresAt = new Date();
+        expiresAt.setSeconds(expiresAt.getSeconds() + expiresIn);
+        const updates = {
+            accessToken,
+            refreshToken,
+            expiresAt,
+            updatedAt: new Date()
+        };
+        const result = await this.collection.findOneAndUpdate({ _id: integration._id }, { $set: updates }, { returnDocument: 'after' });
+        if (!result) {
+            throw new ApiError('Failed to update integration tokens', 500, CloudProviderIntegrationErrorCodes.NOT_FOUND);
+        }
+        logAudit('cloud-integration.update-tokens', userId, id, {
+            tenantId,
+            expiresAt
+        });
+        return result;
+    }
+}
