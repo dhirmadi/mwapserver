@@ -1,10 +1,10 @@
-import { TenantService } from './tenants.service';
-import { validateWithSchema } from '../../utils/validate';
-import { getUserFromToken } from '../../utils/auth';
-import { jsonResponse } from '../../utils/response';
-import { ApiError } from '../../utils/errors';
-import { ERROR_CODES } from '../../utils/constants';
-import { createTenantSchema, updateTenantSchema } from '../../schemas/tenant.schema';
+import { TenantService } from './tenants.service.js';
+import { validateWithSchema } from '../../utils/validate.js';
+import { getUserFromToken } from '../../utils/auth.js';
+import { jsonResponse } from '../../utils/response.js';
+import { ApiError } from '../../utils/errors.js';
+import { ERROR_CODES } from '../../utils/constants.js';
+import { createTenantSchema, updateTenantSchema } from '../../schemas/tenant.schema.js';
 const tenantService = new TenantService();
 export async function createTenant(req, res) {
     console.log('Creating tenant');
