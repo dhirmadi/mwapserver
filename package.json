@@ -4,6 +4,9 @@
   "description": "## Project Overview",
   "type": "module",
   "main": "dist/server.js",
+  "engines": {
+    "node": "18.x"
+  },
   "directories": {
     "doc": "docs"
   },
