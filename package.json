@@ -4,17 +4,15 @@
   "description": "## Project Overview",
   "type": "module",
   "main": "dist/server.js",
+  "engines": {
+    "node": "20.x"
+  },
   "directories": {
     "doc": "docs"
   },
   "scripts": {
-    "build": "tsc",
     "start": "node dist/server.js",
-    "dev": "tsx src/server.ts",
-    "heroku-postbuild": "npm run build"
-  },
-  "engines": {
-    "node": "20.19.0"
+    "dev": "tsx src/server.ts"
   },
   "repository": {
     "type": "git",

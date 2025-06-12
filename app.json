@@ -1,0 +1,29 @@
+{
+  "name": "mwap-server",
+  "description": "Modular Web Application Platform Server",
+  "repository": "https://github.com/dhirmadi/mwapserver",
+  "keywords": ["node", "express", "typescript", "mongodb"],
+  "env": {
+    "NODE_ENV": {
+      "description": "Environment for the application",
+      "value": "production"
+    },
+    "MONGODB_URI": {
+      "description": "MongoDB connection string",
+      "required": true
+    },
+    "AUTH0_DOMAIN": {
+      "description": "Auth0 domain",
+      "required": true
+    },
+    "AUTH0_AUDIENCE": {
+      "description": "Auth0 API audience",
+      "required": true
+    }
+  },
+  "buildpacks": [
+    {
+      "url": "heroku/nodejs"
+    }
+  ]
+}
