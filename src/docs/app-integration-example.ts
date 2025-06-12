@@ -4,11 +4,11 @@ import express from 'express';
 import helmet from 'helmet';
 import cors from 'cors';
 import rateLimit from 'express-rate-limit';
-import { authenticateJWT } from './middleware/auth.js';
-import { errorHandler } from './middleware/errorHandler.js';
-import { env } from './config/env.js';
-import { db } from './config/db.js';
-import { getDocsRouter } from './docs/index.js'; // Import the docs router
+import { authenticateJWT } from './middleware/auth';
+import { errorHandler } from './middleware/errorHandler';
+import { env } from './config/env';
+import { db } from './config/db';
+import { getDocsRouter } from './docs/index'; // Import the docs router
 
 const app = express();
 

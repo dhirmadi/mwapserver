@@ -1,6 +1,6 @@
 import { Router, Request, Response, NextFunction } from 'express';
 import { z } from 'zod';
-import { env } from '../config/env.js';
+import { env } from '../config/env';
 import swaggerUi from 'swagger-ui-express';
 
 // Create a basic OpenAPI document without using zod-to-openapi

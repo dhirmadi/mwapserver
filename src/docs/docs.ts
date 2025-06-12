@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { z } from 'zod';
-import { env } from '../config/env.js';
+import { env } from '../config/env';
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
