@@ -1,2 +1,2 @@
-import { getDocsRouter, openApiDocument } from './api-docs.js';
+import { getDocsRouter, openApiDocument } from './api-docs';
 export { getDocsRouter, openApiDocument };

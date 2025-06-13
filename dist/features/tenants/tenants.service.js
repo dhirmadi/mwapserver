@@ -1,8 +1,8 @@
 import { ObjectId } from 'mongodb';
-import { getDB } from '../../config/db.js';
-import { ApiError } from '../../utils/errors.js';
-import { ERROR_CODES } from '../../utils/constants.js';
-import { logAudit } from '../../utils/logger.js';
+import { getDB } from '../../config/db';
+import { ApiError } from '../../utils/errors';
+import { ERROR_CODES } from '../../utils/constants';
+import { logAudit } from '../../utils/logger';
 export class TenantService {
     constructor() {
         this.collection = getDB().collection('tenants');

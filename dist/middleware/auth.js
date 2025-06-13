@@ -1,6 +1,6 @@
 import { expressjwt as jwt } from 'express-jwt';
-import { env } from '../config/env.js';
-import { jwksClient } from '../config/auth0.js';
+import { env } from '../config/env';
+import { jwksClient } from '../config/auth0';
 export const authenticateJWT = () => {
     const middleware = jwt({
         secret: async (req) => {
