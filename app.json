@@ -6,7 +6,7 @@
   "env": {
     "NODE_ENV": {
       "description": "Environment for the application",
-      "value": "production"
+      "value": "development"
     },
     "MONGODB_URI": {
       "description": "MongoDB connection string",
@@ -19,11 +19,131 @@
     "AUTH0_AUDIENCE": {
       "description": "Auth0 API audience",
       "required": true
+    },
+    "AUTH0_CLIENT_ID": {
+      "description": "Auth0 client ID",
+      "required": true
+    },
+    "AUTH0_CLIENT_SECRET": {
+      "description": "Auth0 client secret",
+      "required": true
+    },
+    "API_BASE_URL": {
+      "description": "Base URL for the API",
+      "required": true
+    },
+    "CACHE_CHECK_PERIOD": {
+      "description": "Cache check period in seconds",
+      "value": "600"
+    },
+    "CACHE_ENABLED": {
+      "description": "Enable caching",
+      "value": "true"
+    },
+    "CACHE_TTL": {
+      "description": "Cache TTL in seconds",
+      "value": "300"
+    },
+    "CORS_ORIGIN": {
+      "description": "CORS origin",
+      "value": "http://localhost:5173"
+    },
+    "DEBUG": {
+      "description": "Debug settings",
+      "value": "*"
+    },
+    "DROPBOX_CLIENT_ID": {
+      "description": "Dropbox client ID",
+      "required": true
+    },
+    "DROPBOX_CLIENT_SECRET": {
+      "description": "Dropbox client secret",
+      "required": true
+    },
+    "DROPBOX_REDIRECT_URI": {
+      "description": "Dropbox redirect URI",
+      "required": true
+    },
+    "ENABLE_REQUEST_LOGGING": {
+      "description": "Enable request logging",
+      "value": "true"
+    },
+    "GOOGLE_CLIENT_ID": {
+      "description": "Google client ID",
+      "required": true
+    },
+    "GOOGLE_CLIENT_SECRET": {
+      "description": "Google client secret",
+      "required": true
+    },
+    "GOOGLE_REDIRECT_URI": {
+      "description": "Google redirect URI",
+      "required": true
+    },
+    "LOG_LEVEL": {
+      "description": "Log level",
+      "value": "debug"
+    },
+    "METRICS_ENABLED": {
+      "description": "Enable metrics",
+      "value": "true"
+    },
+    "METRICS_INTERVAL": {
+      "description": "Metrics interval in milliseconds",
+      "value": "60000"
+    },
+    "MONGODB_CLIENT_ENCRYPTION_KEY": {
+      "description": "MongoDB client encryption key",
+      "required": true
+    },
+    "MONGODB_CONNECT_TIMEOUT_MS": {
+      "description": "MongoDB connection timeout in milliseconds",
+      "value": "10000"
+    },
+    "MONGODB_ENCRYPTION_KEY_NAME": {
+      "description": "MongoDB encryption key name",
+      "value": "mwap_data_key"
+    },
+    "MONGODB_MAX_POOL_SIZE": {
+      "description": "MongoDB max pool size",
+      "value": "10"
+    },
+    "MONGODB_MIN_POOL_SIZE": {
+      "description": "MongoDB min pool size",
+      "value": "2"
+    },
+    "MONGODB_SOCKET_TIMEOUT_MS": {
+      "description": "MongoDB socket timeout in milliseconds",
+      "value": "45000"
+    },
+    "PORT": {
+      "description": "Port for the application",
+      "value": "3001"
+    },
+    "RATE_LIMITING_ENABLED": {
+      "description": "Enable rate limiting",
+      "value": "true"
+    },
+    "RATE_LIMIT_MAX_REQUESTS": {
+      "description": "Maximum requests for rate limiting",
+      "value": "100"
+    },
+    "RATE_LIMIT_WINDOW_MS": {
+      "description": "Rate limit window in milliseconds",
+      "value": "900000"
     }
   },
   "buildpacks": [
     {
       "url": "heroku/nodejs"
     }
-  ]
+  ],
+  "environments": {
+    "review": {
+      "addons": [],
+      "scripts": {
+        "postdeploy": "npm run seed:dev"
+      }
+    }
+  }
 }
