@@ -82,6 +82,29 @@ export const queryClient = new QueryClient({
 
 API calls are encapsulated in custom hooks organized by domain:
 
+### User Hooks
+
+```tsx
+// src/hooks/useUserRoles.ts
+import { useQuery } from 'react-query';
+import { api } from '../utils/api';
+import { UserRolesResponse } from '../types/user';
+
+export const useUserRoles = () => {
+  return useQuery<UserRolesResponse, Error>(
+    'userRoles',
+    async () => {
+      const response = await api.get('/users/me/roles');
+      return response.data;
+    },
+    {
+      staleTime: 5 * 60 * 1000, // 5 minutes
+      cacheTime: 10 * 60 * 1000, // 10 minutes
+    }
+  );
+};
+```
+
 ### Tenant Hooks
 
 ```tsx

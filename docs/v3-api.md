@@ -14,6 +14,28 @@ This document defines the **canonical API endpoints** of the MWAP backend, based
 
 ---
 
+## 👤 Users
+
+| Endpoint                | Method | Role          | Request Schema | Response Schema         |
+| ----------------------- | ------ | ------------- | -------------- | ----------------------- |
+| `/api/v1/users/me/roles`| GET    | Authenticated | —              | `UserRolesResponseSchema` |
+
+### User Roles Response Schema
+```typescript
+interface UserRolesResponse {
+  userId: string;           // Auth0 user ID
+  isSuperAdmin: boolean;    // Whether the user is a super admin
+  isTenantOwner: boolean;   // Whether the user owns a tenant
+  tenantId: string | null;  // ID of the tenant owned by the user, or null
+  projectRoles: {           // Array of project roles
+    projectId: string;      // Project ID
+    role: 'OWNER' | 'DEPUTY' | 'MEMBER'; // Role in the project
+  }[];
+}
+```
+
+---
+
 ## 🏢 Tenants
 
 | Endpoint              | Method | Role                    | Request Schema                                      | Response Schema |
