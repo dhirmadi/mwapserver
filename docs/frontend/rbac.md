@@ -45,7 +45,7 @@ Project Members have limited access based on their role within a project:
 
 ## Role Management
 
-Roles are managed through the Auth context:
+Roles are managed through the Auth context, which uses the `/api/v1/users/me/roles` endpoint to get a single source of truth for user roles:
 
 ```tsx
 // src/context/AuthContext.tsx
@@ -53,6 +53,7 @@ interface AuthContextType {
   // ...other properties
   isSuperAdmin: boolean;
   isTenantOwner: boolean;
+  tenantId: string | null;
   hasProjectRole: (projectId: string, role: string) => boolean;
 }
 
@@ -61,47 +62,36 @@ export const AuthProvider: React.FC = ({ children }) => {
   
   const [isSuperAdmin, setIsSuperAdmin] = useState(false);
   const [isTenantOwner, setIsTenantOwner] = useState(false);
+  const [tenantId, setTenantId] = useState<string | null>(null);
   const [projectRoles, setProjectRoles] = useState<Record<string, string>>({});
   
   useEffect(() => {
-    const fetchUserData = async () => {
+    const fetchUserRoles = async () => {
       if (isAuthenticated && auth0User) {
         try {
-          // Fetch user data from the API
-          const response = await api.get('/tenants/me');
-          const userData = response.data;
+          // Fetch user roles from the API
+          const response = await api.get('/users/me/roles');
+          const userRoles = response.data;
           
-          // Set tenant owner status
-          setIsTenantOwner(userData.ownerId === auth0User.sub);
+          // Set role states
+          setIsSuperAdmin(userRoles.isSuperAdmin);
+          setIsTenantOwner(userRoles.isTenantOwner);
+          setTenantId(userRoles.tenantId);
           
-          // Check if user is a super admin
-          try {
-            const adminResponse = await api.get('/admin/check');
-            setIsSuperAdmin(adminResponse.data.isSuperAdmin);
-          } catch (error) {
-            setIsSuperAdmin(false);
-          }
-          
-          // Fetch project roles
-          const projectsResponse = await api.get('/projects');
-          const projects = projectsResponse.data;
-          
+          // Convert project roles array to record for easier lookup
           const roles: Record<string, string> = {};
-          projects.forEach((project: any) => {
-            const member = project.members.find((m: any) => m.userId === auth0User.sub);
-            if (member) {
-              roles[project._id] = member.role;
-            }
+          userRoles.projectRoles.forEach((projectRole: any) => {
+            roles[projectRole.projectId] = projectRole.role;
           });
           
           setProjectRoles(roles);
         } catch (error) {
-          console.error('Error fetching user data:', error);
+          console.error('Error fetching user roles:', error);
         }
       }
     };
     
-    fetchUserData();
+    fetchUserRoles();
   }, [isAuthenticated, auth0User]);
   
   const hasProjectRole = (projectId: string, role: string) => {

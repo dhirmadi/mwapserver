@@ -16,6 +16,30 @@ components:
       bearerFormat: JWT
 
   schemas:
+    ProjectRole:
+      type: object
+      properties:
+        projectId: { type: string }
+        role: 
+          type: string
+          enum: [OWNER, DEPUTY, MEMBER]
+      required: [projectId, role]
+    
+    UserRolesResponse:
+      type: object
+      properties:
+        userId: { type: string }
+        isSuperAdmin: { type: boolean }
+        isTenantOwner: { type: boolean }
+        tenantId: 
+          type: string
+          nullable: true
+        projectRoles:
+          type: array
+          items:
+            $ref: '#/components/schemas/ProjectRole'
+      required: [userId, isSuperAdmin, isTenantOwner, projectRoles]
+    
     Tenant:
       type: object
       properties:
@@ -87,6 +111,20 @@ components:
         description: { type: string }
 
 paths:
+  /users/me/roles:
+    get:
+      summary: Get current user's roles
+      description: Returns the authenticated user's roles across the system, including super admin status, tenant ownership, and project roles.
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserRolesResponse'
+
   /tenants:
     post:
       summary: Create tenant
