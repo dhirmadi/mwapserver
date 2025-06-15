@@ -64,6 +64,31 @@ export async function registerRoutes(): Promise<void> {
   app.use('/api/v1/cloud-providers', getCloudProviderRouter());
   app.use('/api/v1/projects', getProjectsRouter());
   app.use('/api/v1/users', getUserRouter());
+  
+  // Import logger
+  const { logInfo } = await import('./utils/logger');
+  
+  // Add a catch-all route for API endpoints to log 404 errors
+  app.use('/api/v1/*', (req, res) => {
+    logInfo('404 Not Found for API endpoint', {
+      method: req.method,
+      path: req.path,
+      originalUrl: req.originalUrl,
+      ip: req.ip,
+      headers: req.headers,
+      params: req.params,
+      query: req.query,
+      body: req.body
+    });
+    
+    res.status(404).json({
+      success: false,
+      error: {
+        code: 'route/not-found',
+        message: `Endpoint not found: ${req.method} ${req.originalUrl}`
+      }
+    });
+  });
 }
 
 app.use(errorHandler);
