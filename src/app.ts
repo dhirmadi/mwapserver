@@ -44,6 +44,9 @@ app.use('/docs', getDocsRouter());
 export async function registerRoutes(): Promise<void> {
   console.log('[MWAP] 🔁 Registering routes...');
   
+  // Import logger
+  const { logInfo } = await import('./utils/logger');
+  
   const { getTenantRouter } = await import('./features/tenants/tenants.routes');
   console.log('[MWAP] ✅ /api/v1/tenants route loaded');
 
@@ -59,35 +62,40 @@ export async function registerRoutes(): Promise<void> {
   const { getUserRouter } = await import('./features/users/user.routes');
   console.log('[MWAP] ✅ /api/v1/users route loaded');
 
+  // Register all API routes
   app.use('/api/v1/tenants', getTenantRouter());
   app.use('/api/v1/project-types', getProjectTypesRouter());
   app.use('/api/v1/cloud-providers', getCloudProviderRouter());
   app.use('/api/v1/projects', getProjectsRouter());
   app.use('/api/v1/users', getUserRouter());
   
-  // Import logger
-  const { logInfo } = await import('./utils/logger');
-  
-  // Add a catch-all route for API endpoints to log 404 errors
-  app.use('/api/v1/:path(*)', (req, res) => {
-    logInfo('404 Not Found for API endpoint', {
-      method: req.method,
-      path: req.path,
-      originalUrl: req.originalUrl,
-      ip: req.ip,
-      headers: req.headers,
-      params: req.params,
-      query: req.query,
-      body: req.body
-    });
+  // Add a 404 handler as the last middleware for /api/v1 routes
+  // This will only be reached if no other routes match
+  app.use((req, res, next) => {
+    // Only handle API routes that start with /api/v1
+    if (req.path.startsWith('/api/v1')) {
+      logInfo('404 Not Found for API endpoint', {
+        method: req.method,
+        path: req.path,
+        originalUrl: req.originalUrl,
+        ip: req.ip,
+        headers: req.headers,
+        params: req.params,
+        query: req.query,
+        body: req.body
+      });
+      
+      return res.status(404).json({
+        success: false,
+        error: {
+          code: 'route/not-found',
+          message: `Endpoint not found: ${req.method} ${req.originalUrl}`
+        }
+      });
+    }
     
-    res.status(404).json({
-      success: false,
-      error: {
-        code: 'route/not-found',
-        message: `Endpoint not found: ${req.method} ${req.originalUrl}`
-      }
-    });
+    // For non-API routes, continue to the next middleware
+    next();
   });
 }
 
