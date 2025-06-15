@@ -12,7 +12,9 @@
   },
   "scripts": {
     "start": "node dist/server.js",
-    "dev": "tsx src/server.ts"
+    "dev": "tsx src/server.ts",
+    "build": "tsc",
+    "heroku-postbuild": "npm run build"
   },
   "repository": {
     "type": "git",
