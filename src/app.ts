@@ -69,7 +69,7 @@ export async function registerRoutes(): Promise<void> {
   const { logInfo } = await import('./utils/logger');
   
   // Add a catch-all route for API endpoints to log 404 errors
-  app.use('/api/v1/*', (req, res) => {
+  app.use('/api/v1/:path(*)', (req, res) => {
     logInfo('404 Not Found for API endpoint', {
       method: req.method,
       path: req.path,
