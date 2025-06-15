@@ -139,4 +139,16 @@ export class TenantService {
     const superadmin = await getDB().collection('superadmins').findOne({ userId });
     return !!superadmin;
   }
+
+  async getAllTenants(options?: { includeArchived?: boolean }): Promise<Tenant[]> {
+    const filter: any = {};
+    
+    // By default, exclude archived tenants unless explicitly requested
+    if (!options?.includeArchived) {
+      filter.archived = { $ne: true };
+    }
+    
+    const tenants = await this.collection.find(filter).sort({ name: 1 }).toArray();
+    return tenants;
+  }
 }

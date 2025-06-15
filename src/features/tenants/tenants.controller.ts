@@ -6,6 +6,7 @@ import { getUserFromToken } from '../../utils/auth';
 import { jsonResponse } from '../../utils/response';
 import { ApiError } from '../../utils/errors';
 import { ERROR_CODES } from '../../utils/constants';
+import { logAudit } from '../../utils/logger';
 import { 
   createTenantSchema, 
   updateTenantSchema, 
@@ -58,4 +59,28 @@ export async function deleteTenant(req: Request, res: Response) {
   const user = getUserFromToken(req);
   await tenantService.deleteTenant(req.params.id, user.sub);
   return jsonResponse(res, 204);
+}
+
+export async function getAllTenants(req: Request, res: Response) {
+  const user = getUserFromToken(req);
+  
+  // Parse query parameters
+  const includeArchived = req.query.includeArchived === 'true';
+  
+  console.log(`[MWAP] Superadmin ${user.sub} is listing all tenants. includeArchived=${includeArchived}`);
+  
+  const tenants = await tenantService.getAllTenants({ includeArchived });
+  
+  // Transform each tenant using the response schema
+  const formattedTenants = tenants.map(tenant => tenantResponseSchema.parse(tenant));
+  
+  console.log(`[MWAP] Returning ${tenants.length} tenants to superadmin ${user.sub}`);
+  
+  // Log the audit event
+  logAudit('tenant.list', user.sub, 'all', {
+    includeArchived,
+    count: tenants.length
+  });
+  
+  return jsonResponse(res, 200, formattedTenants);
 }
