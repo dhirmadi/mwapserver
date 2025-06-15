@@ -71,31 +71,32 @@ export async function registerRoutes(): Promise<void> {
   
   // Add a 404 handler as the last middleware for /api/v1 routes
   // This will only be reached if no other routes match
-  app.use((req, res, next) => {
-    // Only handle API routes that start with /api/v1
-    if (req.path.startsWith('/api/v1')) {
-      logInfo('404 Not Found for API endpoint', {
-        method: req.method,
-        path: req.path,
-        originalUrl: req.originalUrl,
-        ip: req.ip,
-        headers: req.headers,
-        params: req.params,
-        query: req.query,
-        body: req.body
-      });
-      
-      return res.status(404).json({
-        success: false,
-        error: {
-          code: 'route/not-found',
-          message: `Endpoint not found: ${req.method} ${req.originalUrl}`
-        }
-      });
+  app.use('/api/v1', (req, res, next) => {
+    // Check if the response has already been sent
+    if (res.headersSent) {
+      return next();
     }
     
-    // For non-API routes, continue to the next middleware
-    next();
+    // Log the 404 error
+    logInfo('404 Not Found for API endpoint', {
+      method: req.method,
+      path: req.path,
+      originalUrl: req.originalUrl,
+      ip: req.ip,
+      headers: req.headers,
+      params: req.params,
+      query: req.query,
+      body: req.body
+    });
+    
+    // Send 404 response
+    return res.status(404).json({
+      success: false,
+      error: {
+        code: 'route/not-found',
+        message: `Endpoint not found: ${req.method} ${req.originalUrl}`
+      }
+    });
   });
 }
 
