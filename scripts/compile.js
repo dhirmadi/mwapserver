@@ -18,12 +18,13 @@ for (const file of tsFiles) {
     const result = transformSync(source, {
       filename: file,
       presets: [
-        ['@babel/preset-env', { targets: { node: 'current' } }],
+        ['@babel/preset-env', { targets: { node: 'current' }, modules: false }],
         '@babel/preset-typescript'
       ],
-      plugins: [
-        '@babel/plugin-transform-modules-commonjs'
-      ]
+      // Don't transform ES modules to CommonJS
+      // plugins: [
+      //   '@babel/plugin-transform-modules-commonjs'
+      // ]
     });
     
     if (!result || !result.code) {
@@ -40,8 +41,25 @@ for (const file of tsFiles) {
       mkdirSync(dir, { recursive: true });
     }
     
+    // Fix import paths by adding .js extension
+    let code = result.code;
+    code = code.replace(/from\s+['"]([^'"]+)['"]/g, (match, importPath) => {
+      // Skip external modules
+      if (!importPath.startsWith('./') && !importPath.startsWith('../')) {
+        return match;
+      }
+      
+      // Skip imports that already have an extension
+      if (importPath.endsWith('.js') || importPath.endsWith('.json')) {
+        return match;
+      }
+      
+      // Add .js extension
+      return `from '${importPath}.js'`;
+    });
+    
     // Write the JavaScript file
-    writeFileSync(outputPath, result.code);
+    writeFileSync(outputPath, code);
     console.log(`Compiled: ${file} -> ${outputPath}`);
   } catch (error) {
     console.error(`Error processing ${file}:`, error.message);
