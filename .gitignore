@@ -137,3 +137,5 @@ out
 .DS_Store
 tests/apitest.py
 tests/apiquick.py
+
+dist
