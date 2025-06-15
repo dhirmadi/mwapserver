@@ -89,7 +89,7 @@ out
 
 # Nuxt.js build / generate output
 .nuxt
-# dist - commented out to allow Heroku deployment
+dist
 
 # Gatsby files
 .cache/
