@@ -135,7 +135,7 @@ export class TenantService {
     });
   }
 
-  private async isSuperAdmin(userId: string): Promise<boolean> {
+  async isSuperAdmin(userId: string): Promise<boolean> {
     const superadmin = await getDB().collection('superadmins').findOne({ userId });
     return !!superadmin;
   }

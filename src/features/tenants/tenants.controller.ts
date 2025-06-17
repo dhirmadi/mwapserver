@@ -84,3 +84,30 @@ export async function getAllTenants(req: Request, res: Response) {
   
   return jsonResponse(res, 200, formattedTenants);
 }
+
+export async function getTenantById(req: Request, res: Response) {
+  const user = getUserFromToken(req);
+  const tenantId = req.params.id;
+  
+  // Get the tenant by ID
+  const tenant = await tenantService.getTenantById(tenantId);
+  
+  // Check if user is authorized to view this tenant
+  // User must be either the tenant owner or a superadmin
+  const isSuperAdmin = await tenantService.isSuperAdmin(user.sub);
+  const isOwner = tenant.ownerId === user.sub;
+  
+  if (!isOwner && !isSuperAdmin) {
+    throw new ApiError('Not authorized to view tenant', 403, ERROR_CODES.TENANT.NOT_AUTHORIZED);
+  }
+  
+  // Log the audit event
+  logAudit('tenant.get', user.sub, tenantId, {
+    tenantId
+  });
+  
+  // Format the response using the tenant response schema
+  const formattedTenant = tenantResponseSchema.parse(tenant);
+  
+  return jsonResponse(res, 200, formattedTenant);
+}
