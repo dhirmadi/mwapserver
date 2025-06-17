@@ -47,6 +47,9 @@ export function getTenantRouter(): Router {
   // Get current user's tenant
   router.get('/me', wrapAsyncHandler(getTenant));
   
+  // Cloud integrations routes - Must be defined BEFORE the /:id routes to avoid route conflicts
+  router.use('/:tenantId/integrations', getCloudIntegrationsRouter());
+  
   /**
    * @swagger
    * /api/v1/tenants/{id}:
@@ -82,9 +85,6 @@ export function getTenantRouter(): Router {
 
   // Delete tenant (superadmin only)
   router.delete('/:id', wrapAsyncHandler(deleteTenant));
-
-  // Cloud integrations routes
-  router.use('/:tenantId/integrations', getCloudIntegrationsRouter());
 
   return router;
 }
