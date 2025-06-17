@@ -3,7 +3,7 @@ import { createTenant, getTenant, updateTenant, deleteTenant, getAllTenants, get
 import { wrapAsyncHandler } from '../../utils/response.js';
 import { getCloudIntegrationsRouter } from '../cloud-integrations/cloudIntegrations.routes.js';
 import { requireSuperAdminRole, requireTenantOwnerOrSuperAdmin } from '../../middleware/authorization.js';
-import { logger } from '../../utils/logger.js';
+import { logInfo } from '../../utils/logger.js';
 
 export function getTenantRouter(): Router {
   const router = Router();
@@ -11,7 +11,7 @@ export function getTenantRouter(): Router {
   // JWT authentication is already applied globally in app.ts
   // No need to apply it again here
   
-  logger.info('Initializing tenant router with improved authorization model');
+  logInfo('Initializing tenant router with improved authorization model');
 
   // ===== PUBLIC ROUTES (JWT auth only) =====
   

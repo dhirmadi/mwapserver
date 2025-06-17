@@ -8,7 +8,7 @@ import {
   deleteTenantIntegration
 } from './cloudIntegrations.controller.js';
 import { requireTenantOwner } from '../../middleware/authorization.js';
-import { logger } from '../../utils/logger.js';
+import { logInfo } from '../../utils/logger.js';
 
 export function getCloudIntegrationsRouter(): Router {
   const router = Router({ mergeParams: true });
@@ -17,7 +17,7 @@ export function getCloudIntegrationsRouter(): Router {
   // This ensures only the tenant owner can access these endpoints
   router.use(requireTenantOwner('tenantId'));
   
-  logger.info('Cloud integrations router initialized with tenant owner authorization');
+  logInfo('Cloud integrations router initialized with tenant owner authorization');
   
   // GET /api/v1/tenants/:tenantId/integrations
   router.get('/', wrapAsyncHandler(getTenantIntegrations));

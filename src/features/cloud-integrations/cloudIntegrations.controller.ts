@@ -9,7 +9,7 @@ import {
   updateCloudProviderIntegrationSchema, 
   CloudProviderIntegrationErrorCodes 
 } from '../../schemas/cloudProviderIntegration.schema.js';
-import { logger } from '../../utils/logger.js';
+import { logInfo, logError } from '../../utils/logger.js';
 
 const cloudIntegrationsService = new CloudIntegrationsService();
 
@@ -21,11 +21,11 @@ export async function getTenantIntegrations(req: Request, res: Response) {
   const user = getUserFromToken(req);
   const { tenantId } = req.params;
   
-  logger.debug(`Fetching integrations for tenant ${tenantId} by user ${user.sub}`);
+  logInfo(`Fetching integrations for tenant ${tenantId} by user ${user.sub}`);
   
   const integrations = await cloudIntegrationsService.findByTenantId(tenantId);
   
-  logger.debug(`Found ${integrations.length} integrations for tenant ${tenantId}`);
+  logInfo(`Found ${integrations.length} integrations for tenant ${tenantId}`);
   
   return jsonResponse(res, 200, integrations);
 }
@@ -38,11 +38,11 @@ export async function getTenantIntegrationById(req: Request, res: Response) {
   const user = getUserFromToken(req);
   const { tenantId, integrationId } = req.params;
   
-  logger.debug(`Fetching integration ${integrationId} for tenant ${tenantId} by user ${user.sub}`);
+  logInfo(`Fetching integration ${integrationId} for tenant ${tenantId} by user ${user.sub}`);
   
   const integration = await cloudIntegrationsService.findById(integrationId, tenantId);
   
-  logger.debug(`Found integration ${integrationId} for tenant ${tenantId}`);
+  logInfo(`Found integration ${integrationId} for tenant ${tenantId}`);
   
   return jsonResponse(res, 200, integration);
 }
@@ -56,12 +56,12 @@ export async function createTenantIntegration(req: Request, res: Response) {
     const user = getUserFromToken(req);
     const { tenantId } = req.params;
     
-    logger.debug(`Creating new integration for tenant ${tenantId} by user ${user.sub}`);
+    logInfo(`Creating new integration for tenant ${tenantId} by user ${user.sub}`);
     
     const data = validateWithSchema(createCloudProviderIntegrationSchema, req.body);
     const integration = await cloudIntegrationsService.create(tenantId, data, user.sub);
     
-    logger.info(`Created new integration for tenant ${tenantId} with provider ${data.providerId}`);
+    logInfo(`Created new integration for tenant ${tenantId} with provider ${data.providerId}`);
     
     // Remove sensitive data from response
     const response = {
@@ -74,10 +74,10 @@ export async function createTenantIntegration(req: Request, res: Response) {
     return jsonResponse(res, 201, response);
   } catch (error) {
     if (error instanceof Error && error.name === 'ValidationError') {
-      logger.warn(`Validation error when creating integration: ${error.message}`);
+      logInfo(`Validation error when creating integration: ${error.message}`);
       throw new ApiError('Invalid input', 400, CloudProviderIntegrationErrorCodes.INVALID_INPUT);
     }
-    logger.error(`Error creating integration: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    logError(`Error creating integration: ${error instanceof Error ? error.message : 'Unknown error'}`);
     throw error;
   }
 }
@@ -91,12 +91,12 @@ export async function updateTenantIntegration(req: Request, res: Response) {
     const user = getUserFromToken(req);
     const { tenantId, integrationId } = req.params;
     
-    logger.debug(`Updating integration ${integrationId} for tenant ${tenantId} by user ${user.sub}`);
+    logInfo(`Updating integration ${integrationId} for tenant ${tenantId} by user ${user.sub}`);
     
     const data = validateWithSchema(updateCloudProviderIntegrationSchema, req.body);
     const integration = await cloudIntegrationsService.update(integrationId, tenantId, data, user.sub);
     
-    logger.info(`Updated integration ${integrationId} for tenant ${tenantId}`);
+    logInfo(`Updated integration ${integrationId} for tenant ${tenantId}`);
     
     // Remove sensitive data from response
     const response = {
@@ -109,10 +109,10 @@ export async function updateTenantIntegration(req: Request, res: Response) {
     return jsonResponse(res, 200, response);
   } catch (error) {
     if (error instanceof Error && error.name === 'ValidationError') {
-      logger.warn(`Validation error when updating integration: ${error.message}`);
+      logInfo(`Validation error when updating integration: ${error.message}`);
       throw new ApiError('Invalid input', 400, CloudProviderIntegrationErrorCodes.INVALID_INPUT);
     }
-    logger.error(`Error updating integration: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    logError(`Error updating integration: ${error instanceof Error ? error.message : 'Unknown error'}`);
     throw error;
   }
 }
@@ -125,11 +125,11 @@ export async function deleteTenantIntegration(req: Request, res: Response) {
   const user = getUserFromToken(req);
   const { tenantId, integrationId } = req.params;
   
-  logger.debug(`Deleting integration ${integrationId} for tenant ${tenantId} by user ${user.sub}`);
+  logInfo(`Deleting integration ${integrationId} for tenant ${tenantId} by user ${user.sub}`);
   
   await cloudIntegrationsService.delete(integrationId, tenantId, user.sub);
   
-  logger.info(`Deleted integration ${integrationId} for tenant ${tenantId}`);
+  logInfo(`Deleted integration ${integrationId} for tenant ${tenantId}`);
   
   return jsonResponse(res, 204);
 }
