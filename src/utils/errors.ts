@@ -28,8 +28,8 @@ export class NotFoundError extends ApiError {
 }
 
 export class PermissionError extends ApiError {
-  constructor(message: string) {
-    super(message, 403, ERROR_CODES.AUTH.INSUFFICIENT_PERMISSIONS);
+  constructor(message: string, code: string = ERROR_CODES.AUTH.INSUFFICIENT_PERMISSIONS) {
+    super(message, 403, code);
   }
 }
 

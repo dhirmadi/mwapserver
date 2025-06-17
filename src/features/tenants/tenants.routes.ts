@@ -2,14 +2,27 @@ import { Router } from 'express';
 import { createTenant, getTenant, updateTenant, deleteTenant, getAllTenants, getTenantById } from './tenants.controller.js';
 import { wrapAsyncHandler } from '../../utils/response.js';
 import { getCloudIntegrationsRouter } from '../cloud-integrations/cloudIntegrations.routes.js';
-import { requireSuperAdminRole } from '../../middleware/roles.js';
+import { requireSuperAdminRole, requireTenantOwnerOrSuperAdmin } from '../../middleware/authorization.js';
+import { logger } from '../../utils/logger.js';
 
 export function getTenantRouter(): Router {
   const router = Router();
 
   // JWT authentication is already applied globally in app.ts
   // No need to apply it again here
+  
+  logger.info('Initializing tenant router with improved authorization model');
 
+  // ===== PUBLIC ROUTES (JWT auth only) =====
+  
+  // Get current user's tenant
+  router.get('/me', wrapAsyncHandler(getTenant));
+  
+  // Create tenant (any authenticated user can create a tenant)
+  router.post('/', wrapAsyncHandler(createTenant));
+
+  // ===== SUPERADMIN-ONLY ROUTES =====
+  
   /**
    * @swagger
    * /api/v1/tenants:
@@ -40,22 +53,24 @@ export function getTenantRouter(): Router {
    *         description: Forbidden - User is not a superadmin
    */
   router.get('/', requireSuperAdminRole(), wrapAsyncHandler(getAllTenants));
-
-  // Create tenant
-  router.post('/', wrapAsyncHandler(createTenant));
-
-  // Get current user's tenant
-  router.get('/me', wrapAsyncHandler(getTenant));
+  
+  // Delete tenant (superadmin only)
+  router.delete('/:id', requireSuperAdminRole(), wrapAsyncHandler(deleteTenant));
+  
+  // ===== TENANT-SPECIFIC ROUTES =====
   
   // Cloud integrations routes - Must be defined BEFORE the /:id routes to avoid route conflicts
+  // These routes are protected by the requireTenantOwner middleware in the cloud integrations router
   router.use('/:tenantId/integrations', getCloudIntegrationsRouter());
+  
+  // ===== TENANT OWNER OR SUPERADMIN ROUTES =====
   
   /**
    * @swagger
    * /api/v1/tenants/{id}:
    *   get:
    *     summary: Get tenant by ID
-   *     description: Retrieves a specific tenant by its ID.
+   *     description: Retrieves a specific tenant by its ID. Only accessible to the tenant owner or superadmins.
    *     tags: [Tenants]
    *     security:
    *       - bearerAuth: []
@@ -75,16 +90,15 @@ export function getTenantRouter(): Router {
    *               $ref: '#/components/schemas/TenantResponse'
    *       401:
    *         description: Unauthorized - JWT token is missing or invalid
+   *       403:
+   *         description: Forbidden - User is not the tenant owner or a superadmin
    *       404:
    *         description: Tenant not found
    */
-  router.get('/:id', wrapAsyncHandler(getTenantById));
+  router.get('/:id', requireTenantOwnerOrSuperAdmin('id'), wrapAsyncHandler(getTenantById));
 
-  // Update tenant
-  router.patch('/:id', wrapAsyncHandler(updateTenant));
-
-  // Delete tenant (superadmin only)
-  router.delete('/:id', wrapAsyncHandler(deleteTenant));
+  // Update tenant (tenant owner or superadmin)
+  router.patch('/:id', requireTenantOwnerOrSuperAdmin('id'), wrapAsyncHandler(updateTenant));
 
   return router;
 }
