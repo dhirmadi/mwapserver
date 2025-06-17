@@ -13,16 +13,19 @@ import { logInfo } from '../../utils/logger.js';
 export function getCloudProviderRouter(): Router {
   const router = Router();
 
-  // All routes require SUPERADMIN role
-  router.use(requireSuperAdminRole());
+  // Public GET endpoints - accessible to all authenticated users (including tenant owners)
+  logInfo('Cloud providers GET endpoints initialized with standard JWT authentication');
   
-  logInfo('Cloud providers router initialized with superadmin authorization');
-
   // GET /api/v1/cloud-providers
   router.get('/', wrapAsyncHandler(getAllCloudProviders));
 
   // GET /api/v1/cloud-providers/:id
   router.get('/:id', wrapAsyncHandler(getCloudProviderById));
+  
+  // All other routes require SUPERADMIN role
+  router.use(requireSuperAdminRole());
+  
+  logInfo('Cloud providers modification endpoints initialized with superadmin authorization');
 
   // POST /api/v1/cloud-providers
   router.post('/', wrapAsyncHandler(createCloudProvider));

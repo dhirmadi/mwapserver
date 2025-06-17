@@ -4,6 +4,7 @@ import { validateWithSchema } from '../../utils/validate.js';
 import { getUserFromToken } from '../../utils/auth.js';
 import { jsonResponse } from '../../utils/response.js';
 import { ApiError } from '../../utils/errors.js';
+import { logInfo, logError } from '../../utils/logger.js';
 import { 
   createCloudProviderSchema, 
   updateCloudProviderSchema, 
@@ -13,12 +14,24 @@ import {
 const cloudProviderService = new CloudProviderService();
 
 export async function getAllCloudProviders(req: Request, res: Response) {
+  const user = getUserFromToken(req);
+  logInfo(`User ${user.sub} is fetching all cloud providers`);
+  
   const cloudProviders = await cloudProviderService.findAll();
+  
+  logInfo(`Returning ${cloudProviders.length} cloud providers to user ${user.sub}`);
   return jsonResponse(res, 200, cloudProviders);
 }
 
 export async function getCloudProviderById(req: Request, res: Response) {
-  const cloudProvider = await cloudProviderService.findById(req.params.id);
+  const user = getUserFromToken(req);
+  const providerId = req.params.id;
+  
+  logInfo(`User ${user.sub} is fetching cloud provider ${providerId}`);
+  
+  const cloudProvider = await cloudProviderService.findById(providerId);
+  
+  logInfo(`Returning cloud provider ${providerId} to user ${user.sub}`);
   return jsonResponse(res, 200, cloudProvider);
 }
 
