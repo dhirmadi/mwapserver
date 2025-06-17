@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { createTenant, getTenant, updateTenant, deleteTenant, getAllTenants } from './tenants.controller.js';
+import { createTenant, getTenant, updateTenant, deleteTenant, getAllTenants, getTenantById } from './tenants.controller.js';
 import { wrapAsyncHandler } from '../../utils/response.js';
 import { getCloudIntegrationsRouter } from '../cloud-integrations/cloudIntegrations.routes.js';
 import { requireSuperAdminRole } from '../../middleware/roles.js';
@@ -46,6 +46,36 @@ export function getTenantRouter(): Router {
 
   // Get current user's tenant
   router.get('/me', wrapAsyncHandler(getTenant));
+  
+  /**
+   * @swagger
+   * /api/v1/tenants/{id}:
+   *   get:
+   *     summary: Get tenant by ID
+   *     description: Retrieves a specific tenant by its ID.
+   *     tags: [Tenants]
+   *     security:
+   *       - bearerAuth: []
+   *     parameters:
+   *       - in: path
+   *         name: id
+   *         required: true
+   *         schema:
+   *           type: string
+   *         description: The tenant ID
+   *     responses:
+   *       200:
+   *         description: Tenant details
+   *         content:
+   *           application/json:
+   *             schema:
+   *               $ref: '#/components/schemas/TenantResponse'
+   *       401:
+   *         description: Unauthorized - JWT token is missing or invalid
+   *       404:
+   *         description: Tenant not found
+   */
+  router.get('/:id', wrapAsyncHandler(getTenantById));
 
   // Update tenant
   router.patch('/:id', wrapAsyncHandler(updateTenant));
