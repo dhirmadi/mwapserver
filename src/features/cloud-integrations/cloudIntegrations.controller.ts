@@ -56,53 +56,26 @@ export async function createTenantIntegration(req: Request, res: Response) {
     const user = getUserFromToken(req);
     const { tenantId } = req.params;
     
-    // DEBUG: Log the full request body and headers
-    console.log('DEBUG - Request Body:', JSON.stringify(req.body, null, 2));
-    console.log('DEBUG - Request Headers:', JSON.stringify(req.headers, null, 2));
-    console.log('DEBUG - Request Params:', JSON.stringify(req.params, null, 2));
-    console.log('DEBUG - Request Query:', JSON.stringify(req.query, null, 2));
-    
     logInfo(`Creating new integration for tenant ${tenantId} by user ${user.sub}`);
     
-    try {
-      // DEBUG: Log the schema we're validating against
-      console.log('DEBUG - Schema:', JSON.stringify(createCloudProviderIntegrationSchema, null, 2));
-      
-      const data = validateWithSchema(createCloudProviderIntegrationSchema, req.body);
-      
-      // DEBUG: Log the validated data
-      console.log('DEBUG - Validated Data:', JSON.stringify(data, null, 2));
-      
-      const integration = await cloudIntegrationsService.create(tenantId, data, user.sub);
-      
-      logInfo(`Created new integration for tenant ${tenantId} with provider ${data.providerId}`);
-      
-      // Remove sensitive data from response
-      const response = {
-        ...integration,
-        accessToken: integration.accessToken ? '[REDACTED]' : undefined,
-        refreshToken: integration.refreshToken ? '[REDACTED]' : undefined
-      };
-      
-      return jsonResponse(res, 201, response);
-    } catch (validationError) {
-      // DEBUG: Log detailed validation error
-      console.log('DEBUG - Validation Error:', validationError);
-      if (validationError instanceof Error) {
-        console.log('DEBUG - Validation Error Message:', validationError.message);
-        console.log('DEBUG - Validation Error Stack:', validationError.stack);
-      }
-      throw validationError;
-    }
+    const data = validateWithSchema(createCloudProviderIntegrationSchema, req.body);
+    const integration = await cloudIntegrationsService.create(tenantId, data, user.sub);
+    
+    logInfo(`Created new integration for tenant ${tenantId} with provider ${data.providerId}`);
+    
+    // Remove sensitive data from response
+    const response = {
+      ...integration,
+      accessToken: integration.accessToken ? '[REDACTED]' : undefined,
+      refreshToken: integration.refreshToken ? '[REDACTED]' : undefined
+    };
+    
+    return jsonResponse(res, 201, response);
   } catch (error) {
     if (error instanceof Error && error.name === 'ValidationError') {
       logInfo(`Validation error when creating integration: ${error.message}`);
-      // DEBUG: Log the validation error details
-      console.log('DEBUG - Validation Error Details:', error);
       throw new ApiError('Invalid input', 400, CloudProviderIntegrationErrorCodes.INVALID_INPUT);
     }
-    // DEBUG: Log the full error
-    console.log('DEBUG - Error Object:', error);
     logError(`Error creating integration: ${error instanceof Error ? error.message : 'Unknown error'}`);
     throw error;
   }
