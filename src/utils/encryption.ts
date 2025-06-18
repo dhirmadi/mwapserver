@@ -4,6 +4,17 @@ import { logError } from './logger.js';
 // Encryption key should be stored in environment variables
 // For development, we'll use a fixed key, but in production this should be a secure environment variable
 const ENCRYPTION_KEY = process.env.ENCRYPTION_KEY || 'a-very-secure-32-byte-encryption-key';
+// Ensure the key is exactly 32 bytes (256 bits) for AES-256
+const normalizedKey = (): Buffer => {
+  const key = Buffer.from(ENCRYPTION_KEY);
+  if (key.length === 32) return key;
+  
+  // If key is too short, pad it; if too long, truncate it
+  const result = Buffer.alloc(32);
+  key.copy(result, 0, 0, Math.min(key.length, 32));
+  return result;
+};
+
 const ALGORITHM = 'aes-256-gcm';
 const IV_LENGTH = 16; // For AES, this is always 16 bytes
 const AUTH_TAG_LENGTH = 16; // For GCM mode
@@ -18,18 +29,21 @@ export function encrypt(text: string): string {
   try {
     if (!text) return '';
     
+    // Add a random salt to prevent rainbow table attacks
+    const salt = crypto.randomBytes(16).toString('hex');
+    
     // Generate a random initialization vector
     const iv = crypto.randomBytes(IV_LENGTH);
     
-    // Create cipher
+    // Create cipher with normalized key
     const cipher = crypto.createCipheriv(
       ALGORITHM, 
-      Buffer.from(ENCRYPTION_KEY), 
+      normalizedKey(), 
       iv
     );
     
-    // Encrypt the text
-    let encrypted = cipher.update(text, 'utf8', 'base64');
+    // Encrypt the text with salt prepended
+    let encrypted = cipher.update(salt + text, 'utf8', 'base64');
     encrypted += cipher.final('base64');
     
     // Get the authentication tag
@@ -64,10 +78,10 @@ export function decrypt(encryptedText: string): string {
     const authTag = Buffer.from(parts[1], 'base64');
     const encryptedData = parts[2];
     
-    // Create decipher
+    // Create decipher with normalized key
     const decipher = crypto.createDecipheriv(
       ALGORITHM, 
-      Buffer.from(ENCRYPTION_KEY), 
+      normalizedKey(), 
       iv
     );
     
@@ -77,6 +91,9 @@ export function decrypt(encryptedText: string): string {
     // Decrypt the data
     let decrypted = decipher.update(encryptedData, 'base64', 'utf8');
     decrypted += decipher.final('utf8');
+    
+    // Remove the salt (first 32 characters)
+    decrypted = decrypted.substring(32);
     
     return decrypted;
   } catch (error) {
