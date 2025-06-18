@@ -12,12 +12,12 @@ export const cloudProviderIntegrationSchema = z.object({
   _id: objectIdSchema,
   tenantId: objectIdSchema,
   providerId: objectIdSchema,
-  clientId: z.string().min(1),
-  clientSecret: z.string().min(1),
-  redirectUri: z.string().url(),
   accessToken: z.string().optional(),
   refreshToken: z.string().optional(),
-  expiresAt: z.date().optional(),
+  tokenExpiresAt: z.date().optional(),
+  scopesGranted: z.array(z.string()).optional(),
+  status: z.enum(['active', 'expired', 'revoked', 'error']).default('active'),
+  connectedAt: z.date().optional(),
   metadata: z.record(z.unknown()).optional(),
   createdAt: z.date(),
   updatedAt: z.date(),
@@ -25,16 +25,10 @@ export const cloudProviderIntegrationSchema = z.object({
 });
 
 // Schema for creating a new cloud provider integration
-export const createCloudProviderIntegrationSchema = cloudProviderIntegrationSchema
-  .omit({ 
-    _id: true, 
-    createdAt: true, 
-    updatedAt: true, 
-    createdBy: true,
-    accessToken: true,
-    refreshToken: true,
-    expiresAt: true
-  });
+export const createCloudProviderIntegrationSchema = z.object({
+  providerId: z.string().min(1),
+  metadata: z.record(z.unknown()).optional()
+});
 
 // Schema for updating cloud provider integration (partial)
 export const updateCloudProviderIntegrationSchema = cloudProviderIntegrationSchema
@@ -43,6 +37,9 @@ export const updateCloudProviderIntegrationSchema = cloudProviderIntegrationSche
     _id: true, 
     tenantId: true, 
     providerId: true, 
+    accessToken: true,
+    refreshToken: true,
+    tokenExpiresAt: true,
     createdAt: true, 
     updatedAt: true, 
     createdBy: true 
@@ -53,10 +50,18 @@ export const cloudProviderIntegrationResponseSchema = cloudProviderIntegrationSc
   .extend({
     _id: z.string(),
     tenantId: z.string(),
-    providerId: z.string()
+    providerId: z.string(),
+    provider: z.object({
+      name: z.string(),
+      slug: z.string(),
+      metadata: z.object({
+        icon: z.string().optional(),
+        color: z.string().optional(),
+        description: z.string().optional()
+      }).optional()
+    }).optional()
   })
   .omit({ 
-    clientSecret: true,
     accessToken: true,
     refreshToken: true
   });

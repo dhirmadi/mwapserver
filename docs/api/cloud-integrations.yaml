@@ -1,0 +1,387 @@
+openapi: 3.0.0
+info:
+  title: MWAP Cloud Integrations API
+  version: 1.0.0
+  description: API for managing tenant-specific cloud provider integrations
+
+paths:
+  /api/v1/tenants/{tenantId}/cloud-integrations:
+    get:
+      summary: List all cloud integrations for a tenant
+      description: Returns a list of all cloud integrations for a specific tenant
+      tags:
+        - Cloud Integrations
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: tenantId
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Tenant ID
+      responses:
+        '200':
+          description: A list of cloud integrations
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/CloudIntegrationResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          description: Tenant not found
+        '500':
+          $ref: '#/components/responses/ServerError'
+    
+    post:
+      summary: Create a new cloud integration
+      description: Creates a new cloud integration for a specific tenant
+      tags:
+        - Cloud Integrations
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: tenantId
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Tenant ID
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateCloudIntegrationRequest'
+      responses:
+        '201':
+          description: Cloud integration created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CloudIntegrationResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          description: Tenant or cloud provider not found
+        '409':
+          description: Integration already exists for this tenant and provider
+        '500':
+          $ref: '#/components/responses/ServerError'
+
+  /api/v1/tenants/{tenantId}/cloud-integrations/{id}:
+    get:
+      summary: Get cloud integration by ID
+      description: Returns a specific cloud integration by ID
+      tags:
+        - Cloud Integrations
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: tenantId
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Tenant ID
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Cloud integration ID
+      responses:
+        '200':
+          description: Cloud integration details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CloudIntegrationResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          description: Tenant or cloud integration not found
+        '500':
+          $ref: '#/components/responses/ServerError'
+    
+    patch:
+      summary: Update cloud integration
+      description: Updates an existing cloud integration
+      tags:
+        - Cloud Integrations
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: tenantId
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Tenant ID
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Cloud integration ID
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateCloudIntegrationRequest'
+      responses:
+        '200':
+          description: Cloud integration updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CloudIntegrationResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          description: Tenant or cloud integration not found
+        '500':
+          $ref: '#/components/responses/ServerError'
+    
+    delete:
+      summary: Delete cloud integration
+      description: Deletes a cloud integration
+      tags:
+        - Cloud Integrations
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: tenantId
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Tenant ID
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Cloud integration ID
+      responses:
+        '204':
+          description: Cloud integration deleted successfully
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          description: Tenant or cloud integration not found
+        '409':
+          description: Cloud integration is in use by existing projects
+        '500':
+          $ref: '#/components/responses/ServerError'
+
+  /api/v1/tenants/{tenantId}/cloud-integrations/{id}/oauth/callback:
+    get:
+      summary: OAuth callback endpoint
+      description: Handles OAuth callback and updates integration tokens
+      tags:
+        - Cloud Integrations
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: tenantId
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Tenant ID
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Cloud integration ID
+        - name: code
+          in: query
+          required: true
+          schema:
+            type: string
+          description: OAuth authorization code
+        - name: state
+          in: query
+          required: true
+          schema:
+            type: string
+          description: OAuth state parameter for verification
+      responses:
+        '200':
+          description: OAuth flow completed successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CloudIntegrationResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          description: Tenant or cloud integration not found
+        '500':
+          $ref: '#/components/responses/ServerError'
+
+components:
+  schemas:
+    CloudIntegrationResponse:
+      type: object
+      properties:
+        _id:
+          type: string
+          description: Unique identifier
+        tenantId:
+          type: string
+          description: Tenant ID
+        providerId:
+          type: string
+          description: Cloud provider ID
+        status:
+          type: string
+          enum: [active, expired, revoked, error]
+          description: Current status of the integration
+        scopesGranted:
+          type: array
+          items:
+            type: string
+          description: OAuth scopes that were granted
+        tokenExpiresAt:
+          type: string
+          format: date-time
+          description: When the access token expires
+        connectedAt:
+          type: string
+          format: date-time
+          description: When the integration was last connected
+        metadata:
+          type: object
+          description: Additional metadata
+        provider:
+          type: object
+          properties:
+            name:
+              type: string
+              description: Provider name
+            slug:
+              type: string
+              description: Provider slug
+            metadata:
+              type: object
+              properties:
+                icon:
+                  type: string
+                  description: Icon identifier
+                color:
+                  type: string
+                  description: Brand color (hex)
+                description:
+                  type: string
+                  description: Short description
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+      required:
+        - _id
+        - tenantId
+        - providerId
+        - status
+    
+    CreateCloudIntegrationRequest:
+      type: object
+      properties:
+        providerId:
+          type: string
+          description: Cloud provider ID
+        metadata:
+          type: object
+          description: Additional metadata
+      required:
+        - providerId
+    
+    UpdateCloudIntegrationRequest:
+      type: object
+      properties:
+        status:
+          type: string
+          enum: [active, expired, revoked, error]
+          description: Current status of the integration
+        metadata:
+          type: object
+          description: Additional metadata
+  
+  responses:
+    BadRequest:
+      description: Bad request - invalid input
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+    
+    Unauthorized:
+      description: Unauthorized - authentication required
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+    
+    Forbidden:
+      description: Forbidden - insufficient permissions
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+    
+    ServerError:
+      description: Internal server error
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+  
+  schemas:
+    ErrorResponse:
+      type: object
+      properties:
+        error:
+          type: string
+          description: Error message
+        code:
+          type: string
+          description: Error code
+        status:
+          type: integer
+          description: HTTP status code
+      required:
+        - error
+        - status
+  
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT

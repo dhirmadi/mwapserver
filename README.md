@@ -17,7 +17,7 @@ MWAP (Modular Web Application Platform) is a fullstack, secure, scalable SaaS fr
 - **Zero Trust Model**: Strict role-based access control
 - **JWT Authentication** with RS256 and JWKS endpoint validation
 - **Multi-Factor Authentication** via Auth0
-- **Field-Level Encryption** in MongoDB
+- **Field-Level Encryption** for sensitive data in MongoDB
 - **Rate Limiting** on all APIs
 - **Secure Headers** with Helmet
 
@@ -29,7 +29,8 @@ The server is organized around core domain entities:
 - `Tenant`: User workspace and logical isolation
 - `Project`: Application instance with fixed configuration
 - `ProjectType`: Defines application behavior
-- `CloudProvider`: Supported cloud storage integrations
+- `CloudProvider`: Supported cloud storage integrations (OAuth-based)
+- `CloudProviderIntegration`: Tenant-specific cloud provider connections
 
 ### Folder Structure
 
@@ -47,7 +48,7 @@ The server is organized around core domain entities:
 
 - Multi-tenant architecture
 - Dynamic project type configuration
-- Cloud provider integrations
+- OAuth-based cloud provider integrations with encrypted secrets
 - Microservice-friendly design
 - Comprehensive audit logging
 
@@ -56,7 +57,8 @@ The server is organized around core domain entities:
 Full API specification available in `/docs/v3-api.md`. Key endpoints include:
 - `/api/v1/tenants`: Tenant management
 - `/api/v1/projects`: Project CRUD operations
-- `/api/v1/cloud-providers`: Cloud integration management
+- `/api/v1/cloud-providers`: Cloud provider management (system-wide)
+- `/api/v1/tenants/{tenantId}/cloud-integrations`: Tenant-specific cloud integrations
 
 ## 🧪 Testing (Planned)
 

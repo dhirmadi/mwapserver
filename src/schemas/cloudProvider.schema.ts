@@ -6,10 +6,18 @@ export const cloudProviderSchema = z.object({
   _id: z.instanceof(ObjectId),
   name: z.string().min(3).max(50),
   slug: z.string().min(2).max(20).regex(/^[a-z0-9-]+$/),
-  scopes: z.array(z.string()),
   authUrl: z.string().url(),
   tokenUrl: z.string().url(),
-  metadata: z.record(z.unknown()).optional(),
+  clientId: z.string().min(1),
+  clientSecret: z.string().min(1),
+  scopes: z.array(z.string()),
+  grantType: z.string().default("authorization_code"),
+  tokenMethod: z.string().default("POST"),
+  metadata: z.object({
+    icon: z.string().optional(),
+    color: z.string().optional(),
+    description: z.string().optional()
+  }).optional(),
   createdAt: z.date(),
   updatedAt: z.date(),
   createdBy: z.string() // Auth0 sub
@@ -25,9 +33,13 @@ export const updateCloudProviderSchema = cloudProviderSchema
   .omit({ _id: true, createdAt: true, updatedAt: true, createdBy: true });
 
 // Response schema for cloud provider data
-export const cloudProviderResponseSchema = cloudProviderSchema.extend({
-  _id: z.string()
-});
+export const cloudProviderResponseSchema = cloudProviderSchema
+  .extend({
+    _id: z.string()
+  })
+  .omit({
+    clientSecret: true // Never expose client secret to frontend
+  });
 
 // Error codes for cloud provider operations
 export const CloudProviderErrorCodes = {

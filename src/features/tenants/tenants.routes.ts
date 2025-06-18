@@ -2,7 +2,7 @@ import { Router } from 'express';
 import { createTenant, getTenant, updateTenant, deleteTenant, getAllTenants } from './tenants.controller.js';
 import { wrapAsyncHandler } from '../../utils/response.js';
 import { getCloudIntegrationsRouter } from '../cloud-integrations/cloudIntegrations.routes.js';
-import { requireSuperAdminRole } from '../../middleware/roles.js';
+import { requireSuperAdminRole } from '../../middleware/authorization.js';
 
 export function getTenantRouter(): Router {
   const router = Router();
@@ -39,7 +39,7 @@ export function getTenantRouter(): Router {
    *       403:
    *         description: Forbidden - User is not a superadmin
    */
-  router.get('/', requireSuperAdminRole(), wrapAsyncHandler(getAllTenants));
+  router.get('/', requireSuperAdminRole, wrapAsyncHandler(getAllTenants));
 
   // Create tenant
   router.post('/', wrapAsyncHandler(createTenant));
@@ -54,7 +54,7 @@ export function getTenantRouter(): Router {
   router.delete('/:id', wrapAsyncHandler(deleteTenant));
 
   // Cloud integrations routes
-  router.use('/:tenantId/integrations', getCloudIntegrationsRouter());
+  router.use('/:tenantId/cloud-integrations', getCloudIntegrationsRouter());
 
   return router;
 }

@@ -1,7 +1,8 @@
 import { Collection, ObjectId } from 'mongodb';
 import { getDB } from '../../config/db.js';
 import { ApiError } from '../../utils/errors.js';
-import { logAudit } from '../../utils/logger.js';
+import { logAudit, logError } from '../../utils/logger.js';
+import { safeEncrypt, safeDecrypt } from '../../utils/encryption.js';
 import { 
   CloudProviderIntegration, 
   CreateCloudProviderIntegrationRequest, 
@@ -26,27 +27,108 @@ export class CloudIntegrationsService {
         throw new ApiError('Tenant not found', 404, CloudProviderIntegrationErrorCodes.TENANT_NOT_FOUND);
       }
       
-      return this.collection.find({ tenantId: tenantObjectId }).toArray();
+      // Get integrations with provider details using aggregation
+      const integrations = await this.collection.aggregate([
+        { $match: { tenantId: tenantObjectId } },
+        {
+          $lookup: {
+            from: 'cloudProviders',
+            localField: 'providerId',
+            foreignField: '_id',
+            as: 'providerDetails'
+          }
+        },
+        { $unwind: { path: '$providerDetails', preserveNullAndEmptyArrays: true } },
+        {
+          $project: {
+            _id: 1,
+            tenantId: 1,
+            providerId: 1,
+            status: 1,
+            scopesGranted: 1,
+            connectedAt: 1,
+            tokenExpiresAt: 1,
+            metadata: 1,
+            createdAt: 1,
+            updatedAt: 1,
+            createdBy: 1,
+            provider: {
+              name: '$providerDetails.name',
+              slug: '$providerDetails.slug',
+              metadata: '$providerDetails.metadata'
+            }
+          }
+        }
+      ]).toArray();
+      
+      return integrations;
     } catch (error) {
       if (error instanceof ApiError) {
         throw error;
       }
+      logError('Error finding integrations by tenant ID', error);
       throw new ApiError('Invalid tenant ID', 400, CloudProviderIntegrationErrorCodes.INVALID_INPUT);
     }
   }
 
-  async findById(id: string, tenantId: string): Promise<CloudProviderIntegration> {
+  async findById(id: string, tenantId: string, decryptSecrets: boolean = false): Promise<CloudProviderIntegration> {
     try {
       const integrationObjectId = new ObjectId(id);
       const tenantObjectId = new ObjectId(tenantId);
       
-      const integration = await this.collection.findOne({ 
-        _id: integrationObjectId,
-        tenantId: tenantObjectId
-      });
+      // Get integration with provider details using aggregation
+      const [integration] = await this.collection.aggregate([
+        { 
+          $match: { 
+            _id: integrationObjectId,
+            tenantId: tenantObjectId
+          } 
+        },
+        {
+          $lookup: {
+            from: 'cloudProviders',
+            localField: 'providerId',
+            foreignField: '_id',
+            as: 'providerDetails'
+          }
+        },
+        { $unwind: { path: '$providerDetails', preserveNullAndEmptyArrays: true } },
+        {
+          $project: {
+            _id: 1,
+            tenantId: 1,
+            providerId: 1,
+            accessToken: 1,
+            refreshToken: 1,
+            tokenExpiresAt: 1,
+            scopesGranted: 1,
+            status: 1,
+            connectedAt: 1,
+            metadata: 1,
+            createdAt: 1,
+            updatedAt: 1,
+            createdBy: 1,
+            provider: {
+              name: '$providerDetails.name',
+              slug: '$providerDetails.slug',
+              metadata: '$providerDetails.metadata'
+            }
+          }
+        }
+      ]).toArray();
       
       if (!integration) {
         throw new ApiError('Cloud provider integration not found', 404, CloudProviderIntegrationErrorCodes.NOT_FOUND);
+      }
+      
+      // If decryption is requested (for internal use only, never for API responses)
+      if (decryptSecrets) {
+        if (integration.accessToken) {
+          integration.accessToken = safeDecrypt(integration.accessToken);
+        }
+        if (integration.refreshToken) {
+          integration.refreshToken = safeDecrypt(integration.refreshToken);
+        }
       }
       
       return integration;
@@ -54,6 +136,7 @@ export class CloudIntegrationsService {
       if (error instanceof ApiError) {
         throw error;
       }
+      logError('Error finding integration by ID', error);
       throw new ApiError('Invalid integration ID', 400, CloudProviderIntegrationErrorCodes.INVALID_INPUT);
     }
   }
@@ -98,9 +181,8 @@ export class CloudIntegrationsService {
         _id: new ObjectId(),
         tenantId: tenantObjectId,
         providerId: providerObjectId,
-        clientId: data.clientId,
-        clientSecret: data.clientSecret, // In production, this should be encrypted
-        redirectUri: data.redirectUri,
+        status: 'active',
+        connectedAt: now,
         metadata: data.metadata,
         createdAt: now,
         updatedAt: now,
@@ -119,6 +201,7 @@ export class CloudIntegrationsService {
       if (error instanceof ApiError) {
         throw error;
       }
+      logError('Failed to create cloud integration', error);
       throw new ApiError('Failed to create integration', 500, CloudProviderIntegrationErrorCodes.INVALID_INPUT);
     }
   }
@@ -187,41 +270,58 @@ export class CloudIntegrationsService {
     id: string,
     tenantId: string,
     accessToken: string,
-    refreshToken: string,
+    refreshToken: string | null,
     expiresIn: number,
+    scopesGranted: string[],
     userId: string
   ): Promise<CloudProviderIntegration> {
-    const integration = await this.findById(id, tenantId);
-    
-    const expiresAt = new Date();
-    expiresAt.setSeconds(expiresAt.getSeconds() + expiresIn);
-    
-    const updates = {
-      accessToken,
-      refreshToken,
-      expiresAt,
-      updatedAt: new Date()
-    };
-    
-    const result = await this.collection.findOneAndUpdate(
-      { _id: integration._id },
-      { $set: updates },
-      { returnDocument: 'after' }
-    );
-    
-    if (!result) {
-      throw new ApiError(
-        'Failed to update integration tokens', 
-        500, 
-        CloudProviderIntegrationErrorCodes.NOT_FOUND
+    try {
+      const integration = await this.findById(id, tenantId);
+      
+      const tokenExpiresAt = new Date();
+      tokenExpiresAt.setSeconds(tokenExpiresAt.getSeconds() + expiresIn);
+      
+      // Encrypt tokens before storing
+      const encryptedAccessToken = safeEncrypt(accessToken);
+      const encryptedRefreshToken = refreshToken ? safeEncrypt(refreshToken) : null;
+      
+      const updates = {
+        accessToken: encryptedAccessToken,
+        refreshToken: encryptedRefreshToken,
+        tokenExpiresAt,
+        scopesGranted,
+        status: 'active',
+        connectedAt: new Date(),
+        updatedAt: new Date()
+      };
+      
+      const result = await this.collection.findOneAndUpdate(
+        { _id: integration._id },
+        { $set: updates },
+        { returnDocument: 'after' }
       );
+      
+      if (!result) {
+        throw new ApiError(
+          'Failed to update integration tokens', 
+          500, 
+          CloudProviderIntegrationErrorCodes.NOT_FOUND
+        );
+      }
+      
+      logAudit('cloud-integration.update-tokens', userId, id, {
+        tenantId,
+        tokenExpiresAt,
+        scopesGranted
+      });
+      
+      return result;
+    } catch (error) {
+      if (error instanceof ApiError) {
+        throw error;
+      }
+      logError('Failed to update integration tokens', error);
+      throw new ApiError('Failed to update integration tokens', 500, CloudProviderIntegrationErrorCodes.INVALID_INPUT);
     }
-    
-    logAudit('cloud-integration.update-tokens', userId, id, {
-      tenantId,
-      expiresAt
-    });
-    
-    return result;
   }
 }
