@@ -66,7 +66,7 @@ export async function createTenantIntegration(req: Request, res: Response) {
     // Remove sensitive data from response
     const response = {
       ...integration,
-      clientSecret: '[REDACTED]',
+      clientSecret: integration.clientSecret ? '[REDACTED]' : undefined,
       accessToken: integration.accessToken ? '[REDACTED]' : undefined,
       refreshToken: integration.refreshToken ? '[REDACTED]' : undefined
     };
@@ -101,7 +101,7 @@ export async function updateTenantIntegration(req: Request, res: Response) {
     // Remove sensitive data from response
     const response = {
       ...integration,
-      clientSecret: '[REDACTED]',
+      clientSecret: integration.clientSecret ? '[REDACTED]' : undefined,
       accessToken: integration.accessToken ? '[REDACTED]' : undefined,
       refreshToken: integration.refreshToken ? '[REDACTED]' : undefined
     };

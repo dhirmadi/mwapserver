@@ -98,14 +98,16 @@ export class CloudIntegrationsService {
         _id: new ObjectId(),
         tenantId: tenantObjectId,
         providerId: providerObjectId,
-        clientId: data.clientId,
-        clientSecret: data.clientSecret, // In production, this should be encrypted
-        redirectUri: data.redirectUri,
-        metadata: data.metadata,
         createdAt: now,
         updatedAt: now,
         createdBy: userId
       };
+      
+      // Add optional fields if they exist
+      if (data.clientId) integration.clientId = data.clientId;
+      if (data.clientSecret) integration.clientSecret = data.clientSecret;
+      if (data.redirectUri) integration.redirectUri = data.redirectUri;
+      if (data.metadata) integration.metadata = data.metadata;
       
       await this.collection.insertOne(integration);
       
