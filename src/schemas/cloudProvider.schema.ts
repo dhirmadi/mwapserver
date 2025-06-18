@@ -9,6 +9,11 @@ export const cloudProviderSchema = z.object({
   scopes: z.array(z.string()),
   authUrl: z.string().url(),
   tokenUrl: z.string().url(),
+  // OAuth-specific fields
+  clientId: z.string().min(1),
+  clientSecret: z.string().min(1),
+  grantType: z.string().default("authorization_code"),
+  tokenMethod: z.string().default("POST"),
   metadata: z.record(z.unknown()).optional(),
   createdAt: z.date(),
   updatedAt: z.date(),

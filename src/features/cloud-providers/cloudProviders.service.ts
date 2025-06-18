@@ -1,7 +1,8 @@
 import { Collection, ObjectId } from 'mongodb';
 import { getDB } from '../../config/db.js';
 import { ApiError } from '../../utils/errors.js';
-import { logAudit } from '../../utils/logger.js';
+import { logAudit, logInfo } from '../../utils/logger.js';
+import { encrypt, decrypt } from '../../utils/encryption.js';
 import { 
   CloudProvider, 
   CreateCloudProviderRequest, 
@@ -17,15 +18,36 @@ export class CloudProviderService {
   }
 
   async findAll(): Promise<CloudProvider[]> {
-    return this.collection.find().toArray();
+    const providers = await this.collection.find().toArray();
+    
+    // Remove client secrets from the response for security
+    return providers.map(provider => {
+      const providerCopy = { ...provider };
+      if (providerCopy.clientSecret) {
+        // Replace with a placeholder to indicate it exists but is not returned
+        providerCopy.clientSecret = '[REDACTED]';
+      }
+      return providerCopy;
+    });
   }
 
-  async findById(id: string): Promise<CloudProvider> {
+  async findById(id: string, includeDecrypted: boolean = false): Promise<CloudProvider> {
     try {
       const cloudProvider = await this.collection.findOne({ _id: new ObjectId(id) });
       if (!cloudProvider) {
         throw new ApiError('Cloud provider not found', 404, CloudProviderErrorCodes.NOT_FOUND);
       }
+      
+      // If includeDecrypted is true, decrypt the client secret
+      if (includeDecrypted && cloudProvider.clientSecret) {
+        try {
+          cloudProvider.clientSecret = decrypt(cloudProvider.clientSecret);
+        } catch (decryptError) {
+          logInfo('Failed to decrypt client secret', { providerId: id });
+          // Don't throw an error, just return the encrypted value
+        }
+      }
+      
       return cloudProvider;
     } catch (error) {
       if (error instanceof ApiError) {
@@ -48,10 +70,16 @@ export class CloudProviderService {
       throw new ApiError('Cloud provider slug already exists', 409, CloudProviderErrorCodes.SLUG_EXISTS);
     }
 
+    // Encrypt sensitive data
+    const dataToSave = { ...data };
+    if (dataToSave.clientSecret) {
+      dataToSave.clientSecret = encrypt(dataToSave.clientSecret);
+    }
+
     const now = new Date();
     const cloudProvider: CloudProvider = {
       _id: new ObjectId(),
-      ...data,
+      ...dataToSave,
       createdAt: now,
       updatedAt: now,
       createdBy: userId
@@ -64,7 +92,14 @@ export class CloudProviderService {
       slug: data.slug
     });
 
-    return cloudProvider;
+    // Return a copy with the original client secret for the response
+    // This ensures the client gets back what they sent, but we store encrypted
+    const responseProvider = { ...cloudProvider };
+    if (data.clientSecret) {
+      responseProvider.clientSecret = data.clientSecret;
+    }
+
+    return responseProvider;
   }
 
   async update(id: string, data: UpdateCloudProviderRequest, userId: string): Promise<CloudProvider> {
@@ -92,8 +127,14 @@ export class CloudProviderService {
       }
     }
 
+    // Encrypt sensitive data if provided
+    const updatesToSave = { ...data };
+    if (updatesToSave.clientSecret) {
+      updatesToSave.clientSecret = encrypt(updatesToSave.clientSecret);
+    }
+
     const updates = {
-      ...data,
+      ...updatesToSave,
       updatedAt: new Date()
     };
 
@@ -108,10 +149,24 @@ export class CloudProviderService {
     }
 
     logAudit('cloud-provider.update', userId, id, {
-      updates: data
+      updates: Object.keys(data).reduce((acc, key) => {
+        // Don't log sensitive data
+        if (key !== 'clientSecret') {
+          acc[key] = data[key];
+        } else {
+          acc[key] = '[REDACTED]';
+        }
+        return acc;
+      }, {} as Record<string, unknown>)
     });
 
-    return result;
+    // Return a copy with the original client secret for the response if it was updated
+    const responseProvider = { ...result };
+    if (data.clientSecret) {
+      responseProvider.clientSecret = data.clientSecret;
+    }
+
+    return responseProvider;
   }
 
   async delete(id: string, userId: string): Promise<void> {

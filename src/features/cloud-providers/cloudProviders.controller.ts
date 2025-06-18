@@ -29,7 +29,13 @@ export async function getCloudProviderById(req: Request, res: Response) {
   
   logInfo(`User ${user.sub} is fetching cloud provider ${providerId}`);
   
+  // Get the cloud provider, but don't include the decrypted client secret
   const cloudProvider = await cloudProviderService.findById(providerId);
+  
+  // Redact the client secret for security
+  if (cloudProvider.clientSecret) {
+    cloudProvider.clientSecret = '[REDACTED]';
+  }
   
   logInfo(`Returning cloud provider ${providerId} to user ${user.sub}`);
   return jsonResponse(res, 200, cloudProvider);
