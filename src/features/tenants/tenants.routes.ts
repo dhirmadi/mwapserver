@@ -63,6 +63,9 @@ export function getTenantRouter(): Router {
   // These routes are protected by the requireTenantOwner middleware in the cloud integrations router
   router.use('/:tenantId/integrations', getCloudIntegrationsRouter());
   
+  // Also support the cloud-integrations path for backward compatibility
+  router.use('/:tenantId/cloud-integrations', getCloudIntegrationsRouter());
+  
   // ===== TENANT OWNER OR SUPERADMIN ROUTES =====
   
   /**
