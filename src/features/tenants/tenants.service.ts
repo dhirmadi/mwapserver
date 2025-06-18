@@ -68,10 +68,8 @@ export class TenantService {
   async updateTenant(id: string, userId: string, data: UpdateTenantRequest): Promise<Tenant> {
     const tenant = await this.getTenantById(id);
 
-    // Only owner or superadmin can update tenant
-    if (tenant.ownerId !== userId && !await this.isSuperAdmin(userId)) {
-      throw new ApiError('Not authorized to update tenant', 403, ERROR_CODES.TENANT.NOT_AUTHORIZED);
-    }
+    // Authorization is now handled by middleware
+    // No need to check here
 
     // If name is being updated, check uniqueness
     if (data.name && data.name !== tenant.name) {
@@ -123,10 +121,8 @@ export class TenantService {
   async deleteTenant(id: string, userId: string): Promise<void> {
     const tenant = await this.getTenantById(id);
 
-    // Only superadmin can delete tenants
-    if (!await this.isSuperAdmin(userId)) {
-      throw new ApiError('Not authorized to delete tenant', 403, ERROR_CODES.TENANT.NOT_AUTHORIZED);
-    }
+    // Authorization is now handled by middleware
+    // No need to check here
 
     await this.collection.deleteOne({ _id: tenant._id });
 

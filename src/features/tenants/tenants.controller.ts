@@ -6,7 +6,7 @@ import { getUserFromToken } from '../../utils/auth';
 import { jsonResponse } from '../../utils/response';
 import { ApiError } from '../../utils/errors';
 import { ERROR_CODES } from '../../utils/constants';
-import { logAudit } from '../../utils/logger';
+import { logAudit, logInfo, logError } from '../../utils/logger';
 import { 
   createTenantSchema, 
   updateTenantSchema, 
@@ -44,20 +44,40 @@ export async function getTenant(req: Request, res: Response) {
 export async function updateTenant(req: Request, res: Response) {
   try {
     const user = getUserFromToken(req);
+    const tenantId = req.params.id;
+    
+    logInfo(`Updating tenant ${tenantId} by user ${user.sub}`);
+    
     const data = validateWithSchema(updateTenantSchema, req.body);
-    const tenant = await tenantService.updateTenant(req.params.id, user.sub, data);
+    
+    // Authorization is already handled by the requireTenantOwnerOrSuperAdmin middleware
+    // We still pass the userId to the service for audit logging purposes
+    const tenant = await tenantService.updateTenant(tenantId, user.sub, data);
+    
+    logInfo(`Updated tenant ${tenantId} by user ${user.sub}`);
+    
     return jsonResponse(res, 200, tenant);
   } catch (error) {
     if (error instanceof Error && error.name === 'ValidationError') {
+      logInfo(`Validation error when updating tenant: ${error.message}`);
       throw new ApiError('Invalid input', 400, ERROR_CODES.VALIDATION.INVALID_INPUT);
     }
+    logError(`Error updating tenant: ${error instanceof Error ? error.message : 'Unknown error'}`);
     throw error;
   }
 }
 
 export async function deleteTenant(req: Request, res: Response) {
   const user = getUserFromToken(req);
-  await tenantService.deleteTenant(req.params.id, user.sub);
+  const tenantId = req.params.id;
+  
+  logInfo(`Deleting tenant ${tenantId} by superadmin ${user.sub}`);
+  
+  // Authorization is already handled by the requireSuperAdminRole middleware
+  await tenantService.deleteTenant(tenantId, user.sub);
+  
+  logInfo(`Deleted tenant ${tenantId} by superadmin ${user.sub}`);
+  
   return jsonResponse(res, 204);
 }
 
@@ -67,14 +87,14 @@ export async function getAllTenants(req: Request, res: Response) {
   // Parse query parameters
   const includeArchived = req.query.includeArchived === 'true';
   
-  console.log(`[MWAP] Superadmin ${user.sub} is listing all tenants. includeArchived=${includeArchived}`);
+  logInfo(`Superadmin ${user.sub} is listing all tenants. includeArchived=${includeArchived}`);
   
   const tenants = await tenantService.getAllTenants({ includeArchived });
   
   // Transform each tenant using the response schema
   const formattedTenants = tenants.map(tenant => tenantResponseSchema.parse(tenant));
   
-  console.log(`[MWAP] Returning ${tenants.length} tenants to superadmin ${user.sub}`);
+  logInfo(`Returning ${tenants.length} tenants to superadmin ${user.sub}`);
   
   // Log the audit event
   logAudit('tenant.list', user.sub, 'all', {
@@ -90,16 +110,8 @@ export async function getTenantById(req: Request, res: Response) {
   const tenantId = req.params.id;
   
   // Get the tenant by ID
+  // Authorization is already handled by the requireTenantOwnerOrSuperAdmin middleware
   const tenant = await tenantService.getTenantById(tenantId);
-  
-  // Check if user is authorized to view this tenant
-  // User must be either the tenant owner or a superadmin
-  const isSuperAdmin = await tenantService.isSuperAdmin(user.sub);
-  const isOwner = tenant.ownerId === user.sub;
-  
-  if (!isOwner && !isSuperAdmin) {
-    throw new ApiError('Not authorized to view tenant', 403, ERROR_CODES.TENANT.NOT_AUTHORIZED);
-  }
   
   // Log the audit event
   logAudit('tenant.get', user.sub, tenantId, {
