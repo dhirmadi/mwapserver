@@ -2,7 +2,7 @@
 
 ## Current Status: Active Development
 
-Last Updated: June 11, 2025 (Updated documentation)
+Last Updated: June 17, 2025 (Enhanced Cloud Provider Integration)
 
 ## Completed Features
 
@@ -37,9 +37,13 @@ Last Updated: June 11, 2025 (Updated documentation)
 ## In Progress
 
 ### Cloud Provider Integration
+- ✅ Enhanced OAuth integration support
+- ✅ Secure token storage with encryption
+- ✅ Flexible provider metadata
 - 🔄 AWS integration
 - 🔄 Azure integration
 - 🔄 GCP integration
+- 🔄 Dropbox integration
 
 ### Testing
 - 🔄 Unit testing setup with Vitest
@@ -54,7 +58,7 @@ Last Updated: June 11, 2025 (Updated documentation)
 - ⏳ API key authentication
 
 ### Data Management
-- ⏳ Field-level encryption
+- ✅ Field-level encryption for sensitive data
 - ⏳ Data export/import
 - ⏳ Backup and restore
 
@@ -70,6 +74,14 @@ Last Updated: June 11, 2025 (Updated documentation)
 2. **Authentication Flow**: The current authentication flow needs to be tested with Auth0 in a production environment.
 
 ## Recent Changes
+
+### June 17, 2025
+- Enhanced cloud provider integration with OAuth support
+- Implemented secure token storage with AES-256-GCM encryption
+- Added support for flexible provider metadata
+- Fixed cloud integrations endpoint to support both path formats
+- Updated schema to match required structure
+- Made OAuth fields optional in cloud provider integration schema
 
 ### June 11, 2025
 - Simplified API documentation with a reliable, static approach

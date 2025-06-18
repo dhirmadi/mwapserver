@@ -47,7 +47,8 @@ The server is organized around core domain entities:
 
 - Multi-tenant architecture
 - Dynamic project type configuration
-- Cloud provider integrations
+- Secure OAuth-based cloud provider integrations
+- Field-level encryption for sensitive data
 - Microservice-friendly design
 - Comprehensive audit logging
 
@@ -84,6 +85,7 @@ This project will use **[Vitest](https://vitest.dev/)** for unit and service-lev
 - [Domain Map](docs/v3-domainmap.md)
 - [API Contract](docs/v3-api.md)
 - [OpenAPI Schema](docs/v3-openAPI-schema.md)
+- [OAuth Integration Guide](docs/oauth-integration-guide.md)
 - [Project Status](docs/STATUS.md)
 
 ### API Documentation

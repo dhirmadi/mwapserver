@@ -55,9 +55,67 @@ interface UserRolesResponse {
 | `/api/v1/cloud-providers`                         | POST   | SUPERADMIN | `CloudProviderSchema.omit({ _id: true })`            | `CloudProviderSchema`              |
 | `/api/v1/cloud-providers/:id`                     | PATCH  | SUPERADMIN | `CloudProviderSchema`                                | `CloudProviderSchema`              |
 | `/api/v1/cloud-providers/:id`                     | DELETE | SUPERADMIN | —                                                    | `204`                              |
-| `/api/v1/tenants/:id/integrations`                | GET    | `OWNER`    | —                                                    | `CloudProviderIntegrationSchema[]` |
-| `/api/v1/tenants/:id/integrations`                | POST   | `OWNER`    | `CloudProviderIntegrationSchema.omit({ _id: true })` | `CloudProviderIntegrationSchema`   |
-| `/api/v1/tenants/:id/integrations/:integrationId` | DELETE | `OWNER`    | —                                                    | `204`                              |
+| `/api/v1/tenants/:tenantId/integrations`          | GET    | `OWNER`    | —                                                    | `CloudProviderIntegrationSchema[]` |
+| `/api/v1/tenants/:tenantId/integrations`          | POST   | `OWNER`    | `CloudProviderIntegrationSchema.omit({ _id: true })` | `CloudProviderIntegrationSchema`   |
+| `/api/v1/tenants/:tenantId/integrations/:integrationId` | PATCH  | `OWNER`    | `CloudProviderIntegrationSchema.partial()` | `CloudProviderIntegrationSchema`   |
+| `/api/v1/tenants/:tenantId/integrations/:integrationId` | DELETE | `OWNER`    | —                                                    | `204`                              |
+
+### Cloud Provider Schema
+```typescript
+interface CloudProvider {
+  _id: string;
+  name: string;           // 3-50 chars
+  slug: string;           // 2-20 chars, lowercase, alphanumeric with hyphens
+  scopes: string[];       // OAuth scopes
+  authUrl: string;        // OAuth authorization URL
+  tokenUrl: string;       // OAuth token URL
+  clientId: string;       // OAuth client ID
+  clientSecret: string;   // OAuth client secret (encrypted)
+  grantType: string;      // Default: "authorization_code"
+  tokenMethod: string;    // Default: "POST"
+  metadata: Record<string, unknown>; // Optional provider-specific metadata
+  createdAt: Date;
+  updatedAt: Date;
+  createdBy: string;      // Auth0 sub
+}
+```
+
+### Cloud Provider Integration Schema
+```typescript
+interface CloudProviderIntegration {
+  _id: string;
+  tenantId: string;       // Reference to tenant
+  providerId: string;     // Reference to cloud provider
+  accessToken?: string;   // OAuth access token (encrypted)
+  refreshToken?: string;  // OAuth refresh token (encrypted)
+  tokenExpiresAt?: Date;  // Token expiration date
+  scopesGranted?: string[]; // Granted OAuth scopes
+  status: 'active' | 'expired' | 'revoked' | 'error'; // Default: 'active'
+  connectedAt?: Date;     // When the integration was established
+  metadata?: Record<string, unknown>; // Optional integration-specific metadata
+  createdAt: Date;
+  updatedAt: Date;
+  createdBy: string;      // Auth0 sub
+}
+```
+
+### Create Cloud Provider Integration Request
+```typescript
+interface CreateCloudProviderIntegrationRequest {
+  providerId: string;     // Required: ID of the cloud provider
+  status?: 'active' | 'expired' | 'revoked' | 'error'; // Default: 'active'
+  scopesGranted?: string[]; // Optional: Granted OAuth scopes
+  metadata?: Record<string, unknown>; // Optional: Integration-specific metadata
+}
+```
+
+### Error Codes
+- `cloud-integration/not-found`: Integration does not exist
+- `cloud-integration/provider-not-found`: Referenced cloud provider does not exist
+- `cloud-integration/tenant-not-found`: Referenced tenant does not exist
+- `cloud-integration/already-exists`: Integration already exists for this tenant and provider
+- `cloud-integration/invalid-input`: Invalid input data
+- `cloud-integration/unauthorized`: User is not authorized for this operation
 
 ---
 
