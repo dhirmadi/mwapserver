@@ -12,12 +12,12 @@ export const cloudProviderIntegrationSchema = z.object({
   _id: objectIdSchema,
   tenantId: objectIdSchema,
   providerId: objectIdSchema,
-  clientId: z.string().min(1).optional(),
-  clientSecret: z.string().min(1).optional(),
-  redirectUri: z.string().url().optional(),
   accessToken: z.string().optional(),
   refreshToken: z.string().optional(),
-  expiresAt: z.date().optional(),
+  tokenExpiresAt: z.date().optional(),
+  scopesGranted: z.array(z.string()).optional(),
+  status: z.enum(['active', 'expired', 'revoked', 'error']).default('active'),
+  connectedAt: z.date().optional(),
   metadata: z.record(z.unknown()).optional(),
   createdAt: z.date(),
   updatedAt: z.date(),
@@ -33,7 +33,8 @@ export const createCloudProviderIntegrationSchema = cloudProviderIntegrationSche
     createdBy: true,
     accessToken: true,
     refreshToken: true,
-    expiresAt: true
+    tokenExpiresAt: true,
+    connectedAt: true
   });
 
 // Schema for updating cloud provider integration (partial)
@@ -56,7 +57,6 @@ export const cloudProviderIntegrationResponseSchema = cloudProviderIntegrationSc
     providerId: z.string()
   })
   .omit({ 
-    clientSecret: true,
     accessToken: true,
     refreshToken: true
   });

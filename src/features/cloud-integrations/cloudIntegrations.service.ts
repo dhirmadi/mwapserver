@@ -98,15 +98,14 @@ export class CloudIntegrationsService {
         _id: new ObjectId(),
         tenantId: tenantObjectId,
         providerId: providerObjectId,
+        status: data.status || 'active',
         createdAt: now,
         updatedAt: now,
         createdBy: userId
       };
       
       // Add optional fields if they exist
-      if (data.clientId) integration.clientId = data.clientId;
-      if (data.clientSecret) integration.clientSecret = data.clientSecret;
-      if (data.redirectUri) integration.redirectUri = data.redirectUri;
+      if (data.scopesGranted) integration.scopesGranted = data.scopesGranted;
       if (data.metadata) integration.metadata = data.metadata;
       
       await this.collection.insertOne(integration);
@@ -191,19 +190,27 @@ export class CloudIntegrationsService {
     accessToken: string,
     refreshToken: string,
     expiresIn: number,
-    userId: string
+    userId: string,
+    scopesGranted?: string[]
   ): Promise<CloudProviderIntegration> {
     const integration = await this.findById(id, tenantId);
     
-    const expiresAt = new Date();
-    expiresAt.setSeconds(expiresAt.getSeconds() + expiresIn);
+    const tokenExpiresAt = new Date();
+    tokenExpiresAt.setSeconds(tokenExpiresAt.getSeconds() + expiresIn);
+    const now = new Date();
     
-    const updates = {
+    const updates: Record<string, any> = {
       accessToken,
       refreshToken,
-      expiresAt,
-      updatedAt: new Date()
+      tokenExpiresAt,
+      status: 'active',
+      connectedAt: now,
+      updatedAt: now
     };
+    
+    if (scopesGranted && scopesGranted.length > 0) {
+      updates.scopesGranted = scopesGranted;
+    }
     
     const result = await this.collection.findOneAndUpdate(
       { _id: integration._id },
@@ -221,7 +228,8 @@ export class CloudIntegrationsService {
     
     logAudit('cloud-integration.update-tokens', userId, id, {
       tenantId,
-      expiresAt
+      tokenExpiresAt,
+      status: 'active'
     });
     
     return result;
