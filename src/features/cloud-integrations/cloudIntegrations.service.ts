@@ -64,7 +64,20 @@ export class CloudIntegrationsService {
     userId: string
   ): Promise<CloudProviderIntegration> {
     try {
+      // DEBUG: Log the input data
+      console.log('DEBUG - Service - Create - Input:', {
+        tenantId,
+        data: JSON.stringify(data, null, 2),
+        userId
+      });
+      
       const tenantObjectId = new ObjectId(tenantId);
+      
+      // DEBUG: Check if providerId exists and is valid
+      console.log('DEBUG - Service - providerId:', data.providerId);
+      console.log('DEBUG - Service - providerId type:', typeof data.providerId);
+      console.log('DEBUG - Service - providerId valid:', ObjectId.isValid(data.providerId));
+      
       const providerObjectId = new ObjectId(data.providerId);
       
       // Verify tenant exists
@@ -117,6 +130,13 @@ export class CloudIntegrationsService {
       
       return integration;
     } catch (error) {
+      // DEBUG: Log the detailed error
+      console.log('DEBUG - Service - Create - Error:', error);
+      if (error instanceof Error) {
+        console.log('DEBUG - Service - Create - Error Message:', error.message);
+        console.log('DEBUG - Service - Create - Error Stack:', error.stack);
+      }
+      
       if (error instanceof ApiError) {
         throw error;
       }
