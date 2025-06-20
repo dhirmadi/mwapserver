@@ -65,13 +65,29 @@ export function getTenantRouter(): Router {
     // Ensure tenantId is available in req.params
     // This is a safeguard in case Express doesn't properly pass params to nested routers
     const tenantId = req.params.tenantId;
+    
+    console.log(`DEBUG ROUTER: Processing request for tenant integrations`);
+    console.log(`DEBUG ROUTER: URL: ${req.originalUrl}`);
+    console.log(`DEBUG ROUTER: Method: ${req.method}`);
+    console.log(`DEBUG ROUTER: TenantId from params: ${tenantId}`);
+    
+    // Check if this request has already been processed for cloud integrations
+    if ((req as any).__processed_cloud_integrations) {
+      console.log(`DEBUG ROUTER: Request already processed for cloud integrations, skipping`);
+      return next('router');
+    }
+    
+    (req as any).__processed_cloud_integrations = true;
+    
     if (!tenantId) {
       // Try to extract from URL if not in params
       const match = req.originalUrl.match(/\/api\/v1\/tenants\/([^\/]+)\/integrations/);
       if (match && match[1]) {
         req.params.tenantId = match[1];
+        console.log(`DEBUG ROUTER: Extracted tenantId from URL: ${req.params.tenantId}`);
       }
     }
+    
     next();
   }, getCloudIntegrationsRouter());
   
