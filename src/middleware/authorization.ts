@@ -23,7 +23,15 @@ export function requireTenantOwner(tenantIdParam = 'tenantId') {
   return async (req: Request, res: Response, next: NextFunction) => {
     try {
       const user = getUserFromToken(req);
+      
+      // Debug: Log all request parameters
+      console.log('DEBUG - Authorization - All request params:', req.params);
+      console.log('DEBUG - Authorization - Request path:', req.path);
+      console.log('DEBUG - Authorization - Request originalUrl:', req.originalUrl);
+      console.log('DEBUG - Authorization - Looking for param:', tenantIdParam);
+      
       const tenantId = req.params[tenantIdParam];
+      console.log('DEBUG - Authorization - Extracted tenantId:', tenantId);
       
       if (!tenantId) {
         logInfo(`No tenant ID found in request params for parameter: ${tenantIdParam}`);

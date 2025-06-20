@@ -13,6 +13,19 @@ import { logInfo } from '../../utils/logger.js';
 export function getCloudIntegrationsRouter(): Router {
   const router = Router({ mergeParams: true });
   
+  console.log('DEBUG - Cloud integrations router being initialized');
+  
+  // Add a middleware to log all requests
+  router.use((req, res, next) => {
+    console.log('DEBUG - Cloud integrations router received request:');
+    console.log('DEBUG - Path:', req.path);
+    console.log('DEBUG - Original URL:', req.originalUrl);
+    console.log('DEBUG - Method:', req.method);
+    console.log('DEBUG - Params:', req.params);
+    console.log('DEBUG - Body:', JSON.stringify(req.body, null, 2));
+    next();
+  });
+  
   // Apply tenant owner middleware to all routes in this router
   // This ensures only the tenant owner can access these endpoints
   router.use(requireTenantOwner('tenantId'));

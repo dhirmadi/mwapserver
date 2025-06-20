@@ -61,7 +61,14 @@ export function getTenantRouter(): Router {
   
   // Cloud integrations routes - Must be defined BEFORE the /:id routes to avoid route conflicts
   // These routes are protected by the requireTenantOwner middleware in the cloud integrations router
-  router.use('/:tenantId/integrations', getCloudIntegrationsRouter());
+  console.log('DEBUG - Mounting cloud integrations router at /:tenantId/integrations');
+  router.use('/:tenantId/integrations', (req, res, next) => {
+    console.log('DEBUG - Tenant router received request for integrations:');
+    console.log('DEBUG - Path:', req.path);
+    console.log('DEBUG - Original URL:', req.originalUrl);
+    console.log('DEBUG - Params before cloud router:', req.params);
+    next();
+  }, getCloudIntegrationsRouter());
   
   // ===== TENANT OWNER OR SUPERADMIN ROUTES =====
   
