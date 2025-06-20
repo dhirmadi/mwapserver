@@ -58,19 +58,29 @@ export async function createTenantIntegration(req: Request, res: Response) {
     
     logInfo(`Creating new integration for tenant ${tenantId} by user ${user.sub}`);
     
-    const data = validateWithSchema(createCloudProviderIntegrationSchema, req.body);
-    const integration = await cloudIntegrationsService.create(tenantId, data, user.sub);
-    
-    logInfo(`Created new integration for tenant ${tenantId} with provider ${data.providerId}`);
-    
-    // Remove sensitive data from response
-    const response = {
-      ...integration,
-      accessToken: integration.accessToken ? '[REDACTED]' : undefined,
-      refreshToken: integration.refreshToken ? '[REDACTED]' : undefined
+    // Add tenantId from URL parameters to the request body
+    const requestWithTenantId = {
+      ...req.body,
+      tenantId: tenantId
     };
     
-    return jsonResponse(res, 201, response);
+    try {
+      const data = validateWithSchema(createCloudProviderIntegrationSchema, requestWithTenantId);
+      const integration = await cloudIntegrationsService.create(tenantId, data, user.sub);
+      
+      logInfo(`Created new integration for tenant ${tenantId} with provider ${data.providerId}`);
+      
+      // Remove sensitive data from response
+      const response = {
+        ...integration,
+        accessToken: integration.accessToken ? '[REDACTED]' : undefined,
+        refreshToken: integration.refreshToken ? '[REDACTED]' : undefined
+      };
+      
+      return jsonResponse(res, 201, response);
+    } catch (validationError) {
+      throw validationError;
+    }
   } catch (error) {
     if (error instanceof Error && error.name === 'ValidationError') {
       logInfo(`Validation error when creating integration: ${error.message}`);
@@ -100,7 +110,7 @@ export async function updateTenantIntegration(req: Request, res: Response) {
     // Remove sensitive data from response
     const response = {
       ...integration,
-      clientSecret: integration.clientSecret ? '[REDACTED]' : undefined,
+      accessToken: integration.accessToken ? '[REDACTED]' : undefined,
       refreshToken: integration.refreshToken ? '[REDACTED]' : undefined
     };
     

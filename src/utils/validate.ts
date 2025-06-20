@@ -3,15 +3,20 @@ import { ValidationError } from './errors.js';
 
 export function validateWithSchema<T>(schema: z.Schema<T>, input: unknown): T {
   try {
-    return schema.parse(input);
+    const result = schema.parse(input);
+    return result;
   } catch (error) {
     if (error instanceof z.ZodError) {
       const details: Record<string, string> = {};
       for (const issue of error.issues) {
-        details[issue.path.join('.')] = issue.message;
+        const path = issue.path.join('.');
+        details[path || issue.path[0] as string] = issue.message;
       }
-      throw new ValidationError('Invalid input', details);
+      
+      const validationError = new ValidationError('Invalid input', details);
+      throw validationError;
     }
+    
     throw error;
   }
 }

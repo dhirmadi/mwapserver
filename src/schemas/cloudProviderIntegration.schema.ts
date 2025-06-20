@@ -35,6 +35,10 @@ export const createCloudProviderIntegrationSchema = cloudProviderIntegrationSche
     refreshToken: true,
     tokenExpiresAt: true,
     connectedAt: true
+  })
+  .extend({
+    // Make tenantId optional in the request schema since we add it from URL params
+    tenantId: objectIdSchema.optional()
   });
 
 // Schema for updating cloud provider integration (partial)

@@ -94,7 +94,9 @@ export class CloudIntegrationsService {
       }
       
       const now = new Date();
-      const integration: CloudProviderIntegration = {
+      
+      // Create integration object with all required fields
+      const integration: Partial<CloudProviderIntegration> = {
         _id: new ObjectId(),
         tenantId: tenantObjectId,
         providerId: providerObjectId,
@@ -104,21 +106,28 @@ export class CloudIntegrationsService {
         createdBy: userId
       };
       
-      // Add optional fields if they exist
-      if (data.scopesGranted) integration.scopesGranted = data.scopesGranted;
+      // Add optional fields if they exist in the data
       if (data.metadata) integration.metadata = data.metadata;
+      if (data.accessToken) integration.accessToken = data.accessToken;
+      if (data.refreshToken) integration.refreshToken = data.refreshToken;
+      if (data.tokenExpiresAt) integration.tokenExpiresAt = data.tokenExpiresAt;
+      if (data.scopesGranted) integration.scopesGranted = data.scopesGranted;
+      if (data.connectedAt) integration.connectedAt = data.connectedAt;
       
-      await this.collection.insertOne(integration);
+      await this.collection.insertOne(integration as CloudProviderIntegration);
       
       logAudit('cloud-integration.create', userId, integration._id.toString(), {
         tenantId,
         providerId: data.providerId
       });
       
-      return integration;
+      return integration as CloudProviderIntegration;
     } catch (error) {
       if (error instanceof ApiError) {
         throw error;
+      }
+      if (error instanceof Error && error.message.includes('ObjectId')) {
+        throw new ApiError('Invalid ID format', 400, CloudProviderIntegrationErrorCodes.INVALID_INPUT);
       }
       throw new ApiError('Failed to create integration', 500, CloudProviderIntegrationErrorCodes.INVALID_INPUT);
     }

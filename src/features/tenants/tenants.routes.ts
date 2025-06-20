@@ -61,7 +61,19 @@ export function getTenantRouter(): Router {
   
   // Cloud integrations routes - Must be defined BEFORE the /:id routes to avoid route conflicts
   // These routes are protected by the requireTenantOwner middleware in the cloud integrations router
-  router.use('/:tenantId/integrations', getCloudIntegrationsRouter());
+  router.use('/:tenantId/integrations', (req, res, next) => {
+    // Ensure tenantId is available in req.params
+    // This is a safeguard in case Express doesn't properly pass params to nested routers
+    const tenantId = req.params.tenantId;
+    if (!tenantId) {
+      // Try to extract from URL if not in params
+      const match = req.originalUrl.match(/\/api\/v1\/tenants\/([^\/]+)\/integrations/);
+      if (match && match[1]) {
+        req.params.tenantId = match[1];
+      }
+    }
+    next();
+  }, getCloudIntegrationsRouter());
   
   // Also support the cloud-integrations path for backward compatibility
   router.use('/:tenantId/cloud-integrations', getCloudIntegrationsRouter());
