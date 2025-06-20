@@ -114,23 +114,22 @@ export class CloudIntegrationsService {
             _id: new ObjectId(),
             tenantId: tenantObjectId,
             providerId: providerObjectId,
+            status: data.status || 'active',
             createdAt: now,
             updatedAt: now,
             createdBy: userId
           };
           
           // Add optional fields if they exist in the data
-          if (data.clientId) integration.clientId = data.clientId;
-          if (data.clientSecret) integration.clientSecret = data.clientSecret;
-          if (data.redirectUri) integration.redirectUri = data.redirectUri;
           if (data.metadata) integration.metadata = data.metadata;
           if (data.accessToken) integration.accessToken = data.accessToken;
           if (data.refreshToken) integration.refreshToken = data.refreshToken;
-          if (data.expiresAt) integration.expiresAt = data.expiresAt;
+          if (data.tokenExpiresAt) integration.tokenExpiresAt = data.tokenExpiresAt;
+          if (data.scopesGranted) integration.scopesGranted = data.scopesGranted;
+          if (data.connectedAt) integration.connectedAt = data.connectedAt;
           
           console.log('DEBUG - Integration object to insert:', JSON.stringify({
             ...integration,
-            clientSecret: integration.clientSecret ? '[REDACTED]' : undefined,
             accessToken: integration.accessToken ? '[REDACTED]' : undefined,
             refreshToken: integration.refreshToken ? '[REDACTED]' : undefined
           }, null, 2));
@@ -230,13 +229,15 @@ export class CloudIntegrationsService {
   ): Promise<CloudProviderIntegration> {
     const integration = await this.findById(id, tenantId);
     
-    const expiresAt = new Date();
-    expiresAt.setSeconds(expiresAt.getSeconds() + expiresIn);
+    const tokenExpiresAt = new Date();
+    tokenExpiresAt.setSeconds(tokenExpiresAt.getSeconds() + expiresIn);
     
     const updates = {
       accessToken,
       refreshToken,
-      expiresAt,
+      tokenExpiresAt,
+      status: 'active',
+      connectedAt: new Date(),
       updatedAt: new Date()
     };
     
@@ -256,7 +257,7 @@ export class CloudIntegrationsService {
     
     logAudit('cloud-integration.update-tokens', userId, id, {
       tenantId,
-      expiresAt
+      tokenExpiresAt
     });
     
     return result;
