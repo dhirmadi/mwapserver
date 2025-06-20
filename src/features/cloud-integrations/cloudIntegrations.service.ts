@@ -64,18 +64,22 @@ export class CloudIntegrationsService {
     userId: string
   ): Promise<CloudProviderIntegration> {
     try {
+      logInfo(`DEBUG SERVICE: Creating integration for tenant ${tenantId} with data: ${JSON.stringify(data)}`);
+      
       const tenantObjectId = new ObjectId(tenantId);
       const providerObjectId = new ObjectId(data.providerId);
       
       // Verify tenant exists
       const tenant = await getDB().collection('tenants').findOne({ _id: tenantObjectId });
       if (!tenant) {
+        logInfo(`DEBUG SERVICE: Tenant not found: ${tenantId}`);
         throw new ApiError('Tenant not found', 404, CloudProviderIntegrationErrorCodes.TENANT_NOT_FOUND);
       }
       
       // Verify cloud provider exists
       const provider = await getDB().collection('cloudProviders').findOne({ _id: providerObjectId });
       if (!provider) {
+        logInfo(`DEBUG SERVICE: Cloud provider not found: ${data.providerId}`);
         throw new ApiError('Cloud provider not found', 404, CloudProviderIntegrationErrorCodes.PROVIDER_NOT_FOUND);
       }
       
@@ -86,6 +90,8 @@ export class CloudIntegrationsService {
       });
       
       if (existingIntegration) {
+        logInfo(`DEBUG SERVICE: Integration already exists for tenant ${tenantId} and provider ${data.providerId}`);
+        logInfo(`DEBUG SERVICE: Existing integration ID: ${existingIntegration._id}`);
         throw new ApiError(
           'Integration already exists for this tenant and provider', 
           409, 
@@ -114,7 +120,9 @@ export class CloudIntegrationsService {
       if (data.scopesGranted) integration.scopesGranted = data.scopesGranted;
       if (data.connectedAt) integration.connectedAt = data.connectedAt;
       
+      logInfo(`DEBUG SERVICE: About to insert integration with ID: ${integration._id}`);
       await this.collection.insertOne(integration as CloudProviderIntegration);
+      logInfo(`DEBUG SERVICE: Integration inserted successfully`);
       
       logAudit('cloud-integration.create', userId, integration._id.toString(), {
         tenantId,

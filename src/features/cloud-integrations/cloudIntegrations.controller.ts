@@ -56,7 +56,11 @@ export async function createTenantIntegration(req: Request, res: Response) {
     const user = getUserFromToken(req);
     const { tenantId } = req.params;
     
-    logInfo(`Creating new integration for tenant ${tenantId} by user ${user.sub}`);
+    logInfo(`DEBUG: Creating new integration for tenant ${tenantId} by user ${user.sub}`);
+    logInfo(`DEBUG: Request URL: ${req.originalUrl}`);
+    logInfo(`DEBUG: Request method: ${req.method}`);
+    logInfo(`DEBUG: Request body: ${JSON.stringify(req.body)}`);
+    logInfo(`DEBUG: Request params: ${JSON.stringify(req.params)}`);
     
     // Add tenantId from URL parameters to the request body
     const requestWithTenantId = {
@@ -64,11 +68,16 @@ export async function createTenantIntegration(req: Request, res: Response) {
       tenantId: tenantId
     };
     
+    logInfo(`DEBUG: Request with tenantId: ${JSON.stringify(requestWithTenantId)}`);
+    
     try {
       const data = validateWithSchema(createCloudProviderIntegrationSchema, requestWithTenantId);
+      logInfo(`DEBUG: Validated data: ${JSON.stringify(data)}`);
+      
       const integration = await cloudIntegrationsService.create(tenantId, data, user.sub);
       
-      logInfo(`Created new integration for tenant ${tenantId} with provider ${data.providerId}`);
+      logInfo(`DEBUG: Created new integration for tenant ${tenantId} with provider ${data.providerId}`);
+      logInfo(`DEBUG: Integration ID: ${integration._id}`);
       
       // Remove sensitive data from response
       const response = {
@@ -79,6 +88,7 @@ export async function createTenantIntegration(req: Request, res: Response) {
       
       return jsonResponse(res, 201, response);
     } catch (validationError) {
+      logError(`DEBUG: Validation error: ${JSON.stringify(validationError)}`);
       throw validationError;
     }
   } catch (error) {
