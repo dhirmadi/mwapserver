@@ -58,25 +58,48 @@ export async function createTenantIntegration(req: Request, res: Response) {
     
     logInfo(`Creating new integration for tenant ${tenantId} by user ${user.sub}`);
     
-    const data = validateWithSchema(createCloudProviderIntegrationSchema, req.body);
-    const integration = await cloudIntegrationsService.create(tenantId, data, user.sub);
+    // Debug: Log the request body
+    console.log('DEBUG - Request Body:', JSON.stringify(req.body, null, 2));
     
-    logInfo(`Created new integration for tenant ${tenantId} with provider ${data.providerId}`);
+    // Debug: Log the expected schema
+    console.log('DEBUG - Expected Schema:', JSON.stringify(createCloudProviderIntegrationSchema.shape, null, 2));
     
-    // Remove sensitive data from response
-    const response = {
-      ...integration,
-      clientSecret: '[REDACTED]',
-      accessToken: integration.accessToken ? '[REDACTED]' : undefined,
-      refreshToken: integration.refreshToken ? '[REDACTED]' : undefined
-    };
-    
-    return jsonResponse(res, 201, response);
+    try {
+      const data = validateWithSchema(createCloudProviderIntegrationSchema, req.body);
+      console.log('DEBUG - Validated Data:', JSON.stringify(data, null, 2));
+      
+      const integration = await cloudIntegrationsService.create(tenantId, data, user.sub);
+      
+      logInfo(`Created new integration for tenant ${tenantId} with provider ${data.providerId}`);
+      
+      // Remove sensitive data from response
+      const response = {
+        ...integration,
+        clientSecret: '[REDACTED]',
+        accessToken: integration.accessToken ? '[REDACTED]' : undefined,
+        refreshToken: integration.refreshToken ? '[REDACTED]' : undefined
+      };
+      
+      return jsonResponse(res, 201, response);
+    } catch (validationError) {
+      console.log('DEBUG - Validation Error:', validationError);
+      if (validationError instanceof Error) {
+        console.log('DEBUG - Error Name:', validationError.name);
+        console.log('DEBUG - Error Message:', validationError.message);
+        console.log('DEBUG - Error Stack:', validationError.stack);
+        
+        if (validationError.name === 'ValidationError' && 'details' in validationError) {
+          console.log('DEBUG - Validation Details:', JSON.stringify((validationError as any).details, null, 2));
+        }
+      }
+      throw validationError;
+    }
   } catch (error) {
     if (error instanceof Error && error.name === 'ValidationError') {
       logInfo(`Validation error when creating integration: ${error.message}`);
       throw new ApiError('Invalid input', 400, CloudProviderIntegrationErrorCodes.INVALID_INPUT);
     }
+    console.log('DEBUG - Error in createTenantIntegration:', error);
     logError(`Error creating integration: ${error instanceof Error ? error.message : 'Unknown error'}`);
     throw error;
   }
