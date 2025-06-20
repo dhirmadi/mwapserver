@@ -32,7 +32,7 @@ POST /api/v1/tenants/:tenantId/integrations
 }
 ```
 
-Note: The `tenantId` is provided in the URL path, not in the request body. The system automatically associates the integration with the tenant specified in the URL. This ensures that integrations are always properly scoped to their tenant.
+Note: The `tenantId` is automatically extracted from the URL path and added to the integration document. You do not need to include it in the request body. This ensures that integrations are always properly scoped to their tenant.
 
 #### How Tenant Association Works
 
