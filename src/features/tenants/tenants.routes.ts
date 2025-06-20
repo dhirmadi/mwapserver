@@ -75,9 +75,6 @@ export function getTenantRouter(): Router {
     next();
   }, getCloudIntegrationsRouter());
   
-  // Also support the cloud-integrations path for backward compatibility
-  router.use('/:tenantId/cloud-integrations', getCloudIntegrationsRouter());
-  
   // ===== TENANT OWNER OR SUPERADMIN ROUTES =====
   
   /**
