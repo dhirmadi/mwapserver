@@ -58,25 +58,14 @@ export async function createTenantIntegration(req: Request, res: Response) {
     
     logInfo(`Creating new integration for tenant ${tenantId} by user ${user.sub}`);
     
-    // Debug: Log the request body
-    console.log('DEBUG - Original Request Body:', JSON.stringify(req.body, null, 2));
-    console.log('DEBUG - tenantId from URL params:', tenantId);
-    
     // Add tenantId from URL parameters to the request body
     const requestWithTenantId = {
       ...req.body,
       tenantId: tenantId
     };
     
-    console.log('DEBUG - Modified Request Body with tenantId:', JSON.stringify(requestWithTenantId, null, 2));
-    
-    // Debug: Log the expected schema
-    console.log('DEBUG - Expected Schema:', JSON.stringify(createCloudProviderIntegrationSchema.shape, null, 2));
-    
     try {
       const data = validateWithSchema(createCloudProviderIntegrationSchema, requestWithTenantId);
-      console.log('DEBUG - Validated Data:', JSON.stringify(data, null, 2));
-      
       const integration = await cloudIntegrationsService.create(tenantId, data, user.sub);
       
       logInfo(`Created new integration for tenant ${tenantId} with provider ${data.providerId}`);

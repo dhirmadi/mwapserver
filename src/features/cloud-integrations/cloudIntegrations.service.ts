@@ -64,96 +64,70 @@ export class CloudIntegrationsService {
     userId: string
   ): Promise<CloudProviderIntegration> {
     try {
-      console.log('DEBUG - Service create method called with:');
-      console.log('DEBUG - tenantId:', tenantId);
-      console.log('DEBUG - data:', JSON.stringify(data, null, 2));
-      console.log('DEBUG - userId:', userId);
+      const tenantObjectId = new ObjectId(tenantId);
+      const providerObjectId = new ObjectId(data.providerId);
       
-      try {
-        const tenantObjectId = new ObjectId(tenantId);
-        console.log('DEBUG - Valid tenantObjectId:', tenantObjectId.toString());
-        
-        try {
-          const providerObjectId = new ObjectId(data.providerId);
-          console.log('DEBUG - Valid providerObjectId:', providerObjectId.toString());
-          
-          // Verify tenant exists
-          const tenant = await getDB().collection('tenants').findOne({ _id: tenantObjectId });
-          console.log('DEBUG - Tenant found:', tenant ? 'Yes' : 'No');
-          if (!tenant) {
-            throw new ApiError('Tenant not found', 404, CloudProviderIntegrationErrorCodes.TENANT_NOT_FOUND);
-          }
-          
-          // Verify cloud provider exists
-          const provider = await getDB().collection('cloudProviders').findOne({ _id: providerObjectId });
-          console.log('DEBUG - Provider found:', provider ? 'Yes' : 'No');
-          if (!provider) {
-            throw new ApiError('Cloud provider not found', 404, CloudProviderIntegrationErrorCodes.PROVIDER_NOT_FOUND);
-          }
-          console.log('DEBUG - Provider details:', JSON.stringify(provider, null, 2));
-          
-          // Check if integration already exists for this tenant and provider
-          const existingIntegration = await this.collection.findOne({ 
-            tenantId: tenantObjectId,
-            providerId: providerObjectId
-          });
-          
-          console.log('DEBUG - Existing integration found:', existingIntegration ? 'Yes' : 'No');
-          if (existingIntegration) {
-            throw new ApiError(
-              'Integration already exists for this tenant and provider', 
-              409, 
-              CloudProviderIntegrationErrorCodes.ALREADY_EXISTS
-            );
-          }
-          
-          const now = new Date();
-          
-          // Create integration object with all required fields
-          const integration: Partial<CloudProviderIntegration> = {
-            _id: new ObjectId(),
-            tenantId: tenantObjectId,
-            providerId: providerObjectId,
-            status: data.status || 'active',
-            createdAt: now,
-            updatedAt: now,
-            createdBy: userId
-          };
-          
-          // Add optional fields if they exist in the data
-          if (data.metadata) integration.metadata = data.metadata;
-          if (data.accessToken) integration.accessToken = data.accessToken;
-          if (data.refreshToken) integration.refreshToken = data.refreshToken;
-          if (data.tokenExpiresAt) integration.tokenExpiresAt = data.tokenExpiresAt;
-          if (data.scopesGranted) integration.scopesGranted = data.scopesGranted;
-          if (data.connectedAt) integration.connectedAt = data.connectedAt;
-          
-          console.log('DEBUG - Integration object to insert:', JSON.stringify({
-            ...integration,
-            accessToken: integration.accessToken ? '[REDACTED]' : undefined,
-            refreshToken: integration.refreshToken ? '[REDACTED]' : undefined
-          }, null, 2));
-          
-          await this.collection.insertOne(integration as CloudProviderIntegration);
-          
-          logAudit('cloud-integration.create', userId, integration._id.toString(), {
-            tenantId,
-            providerId: data.providerId
-          });
-          
-          return integration as CloudProviderIntegration;
-        } catch (providerIdError) {
-          console.log('DEBUG - Error with providerId:', providerIdError);
-          throw new ApiError('Invalid provider ID', 400, CloudProviderIntegrationErrorCodes.INVALID_INPUT);
-        }
-      } catch (tenantIdError) {
-        console.log('DEBUG - Error with tenantId:', tenantIdError);
-        throw new ApiError('Invalid tenant ID', 400, CloudProviderIntegrationErrorCodes.INVALID_INPUT);
+      // Verify tenant exists
+      const tenant = await getDB().collection('tenants').findOne({ _id: tenantObjectId });
+      if (!tenant) {
+        throw new ApiError('Tenant not found', 404, CloudProviderIntegrationErrorCodes.TENANT_NOT_FOUND);
       }
+      
+      // Verify cloud provider exists
+      const provider = await getDB().collection('cloudProviders').findOne({ _id: providerObjectId });
+      if (!provider) {
+        throw new ApiError('Cloud provider not found', 404, CloudProviderIntegrationErrorCodes.PROVIDER_NOT_FOUND);
+      }
+      
+      // Check if integration already exists for this tenant and provider
+      const existingIntegration = await this.collection.findOne({ 
+        tenantId: tenantObjectId,
+        providerId: providerObjectId
+      });
+      
+      if (existingIntegration) {
+        throw new ApiError(
+          'Integration already exists for this tenant and provider', 
+          409, 
+          CloudProviderIntegrationErrorCodes.ALREADY_EXISTS
+        );
+      }
+      
+      const now = new Date();
+      
+      // Create integration object with all required fields
+      const integration: Partial<CloudProviderIntegration> = {
+        _id: new ObjectId(),
+        tenantId: tenantObjectId,
+        providerId: providerObjectId,
+        status: data.status || 'active',
+        createdAt: now,
+        updatedAt: now,
+        createdBy: userId
+      };
+      
+      // Add optional fields if they exist in the data
+      if (data.metadata) integration.metadata = data.metadata;
+      if (data.accessToken) integration.accessToken = data.accessToken;
+      if (data.refreshToken) integration.refreshToken = data.refreshToken;
+      if (data.tokenExpiresAt) integration.tokenExpiresAt = data.tokenExpiresAt;
+      if (data.scopesGranted) integration.scopesGranted = data.scopesGranted;
+      if (data.connectedAt) integration.connectedAt = data.connectedAt;
+      
+      await this.collection.insertOne(integration as CloudProviderIntegration);
+      
+      logAudit('cloud-integration.create', userId, integration._id.toString(), {
+        tenantId,
+        providerId: data.providerId
+      });
+      
+      return integration as CloudProviderIntegration;
     } catch (error) {
-      console.log('DEBUG - Error in create method:', error);
       if (error instanceof ApiError) {
         throw error;
+      }
+      if (error instanceof Error && error.message.includes('ObjectId')) {
+        throw new ApiError('Invalid ID format', 400, CloudProviderIntegrationErrorCodes.INVALID_INPUT);
       }
       throw new ApiError('Failed to create integration', 500, CloudProviderIntegrationErrorCodes.INVALID_INPUT);
     }
