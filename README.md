@@ -36,6 +36,10 @@ The server is organized around core domain entities:
 ```
 /src
   /features         → Domain-specific logic
+    /tenants        → Tenant management
+    /projects       → Project operations
+    /cloud-providers → Cloud provider management
+    /oauth          → OAuth 2.0 implementation
   /middleware       → Authentication and security
   /services         → Shared business logic
   /schemas          → Zod schema definitions
@@ -48,6 +52,9 @@ The server is organized around core domain entities:
 - Multi-tenant architecture
 - Dynamic project type configuration
 - Secure OAuth-based cloud provider integrations
+  - Dedicated OAuth callback endpoint
+  - Secure token exchange and storage
+  - Standardized OAuth 2.0 flow
 - Field-level encryption for sensitive data
 - Microservice-friendly design
 - Comprehensive audit logging
@@ -58,6 +65,8 @@ Full API specification available in `/docs/v3-api.md`. Key endpoints include:
 - `/api/v1/tenants`: Tenant management
 - `/api/v1/projects`: Project CRUD operations
 - `/api/v1/cloud-providers`: Cloud integration management
+- `/api/v1/oauth/callback`: OAuth 2.0 callback handling
+- `/api/v1/oauth/tenants/:tenantId/integrations/:integrationId/refresh`: Token refresh
 
 ## 🧪 Testing (Planned)
 
@@ -86,6 +95,8 @@ This project will use **[Vitest](https://vitest.dev/)** for unit and service-lev
 - [API Contract](docs/v3-api.md)
 - [OpenAPI Schema](docs/v3-openAPI-schema.md)
 - [OAuth Integration Guide](docs/oauth-integration-guide.md)
+- [Frontend OAuth Integration](docs/frontend/oauthintegration.md)
+- [OAuth Feature Documentation](docs/feature/oauth.md)
 - [Project Status](docs/STATUS.md)
 
 ### API Documentation
