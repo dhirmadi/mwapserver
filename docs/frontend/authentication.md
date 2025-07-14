@@ -469,6 +469,45 @@ const logout = () => {
 };
 ```
 
+## OAuth Integration
+
+In addition to user authentication, the MWAP platform also supports OAuth integration with third-party cloud providers. This is handled through a dedicated OAuth callback endpoint:
+
+### OAuth Flow
+
+1. **Initialization**:
+   - Create cloud provider integration
+   - Generate authorization URL with state parameter
+   - Redirect user to provider's authorization page
+
+2. **Authorization**:
+   - User grants permissions to the application
+   - Provider redirects to the dedicated callback endpoint
+
+3. **Token Exchange**:
+   - Backend handles the OAuth callback
+   - Backend exchanges the code for tokens
+   - Backend securely stores the tokens
+
+### OAuth Callback Handling
+
+The OAuth callback is handled by a dedicated endpoint:
+
+```
+GET /api/v1/oauth/callback
+```
+
+This endpoint:
+- Receives the authorization code from the cloud provider
+- Extracts the tenant ID, integration ID, and user ID from the state parameter
+- Exchanges the code for access and refresh tokens
+- Updates the integration with the tokens
+- Redirects to a success or error page
+
+For detailed implementation, see the [OAuth Feature Documentation](../feature/oauth.md) and [OAuth Integration Guide](../oauth-integration-guide.md).
+
 ## Conclusion
 
 The MWAP frontend implements a secure, robust authentication system using Auth0 with the Authorization Code flow with PKCE. This approach provides a high level of security while maintaining a good user experience. Role-based access control ensures that users can only access the features and data they are authorized to use.
+
+For third-party integrations, the platform uses a dedicated OAuth callback endpoint to securely handle the OAuth flow and token exchange, ensuring that sensitive tokens are never exposed to the frontend.

@@ -14,6 +14,8 @@ The Cloud Integrations feature enables tenant owners to connect their workspaces
 
 ## 📋 API Endpoints
 
+### Cloud Integration Endpoints
+
 | Endpoint                                          | Method | Role    | Description                       |
 |---------------------------------------------------|--------|---------|-----------------------------------|
 | `/api/v1/tenants/:tenantId/integrations`          | GET    | OWNER   | List tenant's integrations        |
@@ -21,6 +23,13 @@ The Cloud Integrations feature enables tenant owners to connect their workspaces
 | `/api/v1/tenants/:tenantId/integrations`          | POST   | OWNER   | Create a new integration          |
 | `/api/v1/tenants/:tenantId/integrations/:id`      | PATCH  | OWNER   | Update an existing integration    |
 | `/api/v1/tenants/:tenantId/integrations/:id`      | DELETE | OWNER   | Delete an integration             |
+
+### OAuth Endpoints
+
+| Endpoint                                                                | Method | Role         | Description                                |
+|-------------------------------------------------------------------------|--------|-------------|--------------------------------------------|
+| `/api/v1/oauth/callback`                                                | GET    | Public      | Handle OAuth callback from cloud providers  |
+| `/api/v1/oauth/tenants/:tenantId/integrations/:integrationId/refresh`   | POST   | OWNER       | Refresh OAuth tokens for an integration     |
 
 ## 📊 Data Model
 
@@ -120,20 +129,25 @@ PATCH /api/v1/tenants/60a1b2c3d4e5f6g7h8i9j0k1/integrations/60a1b2c3d4e5f6g7h8i9
 1. **Initialization**:
    - Create integration with client credentials
    - Generate authorization URL using provider's authUrl and scopes
+   - Include state parameter with tenant and integration IDs
 
 2. **Authorization**:
    - Redirect user to provider's authorization page
    - User grants permissions to the application
 
-3. **Token Exchange**:
-   - Provider redirects back to redirectUri with authorization code
-   - Exchange code for access and refresh tokens
-   - Update integration with tokens and expiration
+3. **Token Exchange** (Dedicated Callback Endpoint):
+   - Provider redirects to `/api/v1/oauth/callback` with authorization code
+   - Backend extracts tenant ID, integration ID, and user ID from state parameter
+   - Backend exchanges code for access and refresh tokens
+   - Backend updates integration with tokens and expiration
+   - User is redirected to success or error page
 
 4. **Token Refresh**:
    - Monitor token expiration
-   - Use refresh token to obtain new access token
-   - Update integration with new tokens
+   - Use dedicated endpoint to refresh tokens: `/api/v1/oauth/tenants/:tenantId/integrations/:integrationId/refresh`
+   - Backend updates integration with new tokens
+
+For detailed implementation, see the [OAuth Feature Documentation](../feature/oauth.md) and [OAuth Integration Guide](../oauth-integration-guide.md).
 
 ## 🔜 Future Enhancements
 
