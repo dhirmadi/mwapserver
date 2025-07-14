@@ -176,6 +176,15 @@ interface ProjectType {
 
 ---
 
+## 🔑 OAuth
+
+| Endpoint                                                                | Method | Role         | Request Schema | Response Schema                       |
+| ----------------------------------------------------------------------- | ------ | ------------ | -------------- | ------------------------------------- |
+| `/api/v1/oauth/callback`                                                | GET    | Public       | —              | Redirect to success/error page        |
+| `/api/v1/oauth/tenants/:tenantId/integrations/:integrationId/refresh`   | POST   | TenantOwner  | —              | `CloudProviderIntegrationSchema`     |
+
+> **Note**: The OAuth callback endpoint is a public endpoint that handles the OAuth 2.0 authorization code flow. It exchanges the authorization code for access and refresh tokens, and updates the integration with the tokens. The endpoint redirects to a success or error page based on the result of the operation.
+
 ## 📂 Cloud Files (Virtual)
 
 | Endpoint                     | Method | Role                        | Request Schema                                                                                                | Response Schema |

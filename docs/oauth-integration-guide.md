@@ -65,28 +65,40 @@ The OAuth flow is handled separately from the integration creation. Here's how i
    ```javascript
    // Frontend code
    const provider = await api.get(`/api/v1/cloud-providers?slug=dropbox`);
-   const authUrl = `${provider.authUrl}?client_id=${provider.clientId}&response_type=code&redirect_uri=${encodeURIComponent(redirectUri)}&scope=${encodeURIComponent(provider.scopes.join(' '))}`;
+   
+   // Create state parameter with tenant and integration IDs
+   const state = btoa(JSON.stringify({
+     tenantId,
+     integrationId,
+     userId: getCurrentUserId() // Include user ID for auditing
+   }));
+   
+   // Build the OAuth URL
+   const redirectUri = `${window.location.origin}/api/v1/oauth/callback`;
+   const authUrl = `${provider.authUrl}?client_id=${provider.clientId}&response_type=code&redirect_uri=${encodeURIComponent(redirectUri)}&scope=${encodeURIComponent(provider.scopes.join(' '))}&state=${state}`;
+   
    // Redirect the user to authUrl
+   window.location.href = authUrl;
    ```
 
-2. **Handle the OAuth callback**:
-   ```javascript
-   // Frontend code - After OAuth redirect
-   const code = new URLSearchParams(window.location.search).get('code');
-   if (code) {
-     // Exchange the code for tokens
-     const response = await api.patch(`/api/v1/tenants/${tenantId}/integrations/${integrationId}`, {
-       accessToken: code, // The backend will exchange this for actual tokens
-       metadata: {
-         oauth_code: code,
-         redirect_uri: redirectUri
-       }
-     });
-   }
+2. **Dedicated OAuth Callback Endpoint**:
+   The backend now provides a dedicated endpoint for handling OAuth callbacks:
+   
    ```
+   GET /api/v1/oauth/callback
+   ```
+   
+   This endpoint:
+   - Receives the authorization code from the cloud provider
+   - Extracts the tenant ID, integration ID, and user ID from the state parameter
+   - Exchanges the code for access and refresh tokens
+   - Updates the integration with the tokens
+   - Redirects to a success or error page
 
-3. **Backend token exchange**:
-   The backend will use the code to exchange for access and refresh tokens, then store them securely.
+3. **Backend Token Exchange**:
+   The backend automatically exchanges the code for tokens and securely stores them. No additional action is required from the frontend.
+
+> **Note**: The previous approach of sending the OAuth code to the PATCH endpoint is still supported for backward compatibility, but the dedicated callback endpoint is recommended for new implementations.
 
 ## Using the Integration
 
@@ -132,7 +144,7 @@ Error responses include a code that can be used to identify the specific error:
 
 ## Example: Complete OAuth Flow
 
-Here's a complete example of how to implement the OAuth flow in a frontend application:
+Here's a complete example of how to implement the OAuth flow in a frontend application using the new dedicated callback endpoint:
 
 ```javascript
 // Step 1: Create the integration
@@ -147,50 +159,53 @@ const createIntegration = async (tenantId, providerId) => {
   return response.data;
 };
 
-// Step 2: Start the OAuth flow
-const startOAuthFlow = async (providerId) => {
+// Step 2: Start the OAuth flow with the dedicated callback endpoint
+const startOAuthFlow = async (tenantId, integrationId, providerId) => {
+  // Get the provider details
   const provider = await api.get(`/api/v1/cloud-providers/${providerId}`);
-  const redirectUri = `${window.location.origin}/oauth/callback`;
-  const state = generateRandomState(); // Generate a random state for CSRF protection
   
-  // Store the state and integration ID in session storage
-  sessionStorage.setItem('oauth_state', state);
-  sessionStorage.setItem('integration_id', integration._id);
+  // Create state parameter with tenant and integration IDs
+  const state = btoa(JSON.stringify({
+    tenantId,
+    integrationId,
+    userId: getCurrentUserId() // Include user ID for auditing
+  }));
   
+  // Build the OAuth URL with the dedicated callback endpoint
+  const redirectUri = `${window.location.origin}/api/v1/oauth/callback`;
   const authUrl = `${provider.authUrl}?client_id=${provider.clientId}&response_type=code&redirect_uri=${encodeURIComponent(redirectUri)}&scope=${encodeURIComponent(provider.scopes.join(' '))}&state=${state}`;
   
   // Redirect the user to the authorization URL
   window.location.href = authUrl;
 };
 
-// Step 3: Handle the OAuth callback
-const handleOAuthCallback = async () => {
-  const params = new URLSearchParams(window.location.search);
-  const code = params.get('code');
-  const state = params.get('state');
+// Step 3: No need to handle the callback manually!
+// The backend will:
+// 1. Exchange the code for tokens
+// 2. Update the integration with the tokens
+// 3. Redirect to a success or error page
+
+// Step 4: Verify the integration status after redirect
+const verifyIntegrationStatus = async (tenantId, integrationId) => {
+  const integration = await api.get(`/api/v1/tenants/${tenantId}/integrations/${integrationId}`);
   
-  // Verify the state to prevent CSRF attacks
-  if (state !== sessionStorage.getItem('oauth_state')) {
-    throw new Error('Invalid state parameter');
+  if (integration.status === 'active' && integration.accessToken) {
+    // Integration is active and has tokens
+    showSuccessMessage('Integration successful!');
+  } else {
+    // Integration failed
+    showErrorMessage('Integration failed. Please try again.');
   }
-  
-  const integrationId = sessionStorage.getItem('integration_id');
-  const tenantId = getCurrentTenantId(); // Get the current tenant ID
-  
-  // Update the integration with the OAuth code
-  const response = await api.patch(`/api/v1/tenants/${tenantId}/integrations/${integrationId}`, {
-    metadata: {
-      oauth_code: code,
-      redirect_uri: `${window.location.origin}/oauth/callback`
-    }
-  });
-  
-  // Clear the session storage
-  sessionStorage.removeItem('oauth_state');
-  sessionStorage.removeItem('integration_id');
-  
-  // Redirect to the integrations page
-  window.location.href = '/integrations';
+};
+
+// Step 5: Refresh tokens if needed
+const refreshIntegrationTokens = async (tenantId, integrationId) => {
+  try {
+    await api.post(`/api/v1/oauth/tenants/${tenantId}/integrations/${integrationId}/refresh`);
+    showSuccessMessage('Tokens refreshed successfully!');
+  } catch (error) {
+    showErrorMessage('Failed to refresh tokens. Please reconnect the integration.');
+  }
 };
 ```
 

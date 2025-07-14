@@ -213,20 +213,36 @@ function buildOAuthUrl(cloudProvider, integration, redirectUri) {
 }
 ```
 
-### 4. Handle OAuth Callback
+### 4. Dedicated OAuth Callback Endpoint
 
-When the user authorizes your application, the cloud provider will redirect back to your callback URL with an authorization code and the state parameter:
+When the user authorizes your application, the cloud provider will redirect back to the dedicated OAuth callback endpoint with an authorization code and the state parameter:
 
 ```
-https://your-app.com/oauth/callback?code=4/P7q7W91a-oMsCeLvIaQm6bTrgtp7&state=eyJpbnRlZ3JhdGlvbklkIjoiNjBiMmYzYzRkNWU2ZjdhOGI5YzBkMWUyIiwidGVuYW50SWQiOiI2MGMzZjRkNWU2ZjdhOGI5YzBkMWUyZjMifQ==
+https://your-app.com/api/v1/oauth/callback?code=4/P7q7W91a-oMsCeLvIaQm6bTrgtp7&state=eyJpbnRlZ3JhdGlvbklkIjoiNjBiMmYzYzRkNWU2ZjdhOGI5YzBkMWUyIiwidGVuYW50SWQiOiI2MGMzZjRkNWU2ZjdhOGI5YzBkMWUyZjMifQ==
 ```
 
-Your frontend should:
+The backend will:
 1. Parse the `code` and `state` parameters
-2. Decode the state to get the integration ID and tenant ID
+2. Decode the state to get the integration ID, tenant ID, and user ID
 3. Exchange the code for tokens
+4. Update the integration with the tokens
+5. Redirect to a success or error page
 
-### 5. Update Integration with OAuth Tokens
+**Endpoint:** `GET /api/v1/oauth/callback`
+
+**Authentication:** None (public endpoint)
+
+**Query Parameters:**
+- `code`: The authorization code from the cloud provider
+- `state`: The state parameter containing the integration ID, tenant ID, and user ID
+- `error`: Error message if the authorization failed
+- `error_description`: Additional error details
+
+**Response:** Redirects to a success or error page
+
+### 5. Alternative: Manual Token Update (Legacy Approach)
+
+For backward compatibility, you can still update the integration manually with the OAuth tokens:
 
 **Endpoint:** `PATCH /api/v1/tenants/:tenantId/integrations/:integrationId`
 
@@ -251,7 +267,7 @@ Your frontend should:
 }
 ```
 
-**Note**: According to the existing implementation, you can also pass the OAuth code and redirect URI in the metadata field, and the backend will handle the token exchange:
+**Note**: You can also pass just the OAuth code and redirect URI in the metadata field:
 
 ```json
 {
@@ -261,6 +277,8 @@ Your frontend should:
   }
 }
 ```
+
+However, the dedicated callback endpoint is recommended for new implementations.
 
 **Response Example:**
 ```json
@@ -409,7 +427,7 @@ The recommended approach is to use the backend token exchange mechanism by inclu
 
 ### Complete Implementation Example
 
-Here's a complete example of implementing the OAuth flow using the backend token exchange approach:
+Here's a complete example of implementing the OAuth flow using the new dedicated callback endpoint:
 
 ```javascript
 // Step 1: List available cloud providers
@@ -440,15 +458,17 @@ async function createIntegration(tenantId, providerId) {
   return response.json();
 }
 
-// Step 3: Build and redirect to OAuth URL
-function redirectToOAuth(provider, integration, redirectUri) {
-  // Create state parameter with integration and tenant IDs
+// Step 3: Build and redirect to OAuth URL with dedicated callback endpoint
+function redirectToOAuth(provider, integration, userId) {
+  // Create state parameter with integration, tenant, and user IDs
   const state = btoa(JSON.stringify({
     integrationId: integration._id,
-    tenantId: integration.tenantId
+    tenantId: integration.tenantId,
+    userId: userId
   }));
   
-  // Build OAuth URL
+  // Build OAuth URL with the dedicated callback endpoint
+  const redirectUri = `${window.location.origin}/api/v1/oauth/callback`;
   const url = new URL(provider.authUrl);
   url.searchParams.append('client_id', provider.clientId);
   url.searchParams.append('redirect_uri', redirectUri);
@@ -460,40 +480,20 @@ function redirectToOAuth(provider, integration, redirectUri) {
   window.location.href = url.toString();
 }
 
-// Step 4: Handle OAuth callback
-async function handleOAuthCallback(tenantId, integrationId) {
-  // Get code and state from URL
-  const urlParams = new URLSearchParams(window.location.search);
-  const code = urlParams.get('code');
-  const state = urlParams.get('state');
-  
-  // Validate state parameter
-  const stateData = JSON.parse(atob(state));
-  if (stateData.integrationId !== integrationId || stateData.tenantId !== tenantId) {
-    throw new Error('Invalid state parameter');
-  }
-  
-  // Update integration with OAuth code
+// Step 4: Verify integration status after redirect
+async function verifyIntegration(tenantId, integrationId) {
   const response = await fetch(`/api/v1/tenants/${tenantId}/integrations/${integrationId}`, {
-    method: 'PATCH',
     headers: {
-      'Authorization': `Bearer ${getAuthToken()}`,
-      'Content-Type': 'application/json'
-    },
-    body: JSON.stringify({
-      metadata: {
-        oauth_code: code,
-        redirect_uri: window.location.origin + '/oauth/callback'
-      }
-    })
+      'Authorization': `Bearer ${getAuthToken()}`
+    }
   });
-  
   return response.json();
 }
 
-// Step 5: Verify integration status
-async function verifyIntegration(tenantId, integrationId) {
-  const response = await fetch(`/api/v1/tenants/${tenantId}/integrations/${integrationId}`, {
+// Step 5: Refresh tokens if needed
+async function refreshIntegrationTokens(tenantId, integrationId) {
+  const response = await fetch(`/api/v1/oauth/tenants/${tenantId}/integrations/${integrationId}/refresh`, {
+    method: 'POST',
     headers: {
       'Authorization': `Bearer ${getAuthToken()}`
     }
@@ -512,44 +512,47 @@ async function setupOAuthIntegration(tenantId, providerId) {
     // Step 2: Create integration
     const integration = await createIntegration(tenantId, providerId);
     
-    // Step 3: Redirect to OAuth
-    const redirectUri = window.location.origin + '/oauth/callback';
-    redirectToOAuth(provider, integration, redirectUri);
+    // Step 3: Redirect to OAuth with the dedicated callback endpoint
+    const userId = getCurrentUserId(); // Get the current user ID
+    redirectToOAuth(provider, integration, userId);
     
-    // Steps 4 and 5 would be handled in the callback page
+    // The backend will handle the callback and token exchange
+    // No need for manual callback handling!
   } catch (error) {
     console.error('OAuth setup failed:', error);
   }
 }
 
-// Callback page handler
-async function oauthCallbackHandler() {
+// Success page handler after OAuth callback
+async function handleSuccessPage() {
   try {
-    // Extract state from URL
+    // Get tenantId and integrationId from URL parameters
     const urlParams = new URLSearchParams(window.location.search);
-    const state = urlParams.get('state');
-    const stateData = JSON.parse(atob(state));
+    const tenantId = urlParams.get('tenantId');
+    const integrationId = urlParams.get('integrationId');
     
-    // Handle the callback
-    await handleOAuthCallback(stateData.tenantId, stateData.integrationId);
+    if (!tenantId || !integrationId) {
+      showErrorMessage('Missing tenant ID or integration ID');
+      return;
+    }
     
     // Verify the integration
-    const integration = await verifyIntegration(stateData.tenantId, stateData.integrationId);
+    const integration = await verifyIntegration(tenantId, integrationId);
     
     // Show success message
     if (integration.status === 'active') {
       showSuccessMessage('Integration successful!');
     } else {
-      showErrorMessage('Integration failed. Please try again.');
+      showErrorMessage('Integration status is not active. Please try again.');
     }
     
     // Redirect back to integrations page
     setTimeout(() => {
-      window.location.href = `/tenants/${stateData.tenantId}/integrations`;
+      window.location.href = `/tenants/${tenantId}/integrations`;
     }, 2000);
   } catch (error) {
-    console.error('OAuth callback failed:', error);
-    showErrorMessage('Integration failed: ' + error.message);
+    console.error('Success page handling failed:', error);
+    showErrorMessage('Failed to verify integration: ' + error.message);
   }
 }
 ```
