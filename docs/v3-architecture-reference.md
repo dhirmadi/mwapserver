@@ -45,13 +45,15 @@ This document defines the **backend API server architecture** for MWAP as a gene
     /tenants              → tenant logic, routes, services
     /projects             → project logic and member APIs
     /project-types        → admin CRUD + runtime config
-    /integrations         → cloud provider integrations (OAuth)
-    /cloud                → file listing, metadata, and sorting
+    /cloud-providers      → cloud provider configuration
+    /cloud-integrations   → tenant-specific cloud integrations (OAuth)
+    /files                → file listing, metadata, and sorting
+    /users                → user-related endpoints
   /middleware             → auth, role, request validation
-  /services               → reusable pure services across domains
   /schemas                → Zod schema definitions for all types
   /utils                  → helper methods (e.g. token tools)
   /config                 → env loading, Auth0, Mongo connection
+  /docs                   → API documentation
 ```
 
 ---
@@ -73,7 +75,7 @@ This document defines the **backend API server architecture** for MWAP as a gene
 ### 🔐 Security
 
 * All routes require `Bearer` token (Auth0)
-* Route permissions enforced via `verifyProjectRole` or `requireRoles`
+* Route permissions enforced via `requireProjectRole` or `requireTenantOwner`
 
 ---
 
@@ -173,16 +175,15 @@ This document defines the organization and purpose of middleware in the MWAP bac
 
 ```bash
 /src/middleware
-├── auth.ts          # JWT validation via Auth0 (sets req.user)
-├── cors.ts          # Centralized CORS policy enforcement
-├── roles.ts         # Role-based access control (project, tenant)
-├── rateLimiter.ts   # Optional request throttling per IP
-├── secureHeaders.ts # Helmet and header hardening (optional)
+├── auth.js          # JWT validation via Auth0 (sets req.user)
+├── authorization.js # Role-based access control (project, tenant)
+├── errorHandler.js  # Centralized error handling
+├── roles.js         # Project role validation
 ```
 
 ---
 
-### 🔐 `auth.ts`
+### 🔐 `auth.js`
 
 ```ts
 export function authenticateJWT(): RequestHandler // Sets req.user
@@ -194,28 +195,29 @@ export function authenticateJWT(): RequestHandler // Sets req.user
 
 ---
 
-### 🌐 `cors.ts`
+### 🛡️ `authorization.js`
 
 ```ts
-export const corsMiddleware: RequestHandler
-```
-
-* Uses `cors` package
-* Reads from allowed origins via config
-* Supports credentials and custom headers
-
----
-
-### 🛡️ `roles.ts`
-
-```ts
-export function requireProjectRole(...roles: Role[]): RequestHandler
-export function requireTenantRole(...roles: Role[]): RequestHandler
+export function requireSuperAdminRole(): RequestHandler
+export function requireTenantOwner(tenantIdParam: string): RequestHandler
+export function requireTenantOwnerOrSuperAdmin(tenantIdParam: string): RequestHandler
 ```
 
 * Middleware to guard routes based on user's role in current scope
+* Checks for superadmin role or tenant ownership
+* Relies on `req.user` populated by `auth.js`
+
+---
+
+### 🛡️ `roles.js`
+
+```ts
+export function requireProjectRole(role: 'OWNER' | 'DEPUTY' | 'MEMBER'): RequestHandler
+```
+
+* Middleware to guard routes based on user's role in a project
 * Roles: `OWNER`, `DEPUTY`, `MEMBER`
-* Relies on `req.user` populated by `auth.ts`
+* Relies on `req.user` populated by `auth.js`
 
 ---
 

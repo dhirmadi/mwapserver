@@ -29,7 +29,7 @@ The MWAP documentation is organized into several categories:
 
 ### 5. Project Status
 
-- **[Status](STATUS.md)**: Current project status, completed features, in-progress work, and planned enhancements.
+- **[Status](STATUS.md)**: Current project status, completed features, completed phases, and planned enhancements.
 - **Recent Changes**: Documentation of recent changes and updates to the project.
 
 ## Documentation Conventions

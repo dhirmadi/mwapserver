@@ -9,7 +9,7 @@ This document defines the **canonical API endpoints** of the MWAP backend, based
 ## 🔐 Authentication
 
 * All routes require Auth0 JWT (Bearer token)
-* Roles are enforced per tenant and/or project scope via middleware (`verifyProjectRole`, `requireRoles`)
+* Roles are enforced per tenant and/or project scope via middleware (`requireProjectRole`, `requireTenantOwner`, `requireSuperAdminRole`)
 * API documentation is protected by authentication to prevent information disclosure
 
 ---
@@ -56,6 +56,7 @@ interface UserRolesResponse {
 | `/api/v1/cloud-providers/:id`                     | PATCH  | SUPERADMIN | `CloudProviderSchema`                                | `CloudProviderSchema`              |
 | `/api/v1/cloud-providers/:id`                     | DELETE | SUPERADMIN | —                                                    | `204`                              |
 | `/api/v1/tenants/:tenantId/integrations`          | GET    | `OWNER`    | —                                                    | `CloudProviderIntegrationSchema[]` |
+| `/api/v1/tenants/:tenantId/cloud-integrations`    | GET    | `OWNER`    | —                                                    | `CloudProviderIntegrationSchema[]` |
 | `/api/v1/tenants/:tenantId/integrations`          | POST   | `OWNER`    | `CloudProviderIntegrationSchema.omit({ _id: true })` | `CloudProviderIntegrationSchema`   |
 | `/api/v1/tenants/:tenantId/integrations/:integrationId` | PATCH  | `OWNER`    | `CloudProviderIntegrationSchema.partial()` | `CloudProviderIntegrationSchema`   |
 | `/api/v1/tenants/:tenantId/integrations/:integrationId` | DELETE | `OWNER`    | —                                                    | `204`                              |
@@ -174,6 +175,15 @@ interface ProjectType {
 - `project-type/invalid-schema`: Invalid configuration schema format
 
 ---
+
+## 🔑 OAuth
+
+| Endpoint                                                                | Method | Role         | Request Schema | Response Schema                       |
+| ----------------------------------------------------------------------- | ------ | ------------ | -------------- | ------------------------------------- |
+| `/api/v1/oauth/callback`                                                | GET    | Public       | —              | Redirect to success/error page        |
+| `/api/v1/oauth/tenants/:tenantId/integrations/:integrationId/refresh`   | POST   | TenantOwner  | —              | `CloudProviderIntegrationSchema`     |
+
+> **Note**: The OAuth callback endpoint is a public endpoint that handles the OAuth 2.0 authorization code flow. It exchanges the authorization code for access and refresh tokens, and updates the integration with the tokens. The endpoint redirects to a success or error page based on the result of the operation.
 
 ## 📂 Cloud Files (Virtual)
 
