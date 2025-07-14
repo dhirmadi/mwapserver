@@ -40,10 +40,53 @@ interface UserRolesResponse {
 
 | Endpoint              | Method | Role                    | Request Schema                                      | Response Schema |
 | --------------------- | ------ | ----------------------- | --------------------------------------------------- | --------------- |
-| `/api/v1/tenants`     | POST   | Authenticated           | `TenantSchema.pick({ name: true })`                 | `TenantSchema`  |
-| `/api/v1/tenants/me`  | GET    | Authenticated           | —                                                   | `TenantSchema`  |
-| `/api/v1/tenants/:id` | PATCH  | `OWNER` or `SUPERADMIN` | `TenantSchema.pick({ name: true, archived: true })` | `TenantSchema`  |
-| `/api/v1/tenants/:id` | DELETE | `SUPERADMIN`            | -                                                   | `204`           |
+| `/api/v1/tenants`     | GET    | SUPERADMIN              | query: { includeArchived?: boolean }               | `TenantResponseSchema[]` |
+| `/api/v1/tenants`     | POST   | Authenticated           | `CreateTenantSchema`                               | `TenantResponseSchema`  |
+| `/api/v1/tenants/me`  | GET    | Authenticated           | —                                                   | `TenantResponseSchema`  |
+| `/api/v1/tenants/:id` | GET    | `OWNER` or `SUPERADMIN` | —                                                   | `TenantResponseSchema`  |
+| `/api/v1/tenants/:id` | PATCH  | `OWNER` or `SUPERADMIN` | `UpdateTenantSchema`                               | `TenantResponseSchema`  |
+| `/api/v1/tenants/:id` | DELETE | `SUPERADMIN`            | —                                                   | `204`           |
+
+### Tenant Schemas
+
+#### Create Tenant Request Schema
+```typescript
+interface CreateTenantRequest {
+  name: string;           // 3-50 chars
+  settings?: {            // Optional tenant settings
+    allowPublicProjects?: boolean;  // Default: false
+    maxProjects?: number;           // 1-100, Default: 10
+  };
+}
+```
+
+#### Update Tenant Request Schema
+```typescript
+interface UpdateTenantRequest {
+  name?: string;          // 3-50 chars
+  settings?: {            // Optional tenant settings update
+    allowPublicProjects?: boolean;
+    maxProjects?: number; // 1-100
+  };
+  archived?: boolean;     // Archive/unarchive tenant
+}
+```
+
+#### Tenant Response Schema
+```typescript
+interface TenantResponse {
+  id: string;             // Tenant ID (transformed from _id)
+  name: string;           // Tenant name
+  ownerId: string;        // Auth0 user ID of the owner
+  settings: {             // Tenant settings
+    allowPublicProjects: boolean;  // Whether public projects are allowed
+    maxProjects: number;           // Maximum number of projects allowed
+  };
+  createdAt: string;      // ISO date string
+  updatedAt: string;      // ISO date string
+  archived: boolean;      // Whether tenant is archived
+}
+```
 
 ---
 
@@ -51,64 +94,122 @@ interface UserRolesResponse {
 
 | Endpoint                                          | Method | Role       | Request Schema                                       | Response Schema                    |
 | ------------------------------------------------- | ------ | ---------- | ---------------------------------------------------- | ---------------------------------- |
-| `/api/v1/cloud-providers`                         | GET    | SUPERADMIN | —                                                    | `CloudProviderSchema[]`            |
-| `/api/v1/cloud-providers`                         | POST   | SUPERADMIN | `CloudProviderSchema.omit({ _id: true })`            | `CloudProviderSchema`              |
-| `/api/v1/cloud-providers/:id`                     | PATCH  | SUPERADMIN | `CloudProviderSchema`                                | `CloudProviderSchema`              |
+| `/api/v1/cloud-providers`                         | GET    | Authenticated | —                                                    | `CloudProviderResponseSchema[]`            |
+| `/api/v1/cloud-providers/:id`                     | GET    | Authenticated | —                                                    | `CloudProviderResponseSchema`      |
+| `/api/v1/cloud-providers`                         | POST   | SUPERADMIN | `CreateCloudProviderSchema`            | `CloudProviderResponseSchema`              |
+| `/api/v1/cloud-providers/:id`                     | PATCH  | SUPERADMIN | `UpdateCloudProviderSchema`                                | `CloudProviderResponseSchema`              |
 | `/api/v1/cloud-providers/:id`                     | DELETE | SUPERADMIN | —                                                    | `204`                              |
-| `/api/v1/tenants/:tenantId/integrations`          | GET    | `OWNER`    | —                                                    | `CloudProviderIntegrationSchema[]` |
-| `/api/v1/tenants/:tenantId/cloud-integrations`    | GET    | `OWNER`    | —                                                    | `CloudProviderIntegrationSchema[]` |
-| `/api/v1/tenants/:tenantId/integrations`          | POST   | `OWNER`    | `CloudProviderIntegrationSchema.omit({ _id: true })` | `CloudProviderIntegrationSchema`   |
-| `/api/v1/tenants/:tenantId/integrations/:integrationId` | PATCH  | `OWNER`    | `CloudProviderIntegrationSchema.partial()` | `CloudProviderIntegrationSchema`   |
+| `/api/v1/tenants/:tenantId/integrations`          | GET    | `OWNER`    | —                                                    | `CloudProviderIntegrationResponseSchema[]` |
+| `/api/v1/tenants/:tenantId/cloud-integrations`    | GET    | `OWNER`    | —                                                    | `CloudProviderIntegrationResponseSchema[]` |
+| `/api/v1/tenants/:tenantId/integrations`          | POST   | `OWNER`    | `CreateCloudProviderIntegrationSchema` | `CloudProviderIntegrationResponseSchema`   |
+| `/api/v1/tenants/:tenantId/integrations/:integrationId` | PATCH  | `OWNER`    | `UpdateCloudProviderIntegrationSchema` | `CloudProviderIntegrationResponseSchema`   |
 | `/api/v1/tenants/:tenantId/integrations/:integrationId` | DELETE | `OWNER`    | —                                                    | `204`                              |
 
-### Cloud Provider Schema
+**Note:** Both `/integrations` and `/cloud-integrations` paths are supported for backward compatibility.
+
+### Cloud Provider Schemas
+
+#### Create Cloud Provider Request Schema
 ```typescript
-interface CloudProvider {
-  _id: string;
+interface CreateCloudProviderRequest {
   name: string;           // 3-50 chars
   slug: string;           // 2-20 chars, lowercase, alphanumeric with hyphens
   scopes: string[];       // OAuth scopes
   authUrl: string;        // OAuth authorization URL
   tokenUrl: string;       // OAuth token URL
   clientId: string;       // OAuth client ID
-  clientSecret: string;   // OAuth client secret (encrypted)
-  grantType: string;      // Default: "authorization_code"
-  tokenMethod: string;    // Default: "POST"
-  metadata: Record<string, unknown>; // Optional provider-specific metadata
-  createdAt: Date;
-  updatedAt: Date;
-  createdBy: string;      // Auth0 sub
+  clientSecret: string;   // OAuth client secret (will be encrypted)
+  grantType?: string;     // Default: "authorization_code"
+  tokenMethod?: string;   // Default: "POST"
+  metadata?: Record<string, unknown>; // Optional provider-specific metadata
 }
 ```
 
-### Cloud Provider Integration Schema
+#### Update Cloud Provider Request Schema
 ```typescript
-interface CloudProviderIntegration {
-  _id: string;
-  tenantId: string;       // Reference to tenant
-  providerId: string;     // Reference to cloud provider
-  accessToken?: string;   // OAuth access token (encrypted)
-  refreshToken?: string;  // OAuth refresh token (encrypted)
-  tokenExpiresAt?: Date;  // Token expiration date
-  scopesGranted?: string[]; // Granted OAuth scopes
-  status: 'active' | 'expired' | 'revoked' | 'error'; // Default: 'active'
-  connectedAt?: Date;     // When the integration was established
-  metadata?: Record<string, unknown>; // Optional integration-specific metadata
-  createdAt: Date;
-  updatedAt: Date;
-  createdBy: string;      // Auth0 sub
+interface UpdateCloudProviderRequest {
+  name?: string;          // 3-50 chars
+  slug?: string;          // 2-20 chars, lowercase, alphanumeric with hyphens
+  scopes?: string[];      // OAuth scopes
+  authUrl?: string;       // OAuth authorization URL
+  tokenUrl?: string;      // OAuth token URL
+  clientId?: string;      // OAuth client ID
+  clientSecret?: string;  // OAuth client secret (will be encrypted)
+  grantType?: string;     // Default: "authorization_code"
+  tokenMethod?: string;   // Default: "POST"
+  metadata?: Record<string, unknown>; // Optional provider-specific metadata
 }
 ```
 
-### Create Cloud Provider Integration Request
+#### Cloud Provider Response Schema
+```typescript
+interface CloudProviderResponse {
+  id: string;             // Cloud provider ID (transformed from _id)
+  name: string;           // Provider name
+  slug: string;           // Provider slug
+  scopes: string[];       // OAuth scopes
+  authUrl: string;        // OAuth authorization URL
+  tokenUrl: string;       // OAuth token URL
+  clientId: string;       // OAuth client ID
+  clientSecret: string;   // OAuth client secret (encrypted)
+  grantType: string;      // OAuth grant type
+  tokenMethod: string;    // OAuth token method
+  metadata: Record<string, unknown>; // Provider-specific metadata
+  createdAt: string;      // ISO date string
+  updatedAt: string;      // ISO date string
+  createdBy: string;      // Auth0 user ID who created this provider
+}
+```
+
+### Cloud Provider Integration Schemas
+
+#### Create Cloud Provider Integration Request Schema
 ```typescript
 interface CreateCloudProviderIntegrationRequest {
   providerId: string;     // Required: ID of the cloud provider
   status?: 'active' | 'expired' | 'revoked' | 'error'; // Default: 'active'
-  scopesGranted?: string[]; // Optional: Granted OAuth scopes
-  metadata?: Record<string, unknown>; // Optional: Integration-specific metadata
+  accessToken?: string;   // OAuth access token (will be encrypted)
+  refreshToken?: string;  // OAuth refresh token (will be encrypted)
+  tokenExpiresAt?: string; // Token expiration date (ISO string)
+  scopesGranted?: string[]; // Granted OAuth scopes
+  connectedAt?: string;   // When integration was established (ISO string)
+  metadata?: Record<string, unknown>; // Optional integration-specific metadata
 }
 ```
+
+#### Update Cloud Provider Integration Request Schema
+```typescript
+interface UpdateCloudProviderIntegrationRequest {
+  status?: 'active' | 'expired' | 'revoked' | 'error';
+  accessToken?: string;   // OAuth access token (will be encrypted)
+  refreshToken?: string;  // OAuth refresh token (will be encrypted)
+  tokenExpiresAt?: string; // Token expiration date (ISO string)
+  scopesGranted?: string[]; // Granted OAuth scopes
+  connectedAt?: string;   // When integration was established (ISO string)
+  metadata?: Record<string, unknown>; // Optional integration-specific metadata
+}
+```
+
+#### Cloud Provider Integration Response Schema
+```typescript
+interface CloudProviderIntegrationResponse {
+  id: string;             // Integration ID (transformed from _id)
+  tenantId: string;       // Reference to tenant
+  providerId: string;     // Reference to cloud provider
+  accessToken?: string;   // OAuth access token (encrypted)
+  refreshToken?: string;  // OAuth refresh token (encrypted)
+  tokenExpiresAt?: string; // Token expiration date (ISO string)
+  scopesGranted?: string[]; // Granted OAuth scopes
+  status: 'active' | 'expired' | 'revoked' | 'error'; // Integration status
+  connectedAt?: string;   // When integration was established (ISO string)
+  metadata?: Record<string, unknown>; // Integration-specific metadata
+  createdAt: string;      // ISO date string
+  updatedAt: string;      // ISO date string
+  createdBy: string;      // Auth0 user ID who created this integration
+}
+```
+
+
 
 ### Error Codes
 - `cloud-integration/not-found`: Integration does not exist
@@ -149,10 +250,10 @@ interface CreateCloudProviderIntegrationRequest {
 
 | Endpoint                    | Method | Role       | Request Schema                          | Response Schema       |
 | --------------------------- | ------ | ---------- | --------------------------------------- | --------------------- |
-| `/api/v1/project-types`     | GET    | SUPERADMIN | —                                       | `ProjectTypeSchema[]` |
+| `/api/v1/project-types`     | GET    | Authenticated | —                                       | `ProjectTypeSchema[]` |
 | `/api/v1/project-types`     | POST   | SUPERADMIN | `ProjectTypeSchema.omit({ _id: true })` | `ProjectTypeSchema`   |
 | `/api/v1/project-types/:id` | PATCH  | SUPERADMIN | `ProjectTypeSchema`                     | `ProjectTypeSchema`   |
-| `/api/v1/project-types/:id` | DELETE | SUPERADMIN | —                                       | `204`                 |
+| `/api/v1/project-types/:id` | DELETE | Authenticated | —                                       | `204`                 |
 
 ### Project Type Schema
 ```typescript
@@ -181,7 +282,7 @@ interface ProjectType {
 | Endpoint                                                                | Method | Role         | Request Schema | Response Schema                       |
 | ----------------------------------------------------------------------- | ------ | ------------ | -------------- | ------------------------------------- |
 | `/api/v1/oauth/callback`                                                | GET    | Public       | —              | Redirect to success/error page        |
-| `/api/v1/oauth/tenants/:tenantId/integrations/:integrationId/refresh`   | POST   | TenantOwner  | —              | `CloudProviderIntegrationSchema`     |
+| `/api/v1/oauth/tenants/:tenantId/integrations/:integrationId/refresh`   | POST   | TenantOwner  | —              | `CloudProviderIntegrationResponseSchema`     |
 
 > **Note**: The OAuth callback endpoint is a public endpoint that handles the OAuth 2.0 authorization code flow. It exchanges the authorization code for access and refresh tokens, and updates the integration with the tokens. The endpoint redirects to a success or error page based on the result of the operation.
 
