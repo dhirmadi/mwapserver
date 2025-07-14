@@ -9,7 +9,7 @@ This document defines the **canonical API endpoints** of the MWAP backend, based
 ## 🔐 Authentication
 
 * All routes require Auth0 JWT (Bearer token)
-* Roles are enforced per tenant and/or project scope via middleware (`verifyProjectRole`, `requireRoles`)
+* Roles are enforced per tenant and/or project scope via middleware (`requireProjectRole`, `requireTenantOwner`, `requireSuperAdminRole`)
 * API documentation is protected by authentication to prevent information disclosure
 
 ---
@@ -56,6 +56,7 @@ interface UserRolesResponse {
 | `/api/v1/cloud-providers/:id`                     | PATCH  | SUPERADMIN | `CloudProviderSchema`                                | `CloudProviderSchema`              |
 | `/api/v1/cloud-providers/:id`                     | DELETE | SUPERADMIN | —                                                    | `204`                              |
 | `/api/v1/tenants/:tenantId/integrations`          | GET    | `OWNER`    | —                                                    | `CloudProviderIntegrationSchema[]` |
+| `/api/v1/tenants/:tenantId/cloud-integrations`    | GET    | `OWNER`    | —                                                    | `CloudProviderIntegrationSchema[]` |
 | `/api/v1/tenants/:tenantId/integrations`          | POST   | `OWNER`    | `CloudProviderIntegrationSchema.omit({ _id: true })` | `CloudProviderIntegrationSchema`   |
 | `/api/v1/tenants/:tenantId/integrations/:integrationId` | PATCH  | `OWNER`    | `CloudProviderIntegrationSchema.partial()` | `CloudProviderIntegrationSchema`   |
 | `/api/v1/tenants/:tenantId/integrations/:integrationId` | DELETE | `OWNER`    | —                                                    | `204`                              |
