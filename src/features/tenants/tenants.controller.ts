@@ -9,8 +9,7 @@ import { ERROR_CODES } from '../../utils/constants';
 import { logAudit, logInfo, logError } from '../../utils/logger';
 import { 
   createTenantSchema, 
-  updateTenantSchema, 
-  tenantResponseSchema 
+  updateTenantSchema
 } from '../../schemas/tenant.schema';
 
 const tenantService = new TenantService();
@@ -91,9 +90,6 @@ export async function getAllTenants(req: Request, res: Response) {
   
   const tenants = await tenantService.getAllTenants({ includeArchived });
   
-  // Transform each tenant using the response schema
-  const formattedTenants = tenants.map(tenant => tenantResponseSchema.parse(tenant));
-  
   logInfo(`Returning ${tenants.length} tenants to superadmin ${user.sub}`);
   
   // Log the audit event
@@ -102,7 +98,7 @@ export async function getAllTenants(req: Request, res: Response) {
     count: tenants.length
   });
   
-  return jsonResponse(res, 200, formattedTenants);
+  return jsonResponse(res, 200, tenants);
 }
 
 export async function getTenantById(req: Request, res: Response) {
@@ -118,8 +114,5 @@ export async function getTenantById(req: Request, res: Response) {
     tenantId
   });
   
-  // Format the response using the tenant response schema
-  const formattedTenant = tenantResponseSchema.parse(tenant);
-  
-  return jsonResponse(res, 200, formattedTenant);
+  return jsonResponse(res, 200, tenant);
 }

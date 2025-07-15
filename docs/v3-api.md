@@ -75,7 +75,7 @@ interface UpdateTenantRequest {
 #### Tenant Response Schema
 ```typescript
 interface TenantResponse {
-  id: string;             // Tenant ID (transformed from _id)
+  _id: string;            // Tenant ID (MongoDB ObjectId as string)
   name: string;           // Tenant name
   ownerId: string;        // Auth0 user ID of the owner
   settings: {             // Tenant settings

@@ -46,14 +46,8 @@ export const updateTenantSchema = z.object({
 export type UpdateTenantRequest = z.infer<typeof updateTenantSchema>;
 
 // Tenant response schema (for API responses)
-export const tenantResponseSchema = tenantSchema.transform((tenant) => ({
-  id: tenant._id.toString(),
-  name: tenant.name,
-  ownerId: tenant.ownerId,
-  settings: tenant.settings,
-  createdAt: tenant.createdAt.toISOString(),
-  updatedAt: tenant.updatedAt.toISOString(),
-  archived: tenant.archived
-}));
+export const tenantResponseSchema = tenantSchema.extend({
+  _id: z.string()
+});
 
 export type TenantResponse = z.infer<typeof tenantResponseSchema>;
