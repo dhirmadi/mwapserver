@@ -56,7 +56,7 @@ The tenant settings object controls tenant-wide configurations:
 ### Tenant Response
 ```json
 {
-  "id": "string (ObjectId)",
+  "_id": "string (ObjectId)",
   "name": "string",
   "ownerId": "string (Auth0 sub)",
   "settings": {
