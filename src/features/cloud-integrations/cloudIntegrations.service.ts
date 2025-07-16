@@ -1,13 +1,14 @@
 import { Collection, ObjectId } from 'mongodb';
 import { getDB } from '../../config/db.js';
 import { ApiError } from '../../utils/errors.js';
-import { logAudit } from '../../utils/logger.js';
+import { logAudit, logInfo, logError } from '../../utils/logger.js';
 import { 
   CloudProviderIntegration, 
   CreateCloudProviderIntegrationRequest, 
   UpdateCloudProviderIntegrationRequest, 
   CloudProviderIntegrationErrorCodes 
 } from '../../schemas/cloudProviderIntegration.schema.js';
+import axios from 'axios';
 
 export class CloudIntegrationsService {
   private collection: Collection<CloudProviderIntegration>;
@@ -242,5 +243,145 @@ export class CloudIntegrationsService {
     });
     
     return result;
+  }
+
+  /**
+   * Check the health status of an integration by testing token validity
+   */
+  async checkIntegrationHealth(id: string, tenantId: string): Promise<{
+    status: 'healthy' | 'expired' | 'unauthorized' | 'error';
+    lastChecked: string;
+    message?: string;
+  }> {
+    try {
+      const integration = await this.findById(id, tenantId);
+      const now = new Date();
+      
+      // Check if we have an access token
+      if (!integration.accessToken) {
+        return {
+          status: 'unauthorized',
+          lastChecked: now.toISOString(),
+          message: 'No access token available'
+        };
+      }
+      
+      // Check if token is expired based on stored expiration time
+      if (integration.tokenExpiresAt && integration.tokenExpiresAt <= now) {
+        return {
+          status: 'expired',
+          lastChecked: now.toISOString(),
+          message: 'Access token has expired'
+        };
+      }
+      
+      // Get the provider to determine how to test the token
+      const provider = await getDB().collection('cloudProviders').findOne({ 
+        _id: new ObjectId(integration.providerId.toString())
+      });
+      
+      if (!provider) {
+        return {
+          status: 'error',
+          lastChecked: now.toISOString(),
+          message: 'Cloud provider not found'
+        };
+      }
+      
+      // Test the token by making a simple API call to the provider
+      try {
+        await this.testTokenWithProvider(integration.accessToken, provider);
+        
+        // Update the integration status to healthy if the test passes
+        await this.collection.updateOne(
+          { _id: integration._id },
+          { 
+            $set: { 
+              status: 'active',
+              updatedAt: now
+            }
+          }
+        );
+        
+        return {
+          status: 'healthy',
+          lastChecked: now.toISOString(),
+          message: 'Token is valid and working'
+        };
+      } catch (tokenError) {
+        logError('Token validation failed during health check', tokenError);
+        
+        // Update integration status based on the error
+        let status: 'expired' | 'unauthorized' | 'error' = 'error';
+        let message = 'Token validation failed';
+        
+        if (axios.isAxiosError(tokenError)) {
+          if (tokenError.response?.status === 401) {
+            status = 'unauthorized';
+            message = 'Token is invalid or revoked';
+          } else if (tokenError.response?.status === 403) {
+            status = 'expired';
+            message = 'Token has expired or insufficient permissions';
+          }
+        }
+        
+        // Update the integration status
+        await this.collection.updateOne(
+          { _id: integration._id },
+          { 
+            $set: { 
+              status: status === 'unauthorized' ? 'revoked' : status,
+              updatedAt: now
+            }
+          }
+        );
+        
+        return {
+          status,
+          lastChecked: now.toISOString(),
+          message
+        };
+      }
+    } catch (error) {
+      logError('Health check failed', error);
+      return {
+        status: 'error',
+        lastChecked: new Date().toISOString(),
+        message: error instanceof Error ? error.message : 'Unknown error occurred'
+      };
+    }
+  }
+
+  /**
+   * Test a token with the cloud provider by making a simple API call
+   */
+  private async testTokenWithProvider(accessToken: string, provider: any): Promise<void> {
+    // Define test endpoints for different providers
+    const testEndpoints: Record<string, string> = {
+      'aws': 'https://sts.amazonaws.com/',
+      'azure': 'https://management.azure.com/subscriptions?api-version=2020-01-01',
+      'gcp': 'https://cloudresourcemanager.googleapis.com/v1/projects',
+      'github': 'https://api.github.com/user',
+      'gitlab': 'https://gitlab.com/api/v4/user'
+    };
+    
+    // Get the test endpoint for this provider
+    const testUrl = testEndpoints[provider.name?.toLowerCase()] || provider.apiBaseUrl;
+    
+    if (!testUrl) {
+      throw new Error(`No test endpoint configured for provider: ${provider.name}`);
+    }
+    
+    // Make a simple GET request to test the token
+    const response = await axios.get(testUrl, {
+      headers: {
+        'Authorization': `Bearer ${accessToken}`,
+        'Accept': 'application/json'
+      },
+      timeout: 10000 // 10 second timeout
+    });
+    
+    // If we get here without an exception, the token is valid
+    logInfo(`Token validation successful for provider ${provider.name}`);
   }
 }

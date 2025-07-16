@@ -23,6 +23,8 @@ The Cloud Integrations feature enables tenant owners to connect their workspaces
 | `/api/v1/tenants/:tenantId/integrations`          | POST   | OWNER   | Create a new integration          |
 | `/api/v1/tenants/:tenantId/integrations/:id`      | PATCH  | OWNER   | Update an existing integration    |
 | `/api/v1/tenants/:tenantId/integrations/:id`      | DELETE | OWNER   | Delete an integration             |
+| `/api/v1/tenants/:tenantId/integrations/:id/refresh-token` | POST | OWNER | Refresh OAuth tokens for an integration |
+| `/api/v1/tenants/:tenantId/integrations/:id/health` | GET | OWNER | Check the health status of an integration |
 
 ### OAuth Endpoints
 
@@ -148,6 +150,79 @@ PATCH /api/v1/tenants/60a1b2c3d4e5f6g7h8i9j0k1/integrations/60a1b2c3d4e5f6g7h8i9
    - Backend updates integration with new tokens
 
 For detailed implementation, see the [OAuth Feature Documentation](../feature/oauth.md) and [OAuth Integration Guide](../oauth-integration-guide.md).
+
+## 🔄 Token Management and Health Monitoring
+
+### Token Refresh Endpoint
+
+**Endpoint**: `POST /api/v1/tenants/:tenantId/integrations/:integrationId/refresh-token`
+
+This endpoint allows manual refresh of OAuth tokens for an integration. It uses the stored refresh token to obtain new access and refresh tokens from the cloud provider.
+
+**Request**: No request body required (all data comes from stored integration)
+
+**Response**:
+```json
+{
+  "success": true,
+  "data": {
+    "_id": "60a1b2c3d4e5f6g7h8i9j0k3",
+    "tenantId": "60a1b2c3d4e5f6g7h8i9j0k1",
+    "providerId": "60a1b2c3d4e5f6g7h8i9j0k2",
+    "status": "active",
+    "tokenExpiresAt": "2025-07-17T12:00:00Z",
+    "accessToken": "[REDACTED]",
+    "refreshToken": "[REDACTED]",
+    "updatedAt": "2025-07-16T18:37:00Z"
+  }
+}
+```
+
+**Error Conditions**:
+- `400`: Integration does not have a refresh token
+- `404`: Integration or tenant not found
+- `403`: User is not the tenant owner
+- `500`: Token refresh failed with the provider
+
+### Health Check Endpoint
+
+**Endpoint**: `GET /api/v1/tenants/:tenantId/integrations/:integrationId/health`
+
+This endpoint checks the health status of an integration by testing the validity of the stored access token with the cloud provider.
+
+**Request**: No request body required
+
+**Response**:
+```json
+{
+  "success": true,
+  "data": {
+    "status": "healthy",
+    "lastChecked": "2025-07-16T18:37:00Z",
+    "message": "Token is valid and working"
+  }
+}
+```
+
+**Status Values**:
+- `healthy`: Token is valid and working
+- `expired`: Token has expired based on stored expiration time
+- `unauthorized`: Token is invalid or has been revoked
+- `error`: Unable to determine status due to system error
+
+**Health Check Logic**:
+1. Verify access token exists
+2. Check stored expiration time
+3. Test token with provider-specific API endpoint
+4. Update integration status based on results
+5. Return current health status
+
+**Provider Test Endpoints**:
+- **AWS**: `https://sts.amazonaws.com/`
+- **Azure**: `https://management.azure.com/subscriptions?api-version=2020-01-01`
+- **GCP**: `https://cloudresourcemanager.googleapis.com/v1/projects`
+- **GitHub**: `https://api.github.com/user`
+- **GitLab**: `https://gitlab.com/api/v4/user`
 
 ## 🔜 Future Enhancements
 
