@@ -437,6 +437,104 @@ paths:
         '204':
           description: No Content
 
+  /tenants/{id}/integrations/{integrationId}/refresh-token:
+    post:
+      summary: Refresh OAuth tokens for an integration
+      description: Uses the stored refresh token to obtain new access and refresh tokens from the cloud provider
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+          description: Tenant ID
+        - name: integrationId
+          in: path
+          required: true
+          schema: { type: string }
+          description: Integration ID
+      responses:
+        '200':
+          description: Tokens refreshed successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    type: object
+                    properties:
+                      _id: { type: string }
+                      tenantId: { type: string }
+                      providerId: { type: string }
+                      status: { type: string, enum: [active, expired, revoked, error] }
+                      tokenExpiresAt: { type: string, format: date-time }
+                      accessToken: { type: string, example: "[REDACTED]" }
+                      refreshToken: { type: string, example: "[REDACTED]" }
+                      updatedAt: { type: string, format: date-time }
+        '400':
+          description: Integration does not have a refresh token
+        '403':
+          description: User is not the tenant owner
+        '404':
+          description: Integration or tenant not found
+        '500':
+          description: Token refresh failed with the provider
+
+  /tenants/{id}/integrations/{integrationId}/health:
+    get:
+      summary: Check the health status of an integration
+      description: Tests the validity of the stored access token with the cloud provider
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+          description: Tenant ID
+        - name: integrationId
+          in: path
+          required: true
+          schema: { type: string }
+          description: Integration ID
+      responses:
+        '200':
+          description: Health status retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    type: object
+                    properties:
+                      status:
+                        type: string
+                        enum: [healthy, expired, unauthorized, error]
+                        description: Current health status of the integration
+                      lastChecked:
+                        type: string
+                        format: date-time
+                        description: Timestamp when the health check was performed
+                      message:
+                        type: string
+                        description: Human-readable description of the status
+                        example: "Token is valid and working"
+        '403':
+          description: User is not the tenant owner
+        '404':
+          description: Integration or tenant not found
+        '500':
+          description: Health check failed due to system error
+
   /project-types:
     get:
       summary: List project types

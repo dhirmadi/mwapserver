@@ -5,7 +5,9 @@ import {
   getTenantIntegrationById,
   createTenantIntegration,
   updateTenantIntegration,
-  deleteTenantIntegration
+  deleteTenantIntegration,
+  refreshIntegrationToken,
+  checkIntegrationHealth
 } from './cloudIntegrations.controller.js';
 import { requireTenantOwner } from '../../middleware/authorization.js';
 import { logInfo } from '../../utils/logger.js';
@@ -33,6 +35,12 @@ export function getCloudIntegrationsRouter(): Router {
   
   // DELETE /api/v1/tenants/:tenantId/integrations/:integrationId
   router.delete('/:integrationId', wrapAsyncHandler(deleteTenantIntegration));
+  
+  // POST /api/v1/tenants/:tenantId/integrations/:integrationId/refresh-token
+  router.post('/:integrationId/refresh-token', wrapAsyncHandler(refreshIntegrationToken));
+  
+  // GET /api/v1/tenants/:tenantId/integrations/:integrationId/health
+  router.get('/:integrationId/health', wrapAsyncHandler(checkIntegrationHealth));
   
   return router;
 }
