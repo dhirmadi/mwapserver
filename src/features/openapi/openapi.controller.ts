@@ -6,6 +6,9 @@
 
 import { Request, Response } from 'express';
 import { OpenAPIFeatureService } from './openapi.service.js';
+import { openAPIValidationService } from './validation.service.js';
+import { openAPIPerformanceService } from './performance.service.js';
+import { openAPISecurityService } from './security.service.js';
 import { validateWithSchema } from '../../utils/validate.js';
 import { jsonResponse, errorResponse } from '../../utils/response.js';
 import { ApiError } from '../../utils/errors.js';
@@ -165,7 +168,7 @@ export async function invalidateCache(req: Request, res: Response) {
 }
 
 /**
- * Validate OpenAPI specification
+ * Validate OpenAPI specification with comprehensive checks
  * GET /api/v1/openapi/validate
  */
 export async function validateSpecification(req: Request, res: Response) {
@@ -179,14 +182,17 @@ export async function validateSpecification(req: Request, res: Response) {
       userAgent: req.get('User-Agent')
     });
 
-    const validation = await openAPIFeatureService.validateSpecification();
+    // Use enhanced validation service
+    const validation = await openAPIValidationService.validateSpecification();
     
     const statusCode = validation.valid ? 200 : 400;
     
     return jsonResponse(res, statusCode, {
       valid: validation.valid,
       errors: validation.errors,
-      timestamp: new Date().toISOString()
+      warnings: validation.warnings,
+      metrics: validation.metrics,
+      timestamp: validation.timestamp
     });
   } catch (error) {
     logError('Failed to validate OpenAPI specification', {
@@ -251,5 +257,369 @@ export async function healthCheck(req: Request, res: Response) {
     };
     
     return jsonResponse(res, 503, health);
+  }
+}
+
+/**
+ * Get validation history
+ * GET /api/v1/openapi/validation/history
+ */
+export async function getValidationHistory(req: Request, res: Response) {
+  try {
+    const user = getUserFromToken(req);
+    const limit = parseInt(req.query.limit as string) || 10;
+    
+    logAudit('OpenAPI validation history requested', {
+      userId: user.sub,
+      userEmail: user.email,
+      limit,
+      ip: req.ip
+    });
+
+    const history = openAPIValidationService.getValidationHistory(limit);
+    
+    return jsonResponse(res, 200, {
+      history,
+      count: history.length,
+      timestamp: new Date().toISOString()
+    });
+  } catch (error) {
+    logError('Failed to get validation history', {
+      error: error instanceof Error ? error.message : String(error),
+      userId: req.user?.sub
+    });
+    
+    if (error instanceof ApiError) {
+      return errorResponse(res, error.statusCode, error.message, error.code);
+    }
+    
+    return errorResponse(res, 500, 'Internal server error', ERROR_CODES.INTERNAL_ERROR);
+  }
+}
+
+/**
+ * Generate CI/CD validation report
+ * GET /api/v1/openapi/validation/ci-report
+ */
+export async function generateCIReport(req: Request, res: Response) {
+  try {
+    const user = getUserFromToken(req);
+    const format = (req.query.format as string) || 'text';
+    const failOnErrors = req.query.failOnErrors === 'true';
+    const failOnWarnings = req.query.failOnWarnings === 'true';
+    
+    logAudit('OpenAPI CI report requested', {
+      userId: user.sub,
+      userEmail: user.email,
+      format,
+      failOnErrors,
+      failOnWarnings,
+      ip: req.ip
+    });
+
+    const config = {
+      enabled: true,
+      failOnErrors,
+      failOnWarnings,
+      outputFormat: format as 'json' | 'junit' | 'text'
+    };
+
+    const report = await openAPIValidationService.generateCIReport(config);
+    
+    // Set appropriate content type
+    let contentType = 'text/plain';
+    if (format === 'json') {
+      contentType = 'application/json';
+    } else if (format === 'junit') {
+      contentType = 'application/xml';
+    }
+    
+    res.setHeader('Content-Type', contentType);
+    res.setHeader('Cache-Control', 'no-cache');
+    
+    return res.status(200).send(report);
+  } catch (error) {
+    logError('Failed to generate CI report', {
+      error: error instanceof Error ? error.message : String(error),
+      userId: req.user?.sub
+    });
+    
+    if (error instanceof ApiError) {
+      return errorResponse(res, error.statusCode, error.message, error.code);
+    }
+    
+    return errorResponse(res, 500, 'Internal server error', ERROR_CODES.INTERNAL_ERROR);
+  }
+}
+
+/**
+ * Monitor validation status
+ * POST /api/v1/openapi/validation/monitor
+ */
+export async function monitorValidation(req: Request, res: Response) {
+  try {
+    const user = getUserFromToken(req);
+    
+    logAudit('OpenAPI validation monitoring triggered', {
+      userId: user.sub,
+      userEmail: user.email,
+      ip: req.ip
+    });
+
+    // Trigger monitoring (async)
+    openAPIValidationService.monitorValidation().catch(error => {
+      logError('Validation monitoring failed', {
+        error: error instanceof Error ? error.message : String(error)
+      });
+    });
+    
+    return jsonResponse(res, 202, {
+      message: 'Validation monitoring triggered',
+      timestamp: new Date().toISOString()
+    });
+  } catch (error) {
+    logError('Failed to trigger validation monitoring', {
+      error: error instanceof Error ? error.message : String(error),
+      userId: req.user?.sub
+    });
+    
+    if (error instanceof ApiError) {
+      return errorResponse(res, error.statusCode, error.message, error.code);
+    }
+    
+    return errorResponse(res, 500, 'Internal server error', ERROR_CODES.INTERNAL_ERROR);
+  }
+}
+/**
+ * Get performance metrics
+ * GET /api/v1/openapi/performance/metrics
+ */
+export async function getPerformanceMetrics(req: Request, res: Response) {
+  try {
+    const user = getUserFromToken(req);
+    
+    logAudit('OpenAPI performance metrics requested', {
+      userId: user.sub,
+      userEmail: user.email,
+      ip: req.ip
+    });
+
+    const metrics = await openAPIPerformanceService.collectMetrics();
+    
+    return jsonResponse(res, 200, {
+      metrics,
+      timestamp: new Date().toISOString()
+    });
+  } catch (error) {
+    logError('Failed to get performance metrics', {
+      error: error instanceof Error ? error.message : String(error),
+      userId: req.user?.sub
+    });
+    
+    if (error instanceof ApiError) {
+      return errorResponse(res, error.statusCode, error.message, error.code);
+    }
+    
+    return errorResponse(res, 500, 'Internal server error', ERROR_CODES.INTERNAL_ERROR);
+  }
+}
+
+/**
+ * Run performance benchmarks
+ * POST /api/v1/openapi/performance/benchmark
+ */
+export async function runPerformanceBenchmarks(req: Request, res: Response) {
+  try {
+    const user = getUserFromToken(req);
+    const iterations = parseInt(req.body.iterations) || 10;
+    
+    logAudit('OpenAPI performance benchmarks requested', {
+      userId: user.sub,
+      userEmail: user.email,
+      iterations,
+      ip: req.ip
+    });
+
+    const benchmarks = await openAPIPerformanceService.runBenchmarks(iterations);
+    
+    return jsonResponse(res, 200, {
+      benchmarks,
+      iterations,
+      timestamp: new Date().toISOString()
+    });
+  } catch (error) {
+    logError('Failed to run performance benchmarks', {
+      error: error instanceof Error ? error.message : String(error),
+      userId: req.user?.sub
+    });
+    
+    if (error instanceof ApiError) {
+      return errorResponse(res, error.statusCode, error.message, error.code);
+    }
+    
+    return errorResponse(res, 500, 'Internal server error', ERROR_CODES.INTERNAL_ERROR);
+  }
+}
+
+/**
+ * Optimize cache configuration
+ * POST /api/v1/openapi/performance/optimize-cache
+ */
+export async function optimizeCache(req: Request, res: Response) {
+  try {
+    const user = getUserFromToken(req);
+    
+    logAudit('OpenAPI cache optimization requested', {
+      userId: user.sub,
+      userEmail: user.email,
+      ip: req.ip
+    });
+
+    const optimizedConfig = await openAPIPerformanceService.optimizeCache();
+    
+    return jsonResponse(res, 200, {
+      message: 'Cache configuration optimized',
+      configuration: optimizedConfig,
+      timestamp: new Date().toISOString()
+    });
+  } catch (error) {
+    logError('Failed to optimize cache', {
+      error: error instanceof Error ? error.message : String(error),
+      userId: req.user?.sub
+    });
+    
+    if (error instanceof ApiError) {
+      return errorResponse(res, error.statusCode, error.message, error.code);
+    }
+    
+    return errorResponse(res, 500, 'Internal server error', ERROR_CODES.INTERNAL_ERROR);
+  }
+}
+
+/**
+ * Perform security audit
+ * POST /api/v1/openapi/security/audit
+ */
+export async function performSecurityAudit(req: Request, res: Response) {
+  try {
+    const user = getUserFromToken(req);
+    
+    logAudit('OpenAPI security audit requested', {
+      userId: user.sub,
+      userEmail: user.email,
+      ip: req.ip
+    });
+
+    const auditResult = await openAPISecurityService.performSecurityAudit();
+    
+    const statusCode = auditResult.secure ? 200 : 400;
+    
+    return jsonResponse(res, statusCode, auditResult);
+  } catch (error) {
+    logError('Failed to perform security audit', {
+      error: error instanceof Error ? error.message : String(error),
+      userId: req.user?.sub
+    });
+    
+    if (error instanceof ApiError) {
+      return errorResponse(res, error.statusCode, error.message, error.code);
+    }
+    
+    return errorResponse(res, 500, 'Internal server error', ERROR_CODES.INTERNAL_ERROR);
+  }
+}
+
+/**
+ * Get sanitized OpenAPI specification
+ * GET /api/v1/openapi/security/sanitized
+ */
+export async function getSanitizedSpecification(req: Request, res: Response) {
+  try {
+    const user = getUserFromToken(req);
+    
+    // Log access for security monitoring
+    openAPISecurityService.logDocumentationAccess(
+      user.sub,
+      user.email,
+      req.path,
+      req.method,
+      req.ip,
+      req.get('User-Agent') || '',
+      true
+    );
+
+    const rawDocument = await openAPIFeatureService.getOpenAPISpecification({
+      format: 'json',
+      includeExamples: false,
+      minify: false
+    });
+
+    const sanitizedDocument = await openAPISecurityService.sanitizeDocument(rawDocument);
+    
+    res.setHeader('Cache-Control', 'public, max-age=300'); // 5 minutes cache
+    
+    return jsonResponse(res, 200, sanitizedDocument);
+  } catch (error) {
+    const user = getUserFromToken(req);
+    
+    // Log failed access
+    openAPISecurityService.logDocumentationAccess(
+      user.sub,
+      user.email,
+      req.path,
+      req.method,
+      req.ip,
+      req.get('User-Agent') || '',
+      false,
+      '500'
+    );
+
+    logError('Failed to get sanitized specification', {
+      error: error instanceof Error ? error.message : String(error),
+      userId: req.user?.sub
+    });
+    
+    if (error instanceof ApiError) {
+      return errorResponse(res, error.statusCode, error.message, error.code);
+    }
+    
+    return errorResponse(res, 500, 'Internal server error', ERROR_CODES.INTERNAL_ERROR);
+  }
+}
+
+/**
+ * Get security access audit log
+ * GET /api/v1/openapi/security/audit-log
+ */
+export async function getSecurityAuditLog(req: Request, res: Response) {
+  try {
+    const user = getUserFromToken(req);
+    const limit = parseInt(req.query.limit as string) || 100;
+    
+    logAudit('OpenAPI security audit log requested', {
+      userId: user.sub,
+      userEmail: user.email,
+      limit,
+      ip: req.ip
+    });
+
+    const auditLog = openAPISecurityService.getAccessAuditLog(limit);
+    
+    return jsonResponse(res, 200, {
+      auditLog,
+      count: auditLog.length,
+      timestamp: new Date().toISOString()
+    });
+  } catch (error) {
+    logError('Failed to get security audit log', {
+      error: error instanceof Error ? error.message : String(error),
+      userId: req.user?.sub
+    });
+    
+    if (error instanceof ApiError) {
+      return errorResponse(res, error.statusCode, error.message, error.code);
+    }
+    
+    return errorResponse(res, 500, 'Internal server error', ERROR_CODES.INTERNAL_ERROR);
   }
 }
