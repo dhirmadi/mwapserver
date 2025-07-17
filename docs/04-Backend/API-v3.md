@@ -1,6 +1,6 @@
-# MWAP API v3 Documentation
+# MWAP Backend API Documentation
 
-This document provides comprehensive documentation for the MWAP backend API v3, based on the actual implementation and route definitions.
+This document provides comprehensive documentation for the MWAP backend API, based on the actual implementation and route definitions verified against the source code.
 
 ## 🔐 Authentication
 

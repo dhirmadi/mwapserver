@@ -1,6 +1,6 @@
 # MWAP Documentation
 
-Welcome to the MWAP (Modular Web Application Platform) documentation. This comprehensive guide covers all aspects of the platform's architecture, development, and deployment.
+Welcome to the MWAP (Modular Web Application Platform) documentation. This comprehensive guide covers all aspects of the backend API platform's architecture, development, and deployment.
 
 ## 📚 Documentation Structure
 
@@ -8,84 +8,67 @@ Welcome to the MWAP (Modular Web Application Platform) documentation. This compr
 High-level project information and context
 - [Vision](./00-Overview/vision.md) - Project vision and goals
 - [Tech Stack](./00-Overview/tech-stack.md) - Technology choices and rationale
-- [Glossary](./00-Overview/glossary.md) - Key terms and definitions
-- [Contributors](./00-Overview/contributors.md) - Team and contribution guidelines
-- [Changelog](./00-Overview/changelog.md) - Version history and updates
 
 ### [01-Getting-Started](./01-Getting-Started/)
 Everything needed to start developing with MWAP
-- [Prerequisites](./01-Getting-Started/prerequisites.md) - System requirements
-- [Getting Started](./01-Getting-Started/getting-started.md) - Quick setup guide
-- [Environment Setup](./01-Getting-Started/env-setup.md) - Configuration details
-- [Migration & Deployment](./01-Getting-Started/migration-deployment-guide.md) - Deployment strategies
-- [Troubleshooting](./01-Getting-Started/troubleshooting.md) - Common issues and solutions
-- [FAQ](./01-Getting-Started/faq.md) - Frequently asked questions
+- [Getting Started](./01-Getting-Started/getting-started.md) - Complete setup guide
+- [Environment Variables](./01-Getting-Started/environment-variables.md) - Configuration details
 
 ### [02-Architecture](./02-Architecture/)
 System design and architectural decisions
+- [Architecture Reference](./02-Architecture/architecture-reference.md) - Comprehensive backend architecture
 - [Overview](./02-Architecture/overview.md) - High-level architecture
 - [System Design](./02-Architecture/system-design.md) - Detailed system design
-- [Component Structure](./02-Architecture/component-structure.md) - Component organization
-- [User Flows](./02-Architecture/user-flows.md) - User interaction patterns
 - [Domain Map](./02-Architecture/v3-domainmap.md) - Domain model and relationships
 - [Diagrams](./02-Architecture/diagrams/) - Visual architecture representations
 
 ### [03-Frontend](./03-Frontend/)
 Frontend development and architecture
-- [Folder Structure](./03-Frontend/folder-structure.md) - Frontend organization
-- [Components](./03-Frontend/components.md) - Component architecture
+- [README](./03-Frontend/README.md) - Frontend documentation overview
+- [API Integration](./03-Frontend/api-integration.md) - Frontend-backend integration
+- [Architecture](./03-Frontend/architecture.md) - Frontend architecture patterns
+- [Authentication](./03-Frontend/authentication.md) - Client-side authentication
+- [Component Structure](./03-Frontend/component-structure.md) - Component organization
+- [RBAC](./03-Frontend/rbac.md) - Role-based access control implementation
 - [OpenHands Prompt](./03-Frontend/openhands-prompt.md) - AI development prompts
-- [Frontend Guide](./03-Frontend/frontend.md) - Development guidelines
-- [PWA Features](./03-Frontend/PWA-features.md) - Progressive Web App capabilities
 
 ### [04-Backend](./04-Backend/)
 Backend API and server architecture
-- [Express Structure](./04-Backend/express-structure.md) - Server organization
-- [API v3](./04-Backend/API-v3.md) - Complete API documentation
-- [API Configuration](./04-Backend/API-configuration.md) - API setup and configuration
-- [Auth0 Integration](./04-Backend/auth0.md) - Authentication implementation
-- [RBAC](./04-Backend/rbac.md) - Role-based access control
-- [Cloud Providers](./04-Backend/cloud-providers.md) - Cloud integration patterns
-- [Queues](./04-Backend/queues.md) - Background job processing
+- [README](./04-Backend/README.md) - Backend documentation overview
+- [API Documentation](./04-Backend/API-v3.md) - Complete API endpoint documentation
+- [API Reference](./04-Backend/api-reference.md) - Detailed API specifications
+- [Architecture Reference](./04-Backend/architecture-reference.md) - Backend architecture guide
+- [Database](./04-Backend/database.md) - Database design and operations
+- [Middleware](./04-Backend/middleware.md) - Authentication and authorization middleware
+- [Features](./04-Backend/features/) - Individual feature documentation
 
 ### [05-AI-Agents](./05-AI-Agents/)
 AI integration and agent development
-- [Microagents](./05-AI-Agents/microagents.md) - Agent architecture
-- [OpenHands Integration](./05-AI-Agents/openhands-integration.md) - AI development tools
-- [Prompt Engineering](./05-AI-Agents/prompt-engineering.md) - Effective prompting
-- [Agent Patterns](./05-AI-Agents/agent-patterns.md) - Common patterns
-- [Best Practices](./05-AI-Agents/best-practices.md) - Development guidelines
+- [README](./05-AI-Agents/README.md) - AI agents documentation overview
 
 ### [06-Guides](./06-Guides/)
 Step-by-step implementation guides
-- [Auth0 Integration](./06-Guides/how-to-integrate-auth0.md) - Authentication setup
-- [Adding Agents](./06-Guides/how-to-add-agent.md) - Agent development
-- [Deployment](./06-Guides/how-to-deploy.md) - Production deployment
-- [Testing](./06-Guides/how-to-test.md) - Testing strategies
-- [Debugging](./06-Guides/debugging.md) - Troubleshooting techniques
-- [Optimization](./06-Guides/optimization-report.md) - Performance optimization
+- [Testing Guide](./06-Guides/how-to-test.md) - Comprehensive testing documentation
+- [Deployment Guide](./06-Guides/deployment.md) - Production deployment instructions
+- [OAuth Guide](./06-Guides/oauth-guide.md) - OAuth integration guide
+- [Testing Strategy](./06-Guides/testing-strategy.md) - Testing approach and patterns
+- [Integration Testing](./06-Guides/integration-testing.md) - API integration testing
 
 ### [07-Standards](./07-Standards/)
 Development standards and conventions
-- [Development Guide](./07-Standards/development-guide.md) - General development practices
 - [Coding Standards](./07-Standards/coding-standards.md) - Code style and conventions
-- [Naming Conventions](./07-Standards/naming.md) - Naming guidelines
-- [Environment Format](./07-Standards/.env-format.md) - Environment variable standards
-- [Commit Style](./07-Standards/commit-style.md) - Git commit conventions
 
 ### [08-Contribution](./08-Contribution/)
 Contributing to the project
-- [Contributing Guide](./08-Contribution/contributing.md) - How to contribute
-- [Branching Strategy](./08-Contribution/branching.md) - Git workflow
-- [PR Guidelines](./08-Contribution/PR-guidelines.md) - Pull request process
-- [Issue Templates](./08-Contribution/issue-template.md) - Bug reports and features
+- [README](./08-Contribution/README.md) - Contribution guide overview
+- [Documentation Guide](./08-Contribution/documentation-guide.md) - How to write documentation
 
 ### [09-Reports-and-History](./09-Reports-and-History/)
 Historical documentation and reports
-- [Refactoring Reports](./09-Reports-and-History/refactoring/) - Code refactoring history
-- [API Migration](./09-Reports-and-History/api-migration.md) - API evolution
-- [Audit Reports](./09-Reports-and-History/audit-reports.md) - Security and compliance
-- [Changelogs](./09-Reports-and-History/changelogs/) - Detailed version history
+- [README](./09-Reports-and-History/README.md) - Historical documentation overview
+- [Legacy Documentation](./09-Reports-and-History/legacy-docs/) - Archived documentation
+- [Analysis Reports](./09-Reports-and-History/analysis-reports/) - Technical analysis reports
+- [Prompts](./09-Reports-and-History/prompts/) - Historical development prompts
 
 ## 🚀 Quick Start
 
