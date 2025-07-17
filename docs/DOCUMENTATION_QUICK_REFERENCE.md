@@ -97,7 +97,7 @@ npm run docs:navigation  # Navigation flows
 
 ### Formatting
 - **Headers**: Use `#` for main title, `##` for sections
-- **Links**: Use markdown link format for internal docs: `[Text](./file.md)`
+- **Links**: Use markdown link format for internal docs
 - **Code**: Use fenced code blocks with language
 - **Lists**: Use `-` for bullets, `1.` for numbered
 
