@@ -89,15 +89,21 @@ This project will use **[Vitest](https://vitest.dev/)** for unit and service-lev
 
 ## Documentation
 
-- [Documentation Guide](docs/documentation-guide.md)
-- [Architecture Reference](docs/v3-architecture-reference.md)
-- [Domain Map](docs/v3-domainmap.md)
-- [API Contract](docs/v3-api.md)
-- [OpenAPI Schema](docs/v3-openAPI-schema.md)
-- [OAuth Integration Guide](docs/oauth-integration-guide.md)
-- [Frontend OAuth Integration](docs/frontend/oauthintegration.md)
-- [OAuth Feature Documentation](docs/feature/oauth.md)
-- [Project Status](docs/STATUS.md)
+Comprehensive documentation is available in the [`/docs`](docs/) directory:
+
+### Quick Links
+- **[Documentation Index](docs/README.md)**: Complete documentation overview
+- **[Architecture Reference](docs/v3-architecture-reference.md)**: System architecture and design
+- **[API Documentation](docs/v3-api.md)**: Complete API reference
+- **[OAuth Integration Guide](docs/integrations/oauth-guide.md)**: OAuth implementation guide
+- **[Project Status](docs/STATUS.md)**: Current implementation status
+
+### Key Documentation Areas
+- **Architecture**: System design, domain model, and technical specifications
+- **Features**: Detailed documentation for each platform feature
+- **Frontend**: Frontend development guides and patterns
+- **Testing**: Testing strategy and implementation guides
+- **Integrations**: OAuth and cloud provider integration guides
 
 ### API Documentation
 
