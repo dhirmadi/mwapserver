@@ -1,0 +1,42 @@
+{
+  "validation": {
+    "checkLinks": true,
+    "checkStructure": true,
+    "checkDuplicates": true,
+    "allowedExternalDomains": [
+      "github.com",
+      "vitest.dev",
+      "nodejs.org",
+      "expressjs.com",
+      "mongodb.com",
+      "auth0.com"
+    ],
+    "excludePatterns": [
+      "docs/archive/**",
+      "**/*.tmp.md",
+      "**/node_modules/**"
+    ]
+  },
+  "structure": {
+    "requiredDirectories": [
+      "docs/features",
+      "docs/testing", 
+      "docs/integrations",
+      "docs/archive",
+      "docs/architecture",
+      "docs/frontend"
+    ],
+    "requiredFiles": [
+      "docs/README.md",
+      "docs/v3-architecture-reference.md",
+      "docs/integrations/oauth-guide.md",
+      "docs/testing/README.md"
+    ]
+  },
+  "quality": {
+    "maxLineLength": 120,
+    "requireHeadings": true,
+    "checkSpelling": false,
+    "enforceConsistentFormatting": true
+  }
+}
