@@ -65,6 +65,9 @@ export async function registerRoutes(): Promise<void> {
   const { getOAuthRouter } = await import('./features/oauth/oauth.routes');
   console.log('[MWAP] ✅ /api/v1/oauth route loaded');
 
+  const { getOpenAPIRouter } = await import('./features/openapi/openapi.routes');
+  console.log('[MWAP] ✅ /api/v1/openapi route loaded');
+
   // Register all API routes
   app.use('/api/v1/tenants', getTenantRouter());
   app.use('/api/v1/project-types', getProjectTypesRouter());
@@ -72,6 +75,20 @@ export async function registerRoutes(): Promise<void> {
   app.use('/api/v1/projects', getProjectsRouter());
   app.use('/api/v1/users', getUserRouter());
   app.use('/api/v1/oauth', getOAuthRouter());
+  app.use('/api/v1/openapi', getOpenAPIRouter());
+  
+  logInfo('All API routes registered successfully', {
+    routes: [
+      '/api/v1/tenants',
+      '/api/v1/project-types', 
+      '/api/v1/cloud-providers',
+      '/api/v1/projects',
+      '/api/v1/users',
+      '/api/v1/oauth',
+      '/api/v1/openapi'
+    ],
+    totalRoutes: 7
+  });
   
   // Add a 404 handler as the last middleware for /api/v1 routes
   // This will only be reached if no other routes match
