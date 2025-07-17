@@ -124,8 +124,8 @@ After completing this onboarding checklist:
 
 If you encounter issues during onboarding:
 
-- **Documentation Issues**: Create an issue using the [Documentation template](.github/ISSUE_TEMPLATE/documentation.md)
-- **Technical Problems**: Use the [Bug Report template](.github/ISSUE_TEMPLATE/bug_report.md)
+- **Documentation Issues**: Create an issue using the [Documentation template](../.github/ISSUE_TEMPLATE/documentation.md)
+- **Technical Problems**: Use the [Bug Report template](../.github/ISSUE_TEMPLATE/bug_report.md)
 - **Questions**: Reach out to team members or create a discussion
 
 ---
