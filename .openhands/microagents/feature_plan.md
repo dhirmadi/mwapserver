@@ -31,6 +31,33 @@ If you encounter authentication issues when pushing to GitHub (such as password 
 
 ---
 
+## 🧠 Project Context (Auto-injected)
+
+**Goal**: Build a world class backend adn API for a modular, secure, and maintainable multi-tenant PWA using Openhands with Claude 4 Sonnet.
+
+**Frontend**: React (Vite)  
+**Backend**: Node.js with Express  
+**Database**: MongoDB Atlas  
+**Auth**: Auth0  
+**Deployment**: Local
+
+### 🔒 Coding Standards & Guidelines
+
+- Follow all constraints and conventions defined under `/docs`
+- Ensure strict adherence to DRY, modularity, and Openhands task design best practices
+- All logic must be incrementally testable and executable offline
+- **No browser-based or E2E tests** — only unit + local integration
+- Respect tenant isolation, secure token management, and documented role-based access controls
+
+### 🏗 Architecture Notes
+
+- Shared utils, hooks, types live under `src/shared`
+- Feature-first directory layout (e.g., `features/cloud-providers/pages/...`)
+- Route protection via `ProtectedRoute`, `AuthContext`, and Auth0 tokens
+- React Query for data flows, Mantine for UI, Axios for backend calls
+
+---
+
 ## 🚀 Your responsibilities
 1. **Break the high-level feature plan into multiple phases**. Each phase should have:
    - Clearly scoped objectives
