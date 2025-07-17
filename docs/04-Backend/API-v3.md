@@ -1,43 +1,169 @@
-# MWAP API v3 Documentation
+# 🔌 MWAP API v3 Documentation
 
-This document provides comprehensive documentation for the MWAP backend API v3, based on the actual implementation and route definitions.
+## 🎯 Overview
 
-## 🔐 Authentication
+The MWAP API v3 provides a comprehensive, secure, and scalable REST API for multi-tenant applications. Built with Node.js, Express, and MongoDB, it implements Zero Trust security, role-based access control, and follows OpenAPI 3.0 specifications.
 
-All API endpoints require authentication unless explicitly marked as public. Authentication is handled via Auth0 JWT tokens.
+## 🏗️ Architecture
 
-### Authentication Header
+### **Technology Stack**
+- **Runtime**: Node.js 18+ with ESM modules
+- **Framework**: Express.js with TypeScript
+- **Database**: MongoDB Atlas with Mongoose ODM
+- **Authentication**: Auth0 JWT with RS256 algorithm
+- **Validation**: Zod schemas for runtime type safety
+- **Security**: Helmet, CORS, rate limiting, input sanitization
+
+### **API Design Principles**
+1. **🔒 Security-First**: Every endpoint requires authentication and authorization
+2. **📊 Consistent Responses**: Standardized success/error response format
+3. **🧪 Type Safety**: Zod validation for all inputs and outputs
+4. **⚡ Performance**: Optimized queries with proper indexing
+5. **📈 Scalability**: Stateless design with horizontal scaling support
+6. **🔍 Observability**: Comprehensive logging and monitoring
+
+## 🔐 Authentication & Authorization
+
+### **JWT Token Authentication**
+All API endpoints require valid Auth0 JWT tokens with RS256 signature:
+
+```http
+Authorization: Bearer eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9...
 ```
-Authorization: Bearer <jwt_token>
-```
 
-### Public Endpoints
-- `GET /health` - Health check endpoint
-- `GET /api/v1/oauth/callback` - OAuth callback endpoint
-
-## 📊 Response Format
-
-All API responses follow a consistent format:
-
-### Success Response
+### **Token Validation Process**
 ```typescript
-{
-  success: true,
-  data: T, // Response data
-  message?: string // Optional success message
+// Token validation middleware
+export const authenticateJWT = () => {
+  return jwt({
+    secret: jwksRsa.expressJwtSecret({
+      cache: true,
+      rateLimit: true,
+      jwksRequestsPerMinute: 5,
+      jwksUri: `https://${process.env.AUTH0_DOMAIN}/.well-known/jwks.json`
+    }),
+    audience: process.env.AUTH0_AUDIENCE,
+    issuer: `https://${process.env.AUTH0_DOMAIN}/`,
+    algorithms: ['RS256']
+  });
+};
+```
+
+### **Role-Based Access Control (RBAC)**
+```typescript
+// Authorization levels
+enum UserRole {
+  SUPERADMIN = 'superadmin',
+  TENANT_OWNER = 'tenant_owner',
+  PROJECT_MEMBER = 'project_member'
 }
+
+// Project-level roles
+enum ProjectRole {
+  OWNER = 'OWNER',
+  DEPUTY = 'DEPUTY', 
+  MEMBER = 'MEMBER'
+}
+
+// Authorization middleware examples
+export const requireSuperAdmin = () => checkRole(UserRole.SUPERADMIN);
+export const requireTenantOwner = () => checkTenantOwnership();
+export const requireProjectAccess = (role?: ProjectRole) => checkProjectRole(role);
 ```
 
-### Error Response
+### **Public Endpoints**
 ```typescript
+// No authentication required
+GET /health                    // System health check
+GET /api/v1/status            // API status and version
+GET /api/v1/oauth/callback    // OAuth callback handler
+```
+
+## 📊 Response Format Standards
+
+### **Success Response Structure**
+```typescript
+interface ApiResponse<T> {
+  success: true;
+  data: T;
+  message?: string;
+  meta?: {
+    pagination?: PaginationMeta;
+    timestamp: string;
+    requestId: string;
+  };
+}
+
+// Example success response
 {
-  success: false,
-  error: {
-    code: string, // Error code
-    message: string, // Error message
-    details?: any // Optional error details
+  "success": true,
+  "data": {
+    "id": "64a7b8c9d1e2f3a4b5c6d7e8",
+    "name": "My Project",
+    "status": "active"
+  },
+  "message": "Project retrieved successfully",
+  "meta": {
+    "timestamp": "2025-07-17T14:30:00.000Z",
+    "requestId": "req_abc123def456"
   }
 }
+```
+
+### **Error Response Structure**
+```typescript
+interface ApiError {
+  success: false;
+  error: {
+    code: string;
+    message: string;
+    details?: any;
+    stack?: string; // Only in development
+  };
+  meta: {
+    timestamp: string;
+    requestId: string;
+  };
+}
+
+// Example error response
+{
+  "success": false,
+  "error": {
+    "code": "VALIDATION_ERROR",
+    "message": "Invalid input data",
+    "details": {
+      "field": "email",
+      "issue": "Invalid email format"
+    }
+  },
+  "meta": {
+    "timestamp": "2025-07-17T14:30:00.000Z",
+    "requestId": "req_abc123def456"
+  }
+}
+```
+
+### **HTTP Status Codes**
+```typescript
+// Success codes
+200 OK          // Successful GET, PUT, PATCH
+201 Created     // Successful POST
+204 No Content  // Successful DELETE
+
+// Client error codes
+400 Bad Request      // Invalid request data
+401 Unauthorized     // Missing or invalid authentication
+403 Forbidden        // Insufficient permissions
+404 Not Found        // Resource not found
+409 Conflict         // Resource conflict (duplicate)
+422 Unprocessable    // Validation errors
+429 Too Many Requests // Rate limit exceeded
+
+// Server error codes
+500 Internal Server Error // Unexpected server error
+502 Bad Gateway          // External service error
+503 Service Unavailable  // Temporary service issue
 ```
 
 ## 👤 Users API
