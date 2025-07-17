@@ -149,7 +149,7 @@ PATCH /api/v1/tenants/60a1b2c3d4e5f6g7h8i9j0k1/integrations/60a1b2c3d4e5f6g7h8i9
    - Use dedicated endpoint to refresh tokens: `/api/v1/oauth/tenants/:tenantId/integrations/:integrationId/refresh`
    - Backend updates integration with new tokens
 
-For detailed implementation, see the [OAuth Feature Documentation](../feature/oauth.md) and [OAuth Integration Guide](../oauth-integration-guide.md).
+For detailed implementation, see the [OAuth Integration Guide](../integrations/oauth-guide.md).
 
 ## 🔄 Token Management and Health Monitoring
 

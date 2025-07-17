@@ -504,7 +504,7 @@ This endpoint:
 - Updates the integration with the tokens
 - Redirects to a success or error page
 
-For detailed implementation, see the [OAuth Feature Documentation](../feature/oauth.md) and [OAuth Integration Guide](../oauth-integration-guide.md).
+For detailed implementation, see the [OAuth Integration Guide](../integrations/oauth-guide.md).
 
 ## Conclusion
 
