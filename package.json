@@ -17,7 +17,12 @@
     "heroku-postbuild": "npm run build",
     "docs:validate": "node scripts/validate-docs-links.js",
     "docs:navigation": "node scripts/test-docs-navigation.js",
-    "docs:check": "npm run docs:validate && npm run docs:navigation"
+    "docs:check": "npm run docs:validate && npm run docs:navigation",
+    "test:openapi": "tsx tests/openapiendpoint/run-all-tests.ts",
+    "test:openapi:services": "tsx tests/openapiendpoint/test-services.ts",
+    "test:openapi:feature": "tsx tests/openapiendpoint/test-feature.ts",
+    "test:openapi:integration": "tsx tests/openapiendpoint/test-phase4-integration.ts",
+    "test:openapi:advanced": "tsx tests/openapiendpoint/test-phase5-advanced.ts"
   },
   "repository": {
     "type": "git",

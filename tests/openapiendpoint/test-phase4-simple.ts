@@ -11,7 +11,7 @@ async function testPhase4Simple() {
     // Test 1: OpenAPI Service Integration
     console.log('📋 Test 1: OpenAPI Service Integration');
     
-    const { openAPIService } = await import('./services/openapi/index.js');
+    const { openAPIService } = await import('../../src/services/openapi/index.js');
     
     // Test service availability
     const info = await openAPIService.generateInfo();
@@ -25,8 +25,8 @@ async function testPhase4Simple() {
     // Test 2: OpenAPI Feature Module
     console.log('📄 Test 2: OpenAPI Feature Module');
     
-    const { getOpenAPIRouter } = await import('./features/openapi/openapi.routes.js');
-    const { OpenAPIFeatureService } = await import('./features/openapi/openapi.service.js');
+    const { getOpenAPIRouter } = await import('../../src/features/openapi/openapi.routes.js');
+    const { OpenAPIFeatureService } = await import('../../src/features/openapi/openapi.service.js');
     
     const router = getOpenAPIRouter();
     const service = new OpenAPIFeatureService();
@@ -39,8 +39,8 @@ async function testPhase4Simple() {
     // Test 3: Enhanced Documentation
     console.log('📚 Test 3: Enhanced Documentation');
     
-    const { getEnhancedDocsRouter } = await import('./docs/enhanced-api-docs.js');
-    const { getDocsRouter } = await import('./docs/index.js');
+    const { getEnhancedDocsRouter } = await import('../../src/docs/enhanced-api-docs.js');
+    const { getDocsRouter } = await import('../../src/docs/index.js');
     
     const enhancedRouter = getEnhancedDocsRouter();
     const docsRouter = getDocsRouter();
@@ -53,7 +53,7 @@ async function testPhase4Simple() {
     // Test 4: Application Structure (without DB)
     console.log('🏗️  Test 4: Application Structure');
     
-    const { app } = await import('./app.js');
+    const { app } = await import('../../src/app.js');
     
     // Check that the app exists and has basic structure
     console.log('✅ Application structure verified');
@@ -84,8 +84,8 @@ async function testPhase4Simple() {
     console.log('🔐 Test 6: Security Integration');
     
     try {
-      const { authenticateJWT } = await import('./middleware/auth.js');
-      const { requireSuperAdminRole } = await import('./middleware/authorization.js');
+      const { authenticateJWT } = await import('../../src/middleware/auth.js');
+      const { requireSuperAdminRole } = await import('../../src/middleware/authorization.js');
       
       console.log('✅ Security middleware available');
       console.log('   - JWT authentication: ✅');
@@ -99,10 +99,10 @@ async function testPhase4Simple() {
     console.log('🛠️  Test 7: Utility Integration');
     
     try {
-      const { logInfo } = await import('./utils/logger.js');
-      const { ApiError } = await import('./utils/errors.js');
-      const { jsonResponse, errorResponse } = await import('./utils/response.js');
-      const { validateWithSchema } = await import('./utils/validate.js');
+      const { logInfo } = await import('../../src/utils/logger.js');
+      const { ApiError } = await import('../../src/utils/errors.js');
+      const { jsonResponse, errorResponse } = await import('../../src/utils/response.js');
+      const { validateWithSchema } = await import('../../src/utils/validate.js');
       
       console.log('✅ Utilities available');
       console.log('   - Logger: ✅');
@@ -118,7 +118,7 @@ async function testPhase4Simple() {
     console.log('📋 Test 8: Schema Integration');
     
     try {
-      const { openAPIQuerySchema } = await import('./features/openapi/openapi.schemas.js');
+      const { openAPIQuerySchema } = await import('../../src/features/openapi/openapi.schemas.js');
       
       // Test schema validation
       const validQuery = { format: 'json', includeExamples: false, minify: false };
@@ -135,7 +135,7 @@ async function testPhase4Simple() {
     console.log('📊 Test 9: Documentation Validation');
     
     try {
-      const { validateDocumentation } = await import('./docs/validate-documentation.js');
+      const { validateDocumentation } = await import('../../src/docs/validate-documentation.js');
       
       const validationResult = await validateDocumentation();
       

@@ -5,7 +5,7 @@
  * Run with: tsx src/services/openapi/test-services.ts
  */
 
-import { openAPIService } from './index.js';
+import { openAPIService } from '../../src/services/openapi/index.js';
 
 async function testOpenAPIServices() {
   console.log('🧪 Testing OpenAPI Services...\n');

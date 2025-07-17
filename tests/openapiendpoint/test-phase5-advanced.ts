@@ -11,7 +11,7 @@ async function testPhase5Advanced() {
     // Test 1: OpenAPI Validation Service
     console.log('✅ Test 1: OpenAPI Validation Service');
     
-    const { openAPIValidationService } = await import('./features/openapi/validation.service.js');
+    const { openAPIValidationService } = await import('../../src/features/openapi/validation.service.js');
     
     // Test comprehensive validation
     const validationResult = await openAPIValidationService.validateSpecification();
@@ -42,7 +42,7 @@ async function testPhase5Advanced() {
     // Test 2: Performance Service
     console.log('⚡ Test 2: Performance Service');
     
-    const { openAPIPerformanceService } = await import('./features/openapi/performance.service.js');
+    const { openAPIPerformanceService } = await import('../../src/features/openapi/performance.service.js');
     
     // Test metrics collection
     const metrics = await openAPIPerformanceService.collectMetrics();
@@ -82,7 +82,7 @@ async function testPhase5Advanced() {
     // Test 3: Security Service
     console.log('🔐 Test 3: Security Service');
     
-    const { openAPISecurityService } = await import('./features/openapi/security.service.js');
+    const { openAPISecurityService } = await import('../../src/features/openapi/security.service.js');
     
     // Test security audit
     const securityAudit = await openAPISecurityService.performSecurityAudit();
@@ -100,7 +100,7 @@ async function testPhase5Advanced() {
     }
     
     // Test document sanitization
-    const { openAPIService } = await import('./services/openapi/index.js');
+    const { openAPIService } = await import('../../src/services/openapi/index.js');
     const rawDocument = await openAPIService.generateDocument();
     const sanitizedDocument = await openAPISecurityService.sanitizeDocument(rawDocument);
     console.log('✅ Document sanitization working');
@@ -137,7 +137,7 @@ async function testPhase5Advanced() {
       getValidationHistory,
       generateCIReport,
       monitorValidation
-    } = await import('./features/openapi/openapi.controller.js');
+    } = await import('../../src/features/openapi/openapi.controller.js');
     
     console.log('✅ Enhanced validation controllers loaded');
     console.log('   - validateSpecification: ✅');
@@ -150,7 +150,7 @@ async function testPhase5Advanced() {
       getPerformanceMetrics,
       runPerformanceBenchmarks,
       optimizeCache
-    } = await import('./features/openapi/openapi.controller.js');
+    } = await import('../../src/features/openapi/openapi.controller.js');
     
     console.log('✅ Performance controllers loaded');
     console.log('   - getPerformanceMetrics: ✅');
@@ -162,7 +162,7 @@ async function testPhase5Advanced() {
       performSecurityAudit,
       getSanitizedSpecification,
       getSecurityAuditLog
-    } = await import('./features/openapi/openapi.controller.js');
+    } = await import('../../src/features/openapi/openapi.controller.js');
     
     console.log('✅ Security controllers loaded');
     console.log('   - performSecurityAudit: ✅');
@@ -173,7 +173,7 @@ async function testPhase5Advanced() {
     // Test 5: Enhanced Router Configuration
     console.log('🛣️  Test 5: Enhanced Router Configuration');
     
-    const { getOpenAPIRouter } = await import('./features/openapi/openapi.routes.js');
+    const { getOpenAPIRouter } = await import('../../src/features/openapi/openapi.routes.js');
     const router = getOpenAPIRouter();
     
     console.log('✅ Enhanced OpenAPI router loaded');

@@ -5,9 +5,9 @@
  */
 
 import express from 'express';
-import { app, registerRoutes } from './app.js';
-import { getDocsRouter } from './docs/index.js';
-import { logInfo } from './utils/logger.js';
+import { app, registerRoutes } from '../../src/app.js';
+import { getDocsRouter } from '../../src/docs/index.js';
+import { logInfo } from '../../src/utils/logger.js';
 
 async function testPhase4Integration() {
   console.log('🧪 Testing Phase 4: Application Integration...\n');
@@ -50,7 +50,7 @@ async function testPhase4Integration() {
     // Test 4: OpenAPI Service Integration
     console.log('🔧 Test 4: OpenAPI Service Integration');
     
-    const { openAPIService } = await import('./services/openapi/index.js');
+    const { openAPIService } = await import('../../src/services/openapi/index.js');
     
     // Test service availability
     const info = await openAPIService.generateInfo();
@@ -86,7 +86,7 @@ async function testPhase4Integration() {
     
     // Test the enhanced docs router
     try {
-      const { getEnhancedDocsRouter } = await import('./docs/enhanced-api-docs.js');
+      const { getEnhancedDocsRouter } = await import('../../src/docs/enhanced-api-docs.js');
       const enhancedRouter = getEnhancedDocsRouter();
       console.log('✅ Enhanced documentation router functional');
     } catch (error) {
@@ -119,7 +119,7 @@ async function testPhase4Integration() {
     
     // Test JWT middleware integration
     try {
-      const { authenticateJWT } = await import('./middleware/auth.js');
+      const { authenticateJWT } = await import('../../src/middleware/auth.js');
       console.log('✅ JWT authentication middleware available');
     } catch (error) {
       console.log('❌ JWT authentication middleware failed:', error);
@@ -127,7 +127,7 @@ async function testPhase4Integration() {
     
     // Test authorization middleware
     try {
-      const { requireSuperAdminRole } = await import('./middleware/authorization.js');
+      const { requireSuperAdminRole } = await import('../../src/middleware/authorization.js');
       console.log('✅ Authorization middleware available');
     } catch (error) {
       console.log('❌ Authorization middleware failed:', error);
@@ -138,9 +138,9 @@ async function testPhase4Integration() {
     console.log('🚨 Test 8: Error Handling Integration');
     
     try {
-      const { errorHandler } = await import('./middleware/errorHandler.js');
-      const { ApiError } = await import('./utils/errors.js');
-      const { errorResponse } = await import('./utils/response.js');
+      const { errorHandler } = await import('../../src/middleware/errorHandler.js');
+      const { ApiError } = await import('../../src/utils/errors.js');
+      const { errorResponse } = await import('../../src/utils/response.js');
       
       console.log('✅ Error handling components available');
       console.log('   - Error handler middleware: ✅');
@@ -155,7 +155,7 @@ async function testPhase4Integration() {
     console.log('📝 Test 9: Logging Integration');
     
     try {
-      const { logInfo, logError, logAudit } = await import('./utils/logger.js');
+      const { logInfo, logError, logAudit } = await import('../../src/utils/logger.js');
       
       logInfo('Test log message from integration test');
       console.log('✅ Logging system integrated');
