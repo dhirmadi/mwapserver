@@ -22,6 +22,8 @@ version: 1.0.0
 - Analyze the current branch or PR to ensure:
     - All acceptance criteria are fully implemented.
     - No partial or skipped requirements.
+    - No TypeScript Errors
+    - No import of unkown functions
 
 ## 🧾 3. Validate documentation
 - Examine existing documentation files (README.md, `/docs` directory, or inline module/class/function docstrings).
