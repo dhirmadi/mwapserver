@@ -14,7 +14,10 @@
     "start": "node dist/server.js",
     "dev": "tsx src/server.ts",
     "build": "tsup src/server.ts --format esm --clean",
-    "heroku-postbuild": "npm run build"
+    "heroku-postbuild": "npm run build",
+    "docs:validate": "node scripts/validate-docs-links.js",
+    "docs:navigation": "node scripts/test-docs-navigation.js",
+    "docs:check": "npm run docs:validate && npm run docs:navigation"
   },
   "repository": {
     "type": "git",

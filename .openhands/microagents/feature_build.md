@@ -94,7 +94,7 @@ and post a comment:
 - Implemented routes in `app/api/dashboard.py` with JWT auth.
 - Added pydantic validation.
 - Ensured tests in `tests/test_dashboard.py` cover endpoints.
-- No issues found violating /docs/security.md or coding guidelines.
+- No issues found violating /docs/architecture/utility/auth.md, /docs/integrations/oauth-guide.md or coding guidelines.
 \`\`\`
 
 ---

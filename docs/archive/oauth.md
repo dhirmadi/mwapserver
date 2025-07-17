@@ -81,7 +81,7 @@ The OAuth feature maintains backward compatibility with the existing approach of
 
 ## Frontend Integration
 
-Frontend applications should use the dedicated callback endpoint for OAuth flows. See the [OAuth Integration Guide](../oauth-integration-guide.md) and [Frontend OAuth Integration](../frontend/oauthintegration.md) for detailed implementation examples.
+Frontend applications should use the dedicated callback endpoint for OAuth flows. See the [OAuth Integration Guide](oauth-integration-guide.md) and [Frontend OAuth Integration](oauthintegration.md) for detailed implementation examples.
 
 ## Error Handling
 

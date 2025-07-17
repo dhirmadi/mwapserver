@@ -164,7 +164,7 @@ Build a reporting dashboard to serve per-tenant analytics with strict data isola
 
 ## ✅ Acceptance Criteria
 - Enforces data isolation
-- Aligns with security practices in /docs/security.md
+- Aligns with security practices in /docs/architecture/utility/auth.md and /docs/integrations/oauth-guide.md
 - 100% unit and integration test coverage
 \`\`\`
 
