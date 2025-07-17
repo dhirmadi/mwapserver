@@ -1,0 +1,119 @@
+name: Documentation Validation
+
+on:
+  push:
+    branches: [ main, develop ]
+    paths:
+      - 'docs/**'
+      - 'README.md'
+      - 'scripts/validate-docs-links.js'
+  pull_request:
+    branches: [ main, develop ]
+    paths:
+      - 'docs/**'
+      - 'README.md'
+      - 'scripts/validate-docs-links.js'
+
+jobs:
+  validate-documentation:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20'
+        
+    - name: Validate documentation links
+      run: |
+        echo "🔍 Validating documentation links..."
+        node scripts/validate-docs-links.js
+        
+    - name: Test documentation navigation
+      run: |
+        echo "🧭 Testing documentation navigation..."
+        node scripts/test-docs-navigation.js
+        
+    - name: Check documentation structure
+      run: |
+        echo "📁 Checking documentation structure..."
+        
+        # Verify main documentation directories exist
+        test -d docs || (echo "❌ /docs directory missing" && exit 1)
+        test -d docs/features || (echo "❌ /docs/features directory missing" && exit 1)
+        test -d docs/testing || (echo "❌ /docs/testing directory missing" && exit 1)
+        test -d docs/integrations || (echo "❌ /docs/integrations directory missing" && exit 1)
+        test -d docs/archive || (echo "❌ /docs/archive directory missing" && exit 1)
+        
+        # Verify key documentation files exist
+        test -f docs/README.md || (echo "❌ Documentation index missing" && exit 1)
+        test -f docs/v3-architecture-reference.md || (echo "❌ Architecture reference missing" && exit 1)
+        test -f docs/integrations/oauth-guide.md || (echo "❌ OAuth guide missing" && exit 1)
+        test -f docs/testing/README.md || (echo "❌ Testing documentation index missing" && exit 1)
+        
+        echo "✅ Documentation structure validation passed"
+        
+    - name: Check for duplicate content
+      run: |
+        echo "🔍 Checking for duplicate content..."
+        
+        # Check for duplicate OAuth documentation (should only be in integrations/)
+        oauth_files=$(find docs -name "*.md" -exec grep -l "OAuth" {} \; | grep -v "docs/integrations/oauth-guide.md" | grep -v "docs/archive" | wc -l)
+        if [ "$oauth_files" -gt 2 ]; then
+          echo "⚠️  Warning: Multiple OAuth documentation files found outside integrations/"
+          find docs -name "*.md" -exec grep -l "OAuth" {} \; | grep -v "docs/integrations/oauth-guide.md" | grep -v "docs/archive"
+        fi
+        
+        echo "✅ Duplicate content check completed"
+        
+    - name: Validate markdown formatting
+      run: |
+        echo "📝 Validating markdown formatting..."
+        
+        # Check for consistent heading structure
+        find docs -name "*.md" -exec grep -H "^#" {} \; | while read line; do
+          file=$(echo "$line" | cut -d: -f1)
+          heading=$(echo "$line" | cut -d: -f2-)
+          
+          # Check for proper heading hierarchy (no skipping levels)
+          if echo "$heading" | grep -q "^####"; then
+            prev_line=$(grep -B1 "^####" "$file" | head -1)
+            if ! echo "$prev_line" | grep -q "^###"; then
+              echo "⚠️  Warning: Heading hierarchy issue in $file: $heading"
+            fi
+          fi
+        done
+        
+        echo "✅ Markdown formatting validation completed"
+
+  check-documentation-coverage:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      
+    - name: Check feature documentation coverage
+      run: |
+        echo "📊 Checking feature documentation coverage..."
+        
+        # Get list of features from src/features
+        if [ -d src/features ]; then
+          src_features=$(ls src/features 2>/dev/null || echo "")
+          doc_features=$(ls docs/features 2>/dev/null | sed 's/\.md$//' || echo "")
+          
+          echo "Source features: $src_features"
+          echo "Documented features: $doc_features"
+          
+          # Check if all source features have documentation
+          for feature in $src_features; do
+            if [ ! -f "docs/features/${feature}.md" ]; then
+              echo "⚠️  Warning: Feature '$feature' missing documentation"
+            fi
+          done
+        fi
+        
+        echo "✅ Feature documentation coverage check completed"

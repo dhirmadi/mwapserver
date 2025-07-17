@@ -2,6 +2,15 @@
 
 [Solution Design](../../docs/v3-architecture-reference.md)
 
+## 📚 Documentation Structure
+- **Main Documentation**: `/docs/` - Centralized documentation hub
+- **Architecture Reference**: `/docs/v3-architecture-reference.md` - Canonical backend reference
+- **API Documentation**: `/docs/v3-api.md` - Complete API specifications
+- **Feature Guides**: `/docs/features/` - Implementation patterns and guides
+- **Integration Guides**: `/docs/integrations/` - OAuth and external service integration
+- **Testing Documentation**: `/docs/testing/` - Testing strategy and setup
+- **Archive**: `/docs/archive/` - Historical content and development artifacts
+
 ## 🛠 Project Overview
 MWAP (Modular Web Application Platform) is a fullstack, secure, scalable SaaS framework built with:
 - **Backend**: Node.js (ESM) + Express + MongoDB Atlas
