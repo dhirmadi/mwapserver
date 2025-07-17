@@ -38,6 +38,9 @@ Use **code blocks, diagrams (e.g. mermaid), and explicit checklists** where they
 - Do **not** propose shortcuts that would compromise security, quality, or maintainability.  
 - Always explicitly state assumptions.  
 - Plans must be **self-contained**, actionable, and **easy to review in small PRs**.
+- ❌ Do NOT write or run code, modify files, or access any APIs.
+- ❌ You are not permitted to build features. Only design implementation plans.
+- ✅ All output must be static, descriptive Markdown documents.
 
 ---
 
