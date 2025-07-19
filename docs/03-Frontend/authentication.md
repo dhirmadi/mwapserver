@@ -1,513 +1,513 @@
-# MWAP Frontend Authentication
+# Authentication Integration Guide
 
-This document outlines the authentication flow and security considerations for the MWAP frontend application.
+This guide shows React developers how to integrate Auth0 authentication with the MWAP backend API.
 
-## Authentication Flow
+## 🔐 Overview
 
-The MWAP frontend uses Auth0 for authentication, following the Authorization Code flow with PKCE (Proof Key for Code Exchange) for enhanced security. This flow is recommended for single-page applications (SPAs) and provides a secure way to authenticate users without exposing sensitive credentials.
+MWAP uses **Auth0** with the **Authorization Code flow with PKCE** for secure authentication. This provides:
+- Secure token handling (stored in memory, not localStorage)
+- Automatic token refresh
+- Role-based access control
+- Multi-tenant support
 
-### Authentication Process
+## 🚀 Setup
 
-1. **User Initiates Login**: User clicks the login button or attempts to access a protected route
-2. **Redirect to Auth0**: The application redirects to Auth0's Universal Login page
-3. **User Authentication**: User enters credentials or uses social login
-4. **Authorization Code Generation**: Auth0 generates an authorization code
-5. **Code Exchange**: The application exchanges the code for tokens using PKCE
-6. **Token Storage**: Tokens are securely stored in memory (not localStorage)
-7. **Authenticated State**: The application updates its state to reflect the authenticated user
-8. **Token Refresh**: Refresh tokens are used to obtain new access tokens when needed
-9. **Logout**: User session is terminated and tokens are cleared
+### 1. Install Auth0 SDK
 
-### Auth0 Configuration
+```bash
+npm install @auth0/auth0-react
+```
 
-The Auth0 SDK is configured as follows:
+### 2. Environment Variables
+
+```env
+REACT_APP_AUTH0_DOMAIN=your-tenant.auth0.com
+REACT_APP_AUTH0_CLIENT_ID=your_client_id
+REACT_APP_AUTH0_AUDIENCE=https://api.yourapp.com
+```
+
+### 3. Auth0Provider Setup
 
 ```tsx
-// src/auth/auth0-config.ts
+// src/App.tsx
 import { Auth0Provider } from '@auth0/auth0-react';
-import React from 'react';
 
-export const Auth0ProviderWithHistory: React.FC = ({ children }) => {
-  const domain = process.env.REACT_APP_AUTH0_DOMAIN || '';
-  const clientId = process.env.REACT_APP_AUTH0_CLIENT_ID || '';
-  const audience = process.env.REACT_APP_AUTH0_AUDIENCE || '';
-  const redirectUri = window.location.origin;
-  
+function App() {
   return (
     <Auth0Provider
-      domain={domain}
-      clientId={clientId}
+      domain={process.env.REACT_APP_AUTH0_DOMAIN!}
+      clientId={process.env.REACT_APP_AUTH0_CLIENT_ID!}
       authorizationParams={{
-        redirect_uri: redirectUri,
-        audience: audience,
+        redirect_uri: window.location.origin,
+        audience: process.env.REACT_APP_AUTH0_AUDIENCE,
         scope: 'openid profile email',
       }}
       useRefreshTokens={true}
-      cacheLocation="memory"
+      cacheLocation="memory" // Secure - no localStorage
     >
-      {children}
+      <Router>
+        <Routes>
+          {/* Your routes */}
+        </Routes>
+      </Router>
     </Auth0Provider>
   );
-};
+}
 ```
 
-### Auth Context
+## 🎭 Auth Context with Roles
 
-A custom Auth context is created to provide authentication state and functions throughout the application:
+Create a custom auth context that integrates with the MWAP backend:
 
 ```tsx
 // src/context/AuthContext.tsx
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { useAuth0 } from '@auth0/auth0-react';
 import { api } from '../utils/api';
-import { User } from '../types/auth';
+
+interface UserRoles {
+  isSuperAdmin: boolean;
+  isTenantOwner: boolean;
+  tenantId: string | null;
+  projectRoles: Record<string, 'OWNER' | 'DEPUTY' | 'MEMBER'>;
+}
 
 interface AuthContextType {
+  // Auth0 state
   isAuthenticated: boolean;
   isLoading: boolean;
-  user: User | null;
+  user: any;
   error: Error | null;
+  
+  // Auth methods
   login: () => void;
   logout: () => void;
   getAccessToken: () => Promise<string | null>;
-  isSuperAdmin: boolean;
-  isTenantOwner: boolean;
-  hasProjectRole: (projectId: string, role: string) => boolean;
+  
+  // MWAP roles
+  userRoles: UserRoles | null;
+  hasProjectRole: (projectId: string, requiredRole: string) => boolean;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-export const AuthProvider: React.FC = ({ children }) => {
-  const { 
-    isAuthenticated, 
-    isLoading, 
-    user: auth0User, 
-    error, 
-    loginWithRedirect, 
+export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const {
+    isAuthenticated,
+    isLoading: auth0Loading,
+    user,
+    error,
+    loginWithRedirect,
     logout: auth0Logout,
-    getAccessTokenSilently 
+    getAccessTokenSilently,
   } = useAuth0();
-  
-  const [user, setUser] = useState<User | null>(null);
-  const [isSuperAdmin, setIsSuperAdmin] = useState(false);
-  const [isTenantOwner, setIsTenantOwner] = useState(false);
-  const [projectRoles, setProjectRoles] = useState<Record<string, string>>({});
-  
+
+  const [userRoles, setUserRoles] = useState<UserRoles | null>(null);
+  const [rolesLoading, setRolesLoading] = useState(false);
+
+  // Fetch user roles when authenticated
   useEffect(() => {
-    const fetchUserData = async () => {
-      if (isAuthenticated && auth0User) {
-        try {
-          // Fetch user data from the API
-          const response = await api.get('/tenants/me');
-          const userData = response.data;
-          
-          setUser({
-            id: auth0User.sub,
-            email: auth0User.email,
-            name: auth0User.name,
-            picture: auth0User.picture,
-            tenantId: userData._id,
-            tenantName: userData.name,
-          });
-          
-          setIsTenantOwner(userData.ownerId === auth0User.sub);
-          
-          // Check if user is a super admin
-          try {
-            const adminResponse = await api.get('/admin/check');
-            setIsSuperAdmin(adminResponse.data.isSuperAdmin);
-          } catch (error) {
-            setIsSuperAdmin(false);
-          }
-          
-          // Fetch project roles
-          const projectsResponse = await api.get('/projects');
-          const projects = projectsResponse.data;
-          
-          const roles: Record<string, string> = {};
-          projects.forEach((project: any) => {
-            const member = project.members.find((m: any) => m.userId === auth0User.sub);
-            if (member) {
-              roles[project._id] = member.role;
-            }
-          });
-          
-          setProjectRoles(roles);
-        } catch (error) {
-          console.error('Error fetching user data:', error);
-        }
+    const fetchUserRoles = async () => {
+      if (!isAuthenticated || !user) return;
+
+      setRolesLoading(true);
+      try {
+        const token = await getAccessTokenSilently();
+        const response = await api.get('/users/me/roles', {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+
+        const roles = response.data.data;
+        
+        // Convert project roles array to record for easier lookup
+        const projectRoles: Record<string, string> = {};
+        roles.projectRoles?.forEach((pr: any) => {
+          projectRoles[pr.projectId] = pr.role;
+        });
+
+        setUserRoles({
+          isSuperAdmin: roles.isSuperAdmin,
+          isTenantOwner: roles.isTenantOwner,
+          tenantId: roles.tenantId,
+          projectRoles,
+        });
+      } catch (error) {
+        console.error('Failed to fetch user roles:', error);
+        setUserRoles(null);
+      } finally {
+        setRolesLoading(false);
       }
     };
-    
-    fetchUserData();
-  }, [isAuthenticated, auth0User]);
-  
+
+    fetchUserRoles();
+  }, [isAuthenticated, user, getAccessTokenSilently]);
+
   const login = () => {
     loginWithRedirect();
   };
-  
+
   const logout = () => {
-    auth0Logout({ 
+    auth0Logout({
       logoutParams: {
-        returnTo: window.location.origin 
-      }
+        returnTo: window.location.origin,
+      },
     });
-    setUser(null);
-    setIsSuperAdmin(false);
-    setIsTenantOwner(false);
-    setProjectRoles({});
+    setUserRoles(null);
   };
-  
-  const getAccessToken = async () => {
+
+  const getAccessToken = async (): Promise<string | null> => {
+    if (!isAuthenticated) return null;
+
     try {
       return await getAccessTokenSilently();
     } catch (error) {
-      console.error('Error getting access token:', error);
+      console.error('Failed to get access token:', error);
       return null;
     }
   };
-  
-  const hasProjectRole = (projectId: string, role: string) => {
-    const userRole = projectRoles[projectId];
+
+  const hasProjectRole = (projectId: string, requiredRole: string): boolean => {
+    if (!userRoles) return false;
+
+    // SuperAdmin has all permissions
+    if (userRoles.isSuperAdmin) return true;
+
+    const userRole = userRoles.projectRoles[projectId];
     if (!userRole) return false;
-    
+
     // Role hierarchy: OWNER > DEPUTY > MEMBER
-    if (role === 'MEMBER') {
-      return ['OWNER', 'DEPUTY', 'MEMBER'].includes(userRole);
-    } else if (role === 'DEPUTY') {
-      return ['OWNER', 'DEPUTY'].includes(userRole);
-    } else if (role === 'OWNER') {
-      return userRole === 'OWNER';
-    }
-    
-    return false;
+    const roleHierarchy = { OWNER: 3, DEPUTY: 2, MEMBER: 1 };
+    const userLevel = roleHierarchy[userRole as keyof typeof roleHierarchy] || 0;
+    const requiredLevel = roleHierarchy[requiredRole as keyof typeof roleHierarchy] || 0;
+
+    return userLevel >= requiredLevel;
   };
-  
-  return (
-    <AuthContext.Provider
-      value={{
-        isAuthenticated,
-        isLoading,
-        user,
-        error,
-        login,
-        logout,
-        getAccessToken,
-        isSuperAdmin,
-        isTenantOwner,
-        hasProjectRole,
-      }}
-    >
-      {children}
-    </AuthContext.Provider>
-  );
+
+  const value: AuthContextType = {
+    isAuthenticated,
+    isLoading: auth0Loading || rolesLoading,
+    user,
+    error,
+    login,
+    logout,
+    getAccessToken,
+    userRoles,
+    hasProjectRole,
+  };
+
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 };
 
 export const useAuth = () => {
   const context = useContext(AuthContext);
-  if (context === undefined) {
+  if (!context) {
     throw new Error('useAuth must be used within an AuthProvider');
   }
   return context;
 };
 ```
 
-## Protected Routes
+## 🛡️ Protected Routes
 
-Protected routes ensure that only authenticated users can access certain parts of the application:
-
-```tsx
-// src/routes/PrivateRoute.tsx
-import React from 'react';
-import { Navigate, Outlet, useLocation } from 'react-router-dom';
-import { useAuth } from '../context/AuthContext';
-import { LoadingSpinner } from '../components/common/LoadingSpinner';
-
-export const PrivateRoute: React.FC = () => {
-  const { isAuthenticated, isLoading } = useAuth();
-  const location = useLocation();
-  
-  if (isLoading) {
-    return <LoadingSpinner />;
-  }
-  
-  if (!isAuthenticated) {
-    // Redirect to login page, but save the current location
-    return <Navigate to="/login" state={{ from: location }} replace />;
-  }
-  
-  return <Outlet />;
-};
-```
-
-## Role-Based Routes
-
-Role-based routes restrict access based on the user's role:
+### Basic Authentication Route
 
 ```tsx
-// src/routes/RoleRoute.tsx
-import React from 'react';
+// src/components/ProtectedRoute.tsx
 import { Navigate, Outlet } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { LoadingSpinner } from '../components/common/LoadingSpinner';
 
-interface RoleRouteProps {
-  requiredRoles: ('superAdmin' | 'tenantOwner' | 'projectOwner' | 'projectDeputy' | 'projectMember')[];
-  projectId?: string;
-}
+export const ProtectedRoute: React.FC = () => {
+  const { isAuthenticated, isLoading } = useAuth();
 
-export const RoleRoute: React.FC<RoleRouteProps> = ({ 
-  requiredRoles,
-  projectId
-}) => {
-  const { 
-    isLoading, 
-    isSuperAdmin, 
-    isTenantOwner, 
-    hasProjectRole 
-  } = useAuth();
-  
   if (isLoading) {
-    return <LoadingSpinner />;
+    return <div className="loading-spinner">Loading...</div>;
   }
-  
-  const hasRequiredRole = requiredRoles.some(role => {
-    if (role === 'superAdmin') return isSuperAdmin;
-    if (role === 'tenantOwner') return isTenantOwner;
-    if (role === 'projectOwner' && projectId) return hasProjectRole(projectId, 'OWNER');
-    if (role === 'projectDeputy' && projectId) return hasProjectRole(projectId, 'DEPUTY');
-    if (role === 'projectMember' && projectId) return hasProjectRole(projectId, 'MEMBER');
-    return false;
-  });
-  
-  if (!hasRequiredRole) {
-    return <Navigate to="/forbidden" replace />;
+
+  if (!isAuthenticated) {
+    return <Navigate to="/login" replace />;
   }
-  
+
   return <Outlet />;
 };
 ```
 
-## Route Configuration
-
-The routes are configured to use these components:
+### Role-Based Route Protection
 
 ```tsx
-// src/routes/index.tsx
-import React from 'react';
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
-import { PrivateRoute } from './PrivateRoute';
-import { RoleRoute } from './RoleRoute';
-import { AppLayout } from '../components/layout/AppLayout';
-import { Login } from '../pages/auth/Login';
-import { Signup } from '../pages/auth/Signup';
-import { ForgotPassword } from '../pages/auth/ForgotPassword';
-import { SuperAdminDashboard } from '../pages/dashboard/SuperAdminDashboard';
-import { TenantOwnerDashboard } from '../pages/dashboard/TenantOwnerDashboard';
-import { ProjectMemberDashboard } from '../pages/dashboard/ProjectMemberDashboard';
-import { NotFound } from '../pages/error/NotFound';
-import { Forbidden } from '../pages/error/Forbidden';
-import { ServerError } from '../pages/error/ServerError';
-// Import other pages...
+// src/components/RoleRoute.tsx
+import { Navigate, Outlet } from 'react-router-dom';
+import { useAuth } from '../context/AuthContext';
 
-export const AppRoutes: React.FC = () => {
+interface RoleRouteProps {
+  requiredRole?: 'superadmin' | 'tenant-owner';
+  projectId?: string;
+  projectRole?: 'OWNER' | 'DEPUTY' | 'MEMBER';
+  fallbackPath?: string;
+}
+
+export const RoleRoute: React.FC<RoleRouteProps> = ({
+  requiredRole,
+  projectId,
+  projectRole,
+  fallbackPath = '/unauthorized',
+}) => {
+  const { userRoles, hasProjectRole, isLoading } = useAuth();
+
+  if (isLoading) {
+    return <div className="loading-spinner">Loading...</div>;
+  }
+
+  if (!userRoles) {
+    return <Navigate to="/login" replace />;
+  }
+
+  // Check global roles
+  if (requiredRole === 'superadmin' && !userRoles.isSuperAdmin) {
+    return <Navigate to={fallbackPath} replace />;
+  }
+
+  if (requiredRole === 'tenant-owner' && !userRoles.isTenantOwner && !userRoles.isSuperAdmin) {
+    return <Navigate to={fallbackPath} replace />;
+  }
+
+  // Check project-specific roles
+  if (projectId && projectRole && !hasProjectRole(projectId, projectRole)) {
+    return <Navigate to={fallbackPath} replace />;
+  }
+
+  return <Outlet />;
+};
+```
+
+### Route Setup
+
+```tsx
+// src/App.tsx
+import { Routes, Route } from 'react-router-dom';
+import { ProtectedRoute } from './components/ProtectedRoute';
+import { RoleRoute } from './components/RoleRoute';
+
+function AppRoutes() {
   return (
-    <BrowserRouter>
-      <Routes>
-        {/* Public routes */}
-        <Route path="/login" element={<Login />} />
-        <Route path="/signup" element={<Signup />} />
-        <Route path="/forgot-password" element={<ForgotPassword />} />
+    <Routes>
+      {/* Public routes */}
+      <Route path="/login" element={<LoginPage />} />
+      <Route path="/unauthorized" element={<UnauthorizedPage />} />
+
+      {/* Protected routes */}
+      <Route element={<ProtectedRoute />}>
+        <Route path="/dashboard" element={<Dashboard />} />
         
-        {/* Protected routes */}
-        <Route element={<PrivateRoute />}>
-          <Route element={<AppLayout />}>
-            {/* Dashboard routes */}
-            <Route path="/" element={<Navigate to="/dashboard" replace />} />
-            
-            {/* SuperAdmin routes */}
-            <Route element={<RoleRoute requiredRoles={['superAdmin']} />}>
-              <Route path="/admin/dashboard" element={<SuperAdminDashboard />} />
-              <Route path="/admin/tenants" element={<TenantList />} />
-              <Route path="/admin/project-types" element={<ProjectTypeList />} />
-              <Route path="/admin/cloud-providers" element={<CloudProviderList />} />
-              {/* Other SuperAdmin routes... */}
-            </Route>
-            
-            {/* Tenant Owner routes */}
-            <Route element={<RoleRoute requiredRoles={['tenantOwner']} />}>
-              <Route path="/tenant/dashboard" element={<TenantOwnerDashboard />} />
-              <Route path="/tenant/settings" element={<TenantSettings />} />
-              <Route path="/tenant/integrations" element={<IntegrationList />} />
-              {/* Other Tenant Owner routes... */}
-            </Route>
-            
-            {/* Project routes */}
-            <Route path="/projects" element={<ProjectList />} />
-            <Route path="/projects/:id" element={<ProjectDetail />} />
-            
-            {/* Project Owner/Deputy routes */}
-            <Route path="/projects/:id/settings" element={
-              <RoleRoute 
-                requiredRoles={['projectOwner', 'projectDeputy']} 
-                projectId={/* Get from URL params */}
-              >
-                <ProjectSettings />
-              </RoleRoute>
-            } />
-            
-            {/* Project Owner routes */}
-            <Route path="/projects/:id/members" element={
-              <RoleRoute 
-                requiredRoles={['projectOwner']} 
-                projectId={/* Get from URL params */}
-              >
-                <ProjectMembers />
-              </RoleRoute>
-            } />
-            
-            {/* User profile */}
-            <Route path="/profile" element={<UserProfile />} />
-            
-            {/* Error pages */}
-            <Route path="/forbidden" element={<Forbidden />} />
-            <Route path="/server-error" element={<ServerError />} />
-            <Route path="*" element={<NotFound />} />
-          </Route>
+        {/* Tenant owner routes */}
+        <Route element={<RoleRoute requiredRole="tenant-owner" />}>
+          <Route path="/tenant/settings" element={<TenantSettings />} />
+          <Route path="/integrations" element={<CloudIntegrations />} />
         </Route>
-      </Routes>
-    </BrowserRouter>
+
+        {/* SuperAdmin routes */}
+        <Route element={<RoleRoute requiredRole="superadmin" />}>
+          <Route path="/admin/*" element={<AdminRoutes />} />
+        </Route>
+
+        {/* Project-specific routes */}
+        <Route path="/projects/:projectId/*" element={<ProjectRoutes />} />
+      </Route>
+    </Routes>
+  );
+}
+```
+
+## 🔑 Token Management
+
+### API Integration
+
+```tsx
+// src/utils/api.ts
+import axios from 'axios';
+import { useAuth } from '../context/AuthContext';
+
+// Create API instance
+export const api = axios.create({
+  baseURL: `${process.env.REACT_APP_API_URL}/api/v1`,
+});
+
+// Hook for authenticated API calls
+export const useAuthenticatedApi = () => {
+  const { getAccessToken, logout } = useAuth();
+
+  // Add auth token to requests
+  api.interceptors.request.use(async (config) => {
+    const token = await getAccessToken();
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`;
+    }
+    return config;
+  });
+
+  // Handle auth errors
+  api.interceptors.response.use(
+    (response) => response,
+    (error) => {
+      if (error.response?.status === 401) {
+        // Token expired or invalid - force re-login
+        logout();
+      }
+      return Promise.reject(error);
+    }
+  );
+
+  return api;
+};
+```
+
+## 🎯 Usage Examples
+
+### Login Page
+
+```tsx
+// src/pages/LoginPage.tsx
+import { useAuth } from '../context/AuthContext';
+import { Navigate } from 'react-router-dom';
+
+export const LoginPage: React.FC = () => {
+  const { isAuthenticated, login, isLoading } = useAuth();
+
+  if (isLoading) {
+    return <div>Loading...</div>;
+  }
+
+  if (isAuthenticated) {
+    return <Navigate to="/dashboard" />;
+  }
+
+  return (
+    <div className="login-page">
+      <h1>Welcome to MWAP</h1>
+      <p>Please log in to continue</p>
+      <button onClick={login} className="login-button">
+        Log In
+      </button>
+    </div>
   );
 };
 ```
 
-## Token Management
-
-Access tokens are managed securely:
-
-1. **Token Storage**: Tokens are stored in memory, not in localStorage or cookies
-2. **Token Refresh**: Refresh tokens are used to obtain new access tokens
-3. **Token Expiration**: Expired tokens trigger a refresh or redirect to login
+### Dashboard with Role-Based Content
 
 ```tsx
-// src/utils/auth.ts
-import { useAuth0 } from '@auth0/auth0-react';
+// src/pages/Dashboard.tsx
+import { useAuth } from '../context/AuthContext';
 
-export const useTokenManager = () => {
-  const { getAccessTokenSilently, isAuthenticated } = useAuth0();
-  
-  const getAccessToken = async (): Promise<string | null> => {
-    if (!isAuthenticated) {
-      return null;
-    }
-    
-    try {
-      return await getAccessTokenSilently();
-    } catch (error) {
-      console.error('Error getting access token:', error);
-      return null;
-    }
-  };
-  
-  return {
-    getAccessToken,
-  };
+export const Dashboard: React.FC = () => {
+  const { user, userRoles, logout } = useAuth();
+
+  return (
+    <div className="dashboard">
+      <header className="dashboard-header">
+        <h1>Welcome, {user?.name}</h1>
+        <button onClick={logout}>Logout</button>
+      </header>
+
+      <main className="dashboard-content">
+        {/* SuperAdmin panel */}
+        {userRoles?.isSuperAdmin && (
+          <section className="admin-panel">
+            <h2>System Administration</h2>
+            <nav>
+              <a href="/admin/tenants">Manage Tenants</a>
+              <a href="/admin/project-types">Manage Project Types</a>
+              <a href="/admin/cloud-providers">Manage Cloud Providers</a>
+            </nav>
+          </section>
+        )}
+
+        {/* Tenant Owner panel */}
+        {userRoles?.isTenantOwner && (
+          <section className="tenant-panel">
+            <h2>Tenant Management</h2>
+            <nav>
+              <a href="/tenant/settings">Tenant Settings</a>
+              <a href="/integrations">Cloud Integrations</a>
+              <a href="/projects">Manage Projects</a>
+            </nav>
+          </section>
+        )}
+
+        {/* Projects */}
+        <section className="projects-panel">
+          <h2>Your Projects</h2>
+          {Object.entries(userRoles?.projectRoles || {}).map(([projectId, role]) => (
+            <div key={projectId} className="project-card">
+              <h3>Project {projectId}</h3>
+              <span className="role-badge">Role: {role}</span>
+              <a href={`/projects/${projectId}`}>Open Project</a>
+            </div>
+          ))}
+        </section>
+      </main>
+    </div>
+  );
 };
 ```
 
-## Security Considerations
-
-### CSRF Protection
-
-Cross-Site Request Forgery (CSRF) protection is implemented:
-
-1. Auth0 uses state parameters to prevent CSRF during authentication
-2. API requests include the JWT token, which is verified on the server
-
-### XSS Protection
-
-Cross-Site Scripting (XSS) protection measures:
-
-1. React's built-in XSS protection (automatic escaping)
-2. Content Security Policy (CSP) headers
-3. Input validation and sanitization
-4. Avoiding dangerous patterns like `dangerouslySetInnerHTML`
-
-### Secure Token Handling
-
-1. Tokens are stored in memory, not localStorage
-2. Tokens are never exposed to JavaScript
-3. Token refresh is handled securely
-
-### Secure Communication
-
-1. All API communication uses HTTPS
-2. Sensitive data is never logged or exposed
-3. Error messages don't reveal sensitive information
-
-## Logout Process
-
-The logout process ensures complete session termination:
-
-1. Clear local application state
-2. Redirect to Auth0 logout endpoint
-3. Invalidate the session on the Auth0 side
-4. Redirect back to the application
+### Conditional Component Rendering
 
 ```tsx
-const logout = () => {
-  auth0Logout({ 
-    logoutParams: {
-      returnTo: window.location.origin 
-    }
-  });
-  // Clear local state
-  setUser(null);
-  setIsSuperAdmin(false);
-  setIsTenantOwner(false);
-  setProjectRoles({});
+// src/components/ProjectActions.tsx
+import { useAuth } from '../context/AuthContext';
+
+interface ProjectActionsProps {
+  projectId: string;
+}
+
+export const ProjectActions: React.FC<ProjectActionsProps> = ({ projectId }) => {
+  const { hasProjectRole } = useAuth();
+
+  return (
+    <div className="project-actions">
+      {/* All members can view */}
+      {hasProjectRole(projectId, 'MEMBER') && (
+        <button>View Files</button>
+      )}
+
+      {/* Deputies and owners can edit */}
+      {hasProjectRole(projectId, 'DEPUTY') && (
+        <button>Edit Project</button>
+      )}
+
+      {/* Only owners can delete */}
+      {hasProjectRole(projectId, 'OWNER') && (
+        <button className="danger">Delete Project</button>
+      )}
+    </div>
+  );
 };
 ```
 
-## OAuth Integration
+## 🔒 Security Best Practices
 
-In addition to user authentication, the MWAP platform also supports OAuth integration with third-party cloud providers. This is handled through a dedicated OAuth callback endpoint:
+### Token Storage
+- ✅ Tokens stored in memory (not localStorage)
+- ✅ Automatic token refresh
+- ✅ Secure cookie-based refresh tokens
 
-### OAuth Flow
+### Error Handling
+- ✅ Automatic logout on token expiry
+- ✅ Graceful handling of auth errors
+- ✅ No sensitive data in error messages
 
-1. **Initialization**:
-   - Create cloud provider integration
-   - Generate authorization URL with state parameter
-   - Redirect user to provider's authorization page
+### Route Protection
+- ✅ Protected routes require authentication
+- ✅ Role-based route restrictions
+- ✅ Redirect to login when unauthorized
 
-2. **Authorization**:
-   - User grants permissions to the application
-   - Provider redirects to the dedicated callback endpoint
+## 📖 Related Documentation
 
-3. **Token Exchange**:
-   - Backend handles the OAuth callback
-   - Backend exchanges the code for tokens
-   - Backend securely stores the tokens
+- [API Integration Guide](api-integration.md) - Using authenticated API calls
+- [Error Handling Guide](error-handling.md) - Handling auth errors
+- [OAuth Integration Guide](oauth-integration.md) - Cloud provider OAuth flows
+- [RBAC Guide](rbac.md) - Role-based access control implementation
 
-### OAuth Callback Handling
+---
 
-The OAuth callback is handled by a dedicated endpoint:
-
-```
-GET /api/v1/oauth/callback
-```
-
-This endpoint:
-- Receives the authorization code from the cloud provider
-- Extracts the tenant ID, integration ID, and user ID from the state parameter
-- Exchanges the code for access and refresh tokens
-- Updates the integration with the tokens
-- Redirects to a success or error page
-
-For detailed implementation, see the [OAuth Integration Guide](../integrations/oauth-guide.md).
-
-## Conclusion
-
-The MWAP frontend implements a secure, robust authentication system using Auth0 with the Authorization Code flow with PKCE. This approach provides a high level of security while maintaining a good user experience. Role-based access control ensures that users can only access the features and data they are authorized to use.
-
-For third-party integrations, the platform uses a dedicated OAuth callback endpoint to securely handle the OAuth flow and token exchange, ensuring that sensitive tokens are never exposed to the frontend.
+*This guide covers Auth0 integration for the MWAP platform. For backend authentication details, refer to the backend documentation.*

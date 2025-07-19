@@ -1,572 +1,543 @@
-# MWAP Frontend Role-Based Access Control
+# Role-Based Access Control Guide
 
-This document outlines the implementation of role-based access control (RBAC) in the MWAP frontend application.
+This guide shows React developers how to implement role-based access control (RBAC) in frontend applications using the MWAP backend.
 
-## Overview
+## 🎭 RBAC Overview
 
-MWAP implements a comprehensive role-based access control system to ensure that users can only access the features and data they are authorized to use. The RBAC system is implemented at multiple levels:
+MWAP implements a multi-level role system:
 
-1. **Route level**: Restricting access to certain routes based on user roles
-2. **Component level**: Showing or hiding UI elements based on user roles
-3. **API level**: Validating permissions before making API calls
-4. **Data level**: Filtering data based on user roles
+### Global Roles
+- **SuperAdmin**: Platform-wide access to all features and data
+- **Tenant Owner**: Full control over their tenant and associated projects
 
-## User Roles
-
-MWAP supports three primary user roles, each with different permissions:
-
-### 1. SuperAdmin
-
-SuperAdmins have platform-level access and can manage all aspects of the system:
-
-- Manage all tenants (view, archive, unarchive)
-- Manage all projects (view, archive, unarchive)
-- Full CRUD operations for ProjectTypes
-- Full CRUD operations for CloudProviders
-- View system-wide analytics and metrics
-
-### 2. Tenant Owner
-
-Tenant Owners have full control over their tenant and associated projects:
-
-- Manage their tenant (view, edit)
-- Create and manage projects within their tenant
-- Manage cloud provider integrations for their tenant
-- Invite and manage project members
-- View tenant-level analytics
-
-### 3. Project Member
-
-Project Members have limited access based on their role within a project:
-
+### Project Roles
 - **Project Owner**: Full control over a specific project
-- **Project Deputy**: Can edit project details and manage members
+- **Project Deputy**: Can edit project details and manage members  
 - **Project Member**: Can view and interact with project resources
 
-## Role Management
+## 🔧 Role Management Setup
 
-Roles are managed through the Auth context, which uses the `/api/v1/users/me/roles` endpoint to get a single source of truth for user roles:
+### User Roles Hook
 
 ```tsx
-// src/context/AuthContext.tsx
-interface AuthContextType {
-  // ...other properties
+// src/hooks/useUserRoles.ts
+import { useQuery } from '@tanstack/react-query';
+import { api } from '../utils/api';
+
+interface UserRoles {
   isSuperAdmin: boolean;
   isTenantOwner: boolean;
   tenantId: string | null;
-  hasProjectRole: (projectId: string, role: string) => boolean;
+  projectRoles: Array<{
+    projectId: string;
+    role: 'OWNER' | 'DEPUTY' | 'MEMBER';
+  }>;
 }
 
-export const AuthProvider: React.FC = ({ children }) => {
-  // ...other state and functions
-  
-  const [isSuperAdmin, setIsSuperAdmin] = useState(false);
-  const [isTenantOwner, setIsTenantOwner] = useState(false);
-  const [tenantId, setTenantId] = useState<string | null>(null);
-  const [projectRoles, setProjectRoles] = useState<Record<string, string>>({});
-  
-  useEffect(() => {
-    const fetchUserRoles = async () => {
-      if (isAuthenticated && auth0User) {
-        try {
-          // Fetch user roles from the API
-          const response = await api.get('/users/me/roles');
-          const userRoles = response.data;
-          
-          // Set role states
-          setIsSuperAdmin(userRoles.isSuperAdmin);
-          setIsTenantOwner(userRoles.isTenantOwner);
-          setTenantId(userRoles.tenantId);
-          
-          // Convert project roles array to record for easier lookup
-          const roles: Record<string, string> = {};
-          userRoles.projectRoles.forEach((projectRole: any) => {
-            roles[projectRole.projectId] = projectRole.role;
-          });
-          
-          setProjectRoles(roles);
-        } catch (error) {
-          console.error('Error fetching user roles:', error);
-        }
-      }
-    };
-    
-    fetchUserRoles();
-  }, [isAuthenticated, auth0User]);
-  
-  const hasProjectRole = (projectId: string, role: string) => {
-    const userRole = projectRoles[projectId];
-    if (!userRole) return false;
-    
-    // Role hierarchy: OWNER > DEPUTY > MEMBER
-    if (role === 'MEMBER') {
-      return ['OWNER', 'DEPUTY', 'MEMBER'].includes(userRole);
-    } else if (role === 'DEPUTY') {
-      return ['OWNER', 'DEPUTY'].includes(userRole);
-    } else if (role === 'OWNER') {
-      return userRole === 'OWNER';
-    }
-    
-    return false;
-  };
-  
-  // ...rest of the provider
+export const useUserRoles = () => {
+  return useQuery<UserRoles>({
+    queryKey: ['user', 'roles'],
+    queryFn: async () => {
+      const response = await api.get('/users/me/roles');
+      return response.data.data;
+    },
+  });
 };
 ```
 
-## Role-Based Routing
-
-Role-based routing ensures that users can only access routes they are authorized for:
+### Role Checking Functions
 
 ```tsx
-// src/routes/RoleRoute.tsx
-import React from 'react';
-import { Navigate, Outlet, useParams } from 'react-router-dom';
-import { useAuth } from '../context/AuthContext';
-import { LoadingSpinner } from '../components/common/LoadingSpinner';
+// src/hooks/useRoleCheck.ts
+import { useUserRoles } from './useUserRoles';
+
+export const useRoleCheck = () => {
+  const { data: userRoles } = useUserRoles();
+
+  const isSuperAdmin = userRoles?.isSuperAdmin || false;
+  const isTenantOwner = userRoles?.isTenantOwner || false;
+
+  const hasProjectRole = (projectId: string, requiredRole: 'OWNER' | 'DEPUTY' | 'MEMBER'): boolean => {
+    if (isSuperAdmin) return true; // SuperAdmin has all permissions
+
+    const projectRole = userRoles?.projectRoles.find(pr => pr.projectId === projectId);
+    if (!projectRole) return false;
+
+    // Role hierarchy: OWNER > DEPUTY > MEMBER
+    const roleHierarchy = { OWNER: 3, DEPUTY: 2, MEMBER: 1 };
+    const userLevel = roleHierarchy[projectRole.role];
+    const requiredLevel = roleHierarchy[requiredRole];
+
+    return userLevel >= requiredLevel;
+  };
+
+  const canCreateProject = isSuperAdmin || isTenantOwner;
+  const canManageCloudProviders = isSuperAdmin;
+  const canManageProjectTypes = isSuperAdmin;
+
+  return {
+    isSuperAdmin,
+    isTenantOwner,
+    hasProjectRole,
+    canCreateProject,
+    canManageCloudProviders,
+    canManageProjectTypes,
+  };
+};
+```
+
+## 🛡️ Route Protection
+
+### Role-Based Route Component
+
+```tsx
+// src/components/RoleRoute.tsx
+import { Navigate, Outlet } from 'react-router-dom';
+import { useRoleCheck } from '../hooks/useRoleCheck';
 
 interface RoleRouteProps {
-  requiredRoles: ('superAdmin' | 'tenantOwner' | 'projectOwner' | 'projectDeputy' | 'projectMember')[];
-  projectIdParam?: string; // URL parameter name for project ID
+  requiredRole?: 'superadmin' | 'tenant-owner';
+  projectId?: string;
+  projectRole?: 'OWNER' | 'DEPUTY' | 'MEMBER';
+  fallbackPath?: string;
 }
 
-export const RoleRoute: React.FC<RoleRouteProps> = ({ 
-  requiredRoles,
-  projectIdParam = 'id'
+export const RoleRoute: React.FC<RoleRouteProps> = ({
+  requiredRole,
+  projectId,
+  projectRole,
+  fallbackPath = '/unauthorized',
 }) => {
-  const { 
-    isLoading, 
-    isSuperAdmin, 
-    isTenantOwner, 
-    hasProjectRole 
-  } = useAuth();
-  
-  const params = useParams();
-  const projectId = params[projectIdParam];
-  
-  if (isLoading) {
-    return <LoadingSpinner />;
+  const { isSuperAdmin, isTenantOwner, hasProjectRole } = useRoleCheck();
+
+  // Check global roles
+  if (requiredRole === 'superadmin' && !isSuperAdmin) {
+    return <Navigate to={fallbackPath} replace />;
   }
-  
-  const hasRequiredRole = requiredRoles.some(role => {
-    if (role === 'superAdmin') return isSuperAdmin;
-    if (role === 'tenantOwner') return isTenantOwner;
-    if (role === 'projectOwner' && projectId) return hasProjectRole(projectId, 'OWNER');
-    if (role === 'projectDeputy' && projectId) return hasProjectRole(projectId, 'DEPUTY');
-    if (role === 'projectMember' && projectId) return hasProjectRole(projectId, 'MEMBER');
-    return false;
-  });
-  
-  if (!hasRequiredRole) {
-    return <Navigate to="/forbidden" replace />;
+
+  if (requiredRole === 'tenant-owner' && !isTenantOwner && !isSuperAdmin) {
+    return <Navigate to={fallbackPath} replace />;
   }
-  
+
+  // Check project-specific roles
+  if (projectId && projectRole && !hasProjectRole(projectId, projectRole)) {
+    return <Navigate to={fallbackPath} replace />;
+  }
+
   return <Outlet />;
 };
 ```
 
-Usage in route configuration:
+### Route Setup Example
 
 ```tsx
-// src/routes/index.tsx
-<Routes>
-  {/* SuperAdmin routes */}
-  <Route element={<RoleRoute requiredRoles={['superAdmin']} />}>
-    <Route path="/admin/dashboard" element={<SuperAdminDashboard />} />
-    <Route path="/admin/tenants" element={<TenantList />} />
-    <Route path="/admin/project-types" element={<ProjectTypeList />} />
-    <Route path="/admin/cloud-providers" element={<CloudProviderList />} />
-  </Route>
-  
-  {/* Tenant Owner routes */}
-  <Route element={<RoleRoute requiredRoles={['tenantOwner']} />}>
-    <Route path="/tenant/dashboard" element={<TenantOwnerDashboard />} />
-    <Route path="/tenant/settings" element={<TenantSettings />} />
-    <Route path="/tenant/integrations" element={<IntegrationList />} />
-  </Route>
-  
-  {/* Project routes with role-based access */}
-  <Route path="/projects/:id/settings" element={
-    <RoleRoute requiredRoles={['projectOwner', 'projectDeputy']}>
-      <ProjectSettings />
-    </RoleRoute>
-  } />
-  
-  <Route path="/projects/:id/members" element={
-    <RoleRoute requiredRoles={['projectOwner']}>
-      <ProjectMembers />
-    </RoleRoute>
-  } />
-</Routes>
+// src/App.tsx
+import { Routes, Route } from 'react-router-dom';
+import { RoleRoute } from './components/RoleRoute';
+
+function AppRoutes() {
+  return (
+    <Routes>
+      {/* SuperAdmin only routes */}
+      <Route element={<RoleRoute requiredRole="superadmin" />}>
+        <Route path="/admin/tenants" element={<TenantManagement />} />
+        <Route path="/admin/project-types" element={<ProjectTypeManagement />} />
+        <Route path="/admin/cloud-providers" element={<CloudProviderManagement />} />
+      </Route>
+
+      {/* Tenant Owner routes */}
+      <Route element={<RoleRoute requiredRole="tenant-owner" />}>
+        <Route path="/tenant/settings" element={<TenantSettings />} />
+        <Route path="/integrations" element={<CloudIntegrations />} />
+      </Route>
+
+      {/* Project-specific routes with dynamic project ID */}
+      <Route path="/projects/:projectId">
+        <Route element={<RoleRoute projectRole="MEMBER" />}>
+          <Route path="files" element={<ProjectFiles />} />
+        </Route>
+        <Route element={<RoleRoute projectRole="DEPUTY" />}>
+          <Route path="settings" element={<ProjectSettings />} />
+        </Route>
+        <Route element={<RoleRoute projectRole="OWNER" />}>
+          <Route path="members" element={<ProjectMembers />} />
+        </Route>
+      </Route>
+    </Routes>
+  );
+}
 ```
 
-## Role-Based UI Components
+## 🎨 Conditional UI Rendering
 
-UI components adapt based on the user's role:
-
-### 1. Conditional Rendering
+### Basic Role-Based Components
 
 ```tsx
-import { useAuth } from '../context/AuthContext';
+// src/components/ProjectActions.tsx
+import { useRoleCheck } from '../hooks/useRoleCheck';
 
-export const ProjectActions: React.FC<{ projectId: string }> = ({ projectId }) => {
-  const { isSuperAdmin, hasProjectRole } = useAuth();
-  const isOwner = hasProjectRole(projectId, 'OWNER');
-  const isDeputy = hasProjectRole(projectId, 'DEPUTY');
-  
+interface ProjectActionsProps {
+  projectId: string;
+}
+
+export const ProjectActions: React.FC<ProjectActionsProps> = ({ projectId }) => {
+  const { hasProjectRole, isSuperAdmin } = useRoleCheck();
+
   return (
-    <div className="flex gap-2">
-      {/* Available to all */}
-      <Button variant="outline">View Details</Button>
-      
-      {/* Available to project owners and deputies */}
-      {(isOwner || isDeputy) && (
-        <Button variant="outline">Edit Project</Button>
+    <div className="project-actions">
+      {/* All members can view */}
+      {hasProjectRole(projectId, 'MEMBER') && (
+        <button>View Files</button>
       )}
-      
-      {/* Available to project owners only */}
-      {isOwner && (
-        <Button variant="outline">Manage Members</Button>
+
+      {/* Deputies and above can edit */}
+      {hasProjectRole(projectId, 'DEPUTY') && (
+        <button>Edit Project</button>
       )}
-      
-      {/* Available to super admins and project owners */}
-      {(isSuperAdmin || isOwner) && (
-        <Button variant="outline" color="red">Delete Project</Button>
+
+      {/* Only owners can manage members */}
+      {hasProjectRole(projectId, 'OWNER') && (
+        <button>Manage Members</button>
+      )}
+
+      {/* SuperAdmin or owner can delete */}
+      {(isSuperAdmin || hasProjectRole(projectId, 'OWNER')) && (
+        <button className="danger">Delete Project</button>
       )}
     </div>
   );
 };
 ```
 
-### 2. Role-Based Navigation
+### Role-Based Navigation
 
 ```tsx
-import { useAuth } from '../context/AuthContext';
+// src/components/Navigation.tsx
+import { useRoleCheck } from '../hooks/useRoleCheck';
 
 export const Navigation: React.FC = () => {
-  const { isSuperAdmin, isTenantOwner } = useAuth();
-  
+  const { isSuperAdmin, isTenantOwner, canCreateProject } = useRoleCheck();
+
   return (
-    <nav>
-      <ul>
-        {/* Common navigation items */}
-        <li><Link to="/dashboard">Dashboard</Link></li>
-        <li><Link to="/projects">Projects</Link></li>
-        <li><Link to="/profile">Profile</Link></li>
-        
-        {/* Tenant owner navigation items */}
-        {isTenantOwner && (
-          <>
-            <li><Link to="/tenant/settings">Tenant Settings</Link></li>
-            <li><Link to="/tenant/integrations">Cloud Integrations</Link></li>
-          </>
-        )}
-        
-        {/* Super admin navigation items */}
-        {isSuperAdmin && (
-          <>
-            <li><Link to="/admin/tenants">Tenants</Link></li>
-            <li><Link to="/admin/project-types">Project Types</Link></li>
-            <li><Link to="/admin/cloud-providers">Cloud Providers</Link></li>
-            <li><Link to="/admin/settings">System Settings</Link></li>
-          </>
-        )}
-      </ul>
+    <nav className="main-nav">
+      {/* Common navigation */}
+      <a href="/dashboard">Dashboard</a>
+      <a href="/projects">Projects</a>
+
+      {/* Project creation */}
+      {canCreateProject && (
+        <a href="/projects/new">Create Project</a>
+      )}
+
+      {/* Tenant management */}
+      {isTenantOwner && (
+        <>
+          <a href="/tenant/settings">Tenant Settings</a>
+          <a href="/integrations">Cloud Integrations</a>
+        </>
+      )}
+
+      {/* Admin features */}
+      {isSuperAdmin && (
+        <details>
+          <summary>Administration</summary>
+          <a href="/admin/tenants">Manage Tenants</a>
+          <a href="/admin/project-types">Project Types</a>
+          <a href="/admin/cloud-providers">Cloud Providers</a>
+        </details>
+      )}
     </nav>
   );
 };
 ```
 
-### 3. Role-Based Forms
+### Form Field Permissions
 
 ```tsx
-import { useAuth } from '../context/AuthContext';
+// src/components/ProjectForm.tsx
+import { useRoleCheck } from '../hooks/useRoleCheck';
 
-export const ProjectForm: React.FC<{ projectId: string }> = ({ projectId }) => {
-  const { isSuperAdmin, hasProjectRole } = useAuth();
-  const isOwner = hasProjectRole(projectId, 'OWNER');
-  const isDeputy = hasProjectRole(projectId, 'DEPUTY');
-  const canEdit = isSuperAdmin || isOwner || isDeputy;
+interface ProjectFormProps {
+  projectId: string;
+  project: Project;
+}
+
+export const ProjectForm: React.FC<ProjectFormProps> = ({ projectId, project }) => {
+  const { hasProjectRole, isSuperAdmin } = useRoleCheck();
   
+  const canEdit = hasProjectRole(projectId, 'DEPUTY') || isSuperAdmin;
+  const canDelete = hasProjectRole(projectId, 'OWNER') || isSuperAdmin;
+
   return (
     <form>
       <div>
         <label>Project Name</label>
         <input 
           type="text" 
-          disabled={!canEdit} 
+          defaultValue={project.name}
+          readOnly={!canEdit}
         />
       </div>
-      
+
       <div>
         <label>Description</label>
         <textarea 
-          disabled={!canEdit} 
+          defaultValue={project.description}
+          readOnly={!canEdit}
         />
       </div>
-      
-      {/* Fields only visible to owners */}
-      {isOwner && (
-        <div>
-          <label>Advanced Settings</label>
-          <input type="checkbox" />
-        </div>
-      )}
-      
-      {/* Fields only visible to super admins */}
-      {isSuperAdmin && (
-        <div>
-          <label>System Tags</label>
-          <input type="text" />
-        </div>
-      )}
-      
+
       {canEdit && (
         <button type="submit">Save Changes</button>
+      )}
+
+      {canDelete && (
+        <button type="button" className="danger">
+          Delete Project
+        </button>
       )}
     </form>
   );
 };
 ```
 
-## Role-Based API Access
+## 🔄 Dynamic Role Components
 
-API access is controlled based on user roles:
-
-### 1. Custom Hook for Role-Based API Calls
+### Role-Based Dashboard
 
 ```tsx
-import { useAuth } from '../context/AuthContext';
-import { api } from '../utils/api';
-
-export const useRoleBasedApi = () => {
-  const { isSuperAdmin, isTenantOwner, hasProjectRole } = useAuth();
-  
-  const deleteProject = async (projectId: string) => {
-    // Check if user has permission to delete the project
-    if (!isSuperAdmin && !hasProjectRole(projectId, 'OWNER')) {
-      throw new Error('You do not have permission to delete this project');
-    }
-    
-    return api.delete(`/projects/${projectId}`);
-  };
-  
-  const updateProject = async (projectId: string, data: any) => {
-    // Check if user has permission to update the project
-    if (!isSuperAdmin && !hasProjectRole(projectId, 'OWNER') && !hasProjectRole(projectId, 'DEPUTY')) {
-      throw new Error('You do not have permission to update this project');
-    }
-    
-    return api.patch(`/projects/${projectId}`, data);
-  };
-  
-  const createProjectType = async (data: any) => {
-    // Check if user is a super admin
-    if (!isSuperAdmin) {
-      throw new Error('You do not have permission to create project types');
-    }
-    
-    return api.post('/project-types', data);
-  };
-  
-  return {
-    deleteProject,
-    updateProject,
-    createProjectType,
-    // Other role-based API methods...
-  };
-};
-```
-
-### 2. Role-Based Query Hooks
-
-```tsx
-import { useQuery } from 'react-query';
-import { useAuth } from '../context/AuthContext';
-import { api } from '../utils/api';
-
-export const useProjects = () => {
-  const { isSuperAdmin } = useAuth();
-  
-  return useQuery(['projects'], async () => {
-    // Super admins can see all projects, others only see their own
-    const endpoint = isSuperAdmin ? '/admin/projects' : '/projects';
-    const response = await api.get(endpoint);
-    return response.data;
-  });
-};
-```
-
-## Role-Based Dashboard
-
-Different dashboards are shown based on the user's role:
-
-```tsx
-import { useAuth } from '../context/AuthContext';
-import { SuperAdminDashboard } from './SuperAdminDashboard';
-import { TenantOwnerDashboard } from './TenantOwnerDashboard';
-import { ProjectMemberDashboard } from './ProjectMemberDashboard';
+// src/pages/Dashboard.tsx
+import { useRoleCheck } from '../hooks/useRoleCheck';
+import { useUserRoles } from '../hooks/useUserRoles';
 
 export const Dashboard: React.FC = () => {
-  const { isSuperAdmin, isTenantOwner } = useAuth();
-  
-  if (isSuperAdmin) {
-    return <SuperAdminDashboard />;
-  }
-  
-  if (isTenantOwner) {
-    return <TenantOwnerDashboard />;
-  }
-  
-  return <ProjectMemberDashboard />;
-};
-```
+  const { isSuperAdmin, isTenantOwner } = useRoleCheck();
+  const { data: userRoles } = useUserRoles();
 
-## Role-Based Error Handling
-
-Error messages are customized based on the user's role:
-
-```tsx
-import { useAuth } from '../context/AuthContext';
-
-export const ErrorDisplay: React.FC<{ error: Error }> = ({ error }) => {
-  const { isSuperAdmin } = useAuth();
-  
   return (
-    <div className="error-container">
-      <h3>An error occurred</h3>
-      
-      {/* Show detailed error information to super admins */}
-      {isSuperAdmin ? (
-        <>
-          <p>{error.message}</p>
-          <pre>{error.stack}</pre>
-        </>
-      ) : (
-        <p>Please try again or contact support if the problem persists.</p>
+    <div className="dashboard">
+      <h1>Dashboard</h1>
+
+      {/* SuperAdmin panel */}
+      {isSuperAdmin && (
+        <section className="admin-panel">
+          <h2>System Administration</h2>
+          <div className="admin-cards">
+            <a href="/admin/tenants" className="admin-card">
+              <h3>Tenants</h3>
+              <p>Manage all tenants</p>
+            </a>
+            <a href="/admin/project-types" className="admin-card">
+              <h3>Project Types</h3>
+              <p>Configure project templates</p>
+            </a>
+            <a href="/admin/cloud-providers" className="admin-card">
+              <h3>Cloud Providers</h3>
+              <p>Manage integrations</p>
+            </a>
+          </div>
+        </section>
       )}
-      
-      <button>Retry</button>
+
+      {/* Tenant Owner panel */}
+      {isTenantOwner && (
+        <section className="tenant-panel">
+          <h2>Tenant Management</h2>
+          <div className="tenant-cards">
+            <a href="/projects/new" className="tenant-card">
+              <h3>Create Project</h3>
+              <p>Start a new project</p>
+            </a>
+            <a href="/integrations" className="tenant-card">
+              <h3>Cloud Integrations</h3>
+              <p>Connect cloud providers</p>
+            </a>
+          </div>
+        </section>
+      )}
+
+      {/* User projects */}
+      <section className="projects-panel">
+        <h2>Your Projects</h2>
+        <div className="project-grid">
+          {userRoles?.projectRoles?.map(({ projectId, role }) => (
+            <div key={projectId} className="project-card">
+              <h3>Project {projectId}</h3>
+              <span className={`role-badge role-${role.toLowerCase()}`}>
+                {role}
+              </span>
+              <a href={`/projects/${projectId}`}>Open Project</a>
+            </div>
+          ))}
+        </div>
+      </section>
     </div>
   );
 };
 ```
 
-## Testing Role-Based Access Control
+## 🛠️ Helper Components
 
-RBAC is tested at multiple levels:
-
-### 1. Unit Tests
+### Permission Gate Component
 
 ```tsx
-import { render, screen } from '@testing-library/react';
-import { AuthContext } from '../context/AuthContext';
-import { ProjectActions } from './ProjectActions';
+// src/components/PermissionGate.tsx
+import { ReactNode } from 'react';
+import { useRoleCheck } from '../hooks/useRoleCheck';
 
-describe('ProjectActions', () => {
-  test('shows all actions for project owner', () => {
-    render(
-      <AuthContext.Provider value={{ 
-        hasProjectRole: () => true,
-        isSuperAdmin: false,
-        // ...other context values
-      }}>
-        <ProjectActions projectId="123" />
-      </AuthContext.Provider>
-    );
+interface PermissionGateProps {
+  children: ReactNode;
+  requiredRole?: 'superadmin' | 'tenant-owner';
+  projectId?: string;
+  projectRole?: 'OWNER' | 'DEPUTY' | 'MEMBER';
+  fallback?: ReactNode;
+}
+
+export const PermissionGate: React.FC<PermissionGateProps> = ({
+  children,
+  requiredRole,
+  projectId,
+  projectRole,
+  fallback = null,
+}) => {
+  const { isSuperAdmin, isTenantOwner, hasProjectRole } = useRoleCheck();
+
+  let hasPermission = true;
+
+  if (requiredRole === 'superadmin') {
+    hasPermission = isSuperAdmin;
+  } else if (requiredRole === 'tenant-owner') {
+    hasPermission = isTenantOwner || isSuperAdmin;
+  }
+
+  if (projectId && projectRole) {
+    hasPermission = hasPermission && hasProjectRole(projectId, projectRole);
+  }
+
+  return hasPermission ? <>{children}</> : <>{fallback}</>;
+};
+
+// Usage example
+export const SomeComponent = () => (
+  <div>
+    <h1>Project Dashboard</h1>
     
-    expect(screen.getByText('View Details')).toBeInTheDocument();
-    expect(screen.getByText('Edit Project')).toBeInTheDocument();
-    expect(screen.getByText('Manage Members')).toBeInTheDocument();
-    expect(screen.getByText('Delete Project')).toBeInTheDocument();
-  });
-  
-  test('shows limited actions for project member', () => {
-    render(
-      <AuthContext.Provider value={{ 
-        hasProjectRole: (id, role) => role === 'MEMBER',
-        isSuperAdmin: false,
-        // ...other context values
-      }}>
-        <ProjectActions projectId="123" />
-      </AuthContext.Provider>
-    );
+    <PermissionGate projectId="123" projectRole="DEPUTY">
+      <button>Edit Project</button>
+    </PermissionGate>
     
-    expect(screen.getByText('View Details')).toBeInTheDocument();
-    expect(screen.queryByText('Edit Project')).not.toBeInTheDocument();
-    expect(screen.queryByText('Manage Members')).not.toBeInTheDocument();
-    expect(screen.queryByText('Delete Project')).not.toBeInTheDocument();
-  });
-});
+    <PermissionGate 
+      requiredRole="superadmin" 
+      fallback={<p>Admin access required</p>}
+    >
+      <AdminPanel />
+    </PermissionGate>
+  </div>
+);
 ```
 
-### 2. Integration Tests
+### Role Badge Component
 
 ```tsx
-import { render, screen } from '@testing-library/react';
-import { MemoryRouter, Routes, Route } from 'react-router-dom';
-import { AuthProvider } from '../context/AuthContext';
-import { QueryClientProvider } from 'react-query';
-import { queryClient } from '../utils/queryClient';
-import { App } from '../App';
+// src/components/RoleBadge.tsx
+interface RoleBadgeProps {
+  role: string;
+  size?: 'sm' | 'md' | 'lg';
+}
 
-// Mock Auth0 hook
-jest.mock('@auth0/auth0-react', () => ({
-  useAuth0: () => ({
-    isAuthenticated: true,
-    user: { sub: 'user123', email: 'user@example.com' },
-    // ...other Auth0 values
-  }),
-}));
+export const RoleBadge: React.FC<RoleBadgeProps> = ({ role, size = 'md' }) => {
+  const getRoleColor = (role: string) => {
+    switch (role) {
+      case 'OWNER': return 'bg-red-100 text-red-800';
+      case 'DEPUTY': return 'bg-blue-100 text-blue-800';
+      case 'MEMBER': return 'bg-green-100 text-green-800';
+      default: return 'bg-gray-100 text-gray-800';
+    }
+  };
 
-// Mock API responses
-jest.mock('../utils/api', () => ({
-  api: {
-    get: jest.fn((url) => {
-      if (url === '/tenants/me') {
-        return Promise.resolve({ 
-          data: { 
-            _id: 'tenant123', 
-            name: 'Test Tenant',
-            ownerId: 'user123'
-          } 
-        });
-      }
-      if (url === '/admin/check') {
-        return Promise.resolve({ data: { isSuperAdmin: true } });
-      }
-      // ...other mocked responses
-    }),
-  },
-}));
+  const getSizeClass = (size: string) => {
+    switch (size) {
+      case 'sm': return 'px-2 py-1 text-xs';
+      case 'lg': return 'px-4 py-2 text-base';
+      default: return 'px-3 py-1 text-sm';
+    }
+  };
 
-describe('Role-based routing', () => {
-  test('super admin can access admin routes', async () => {
-    render(
-      <QueryClientProvider client={queryClient}>
-        <AuthProvider>
-          <MemoryRouter initialEntries={['/admin/tenants']}>
-            <App />
-          </MemoryRouter>
-        </AuthProvider>
-      </QueryClientProvider>
-    );
-    
-    // Wait for the page to load
-    expect(await screen.findByText('Tenant Management')).toBeInTheDocument();
-  });
-  
-  // ...other tests
-});
+  return (
+    <span className={`
+      inline-flex items-center rounded-full font-medium
+      ${getRoleColor(role)} ${getSizeClass(size)}
+    `}>
+      {role}
+    </span>
+  );
+};
 ```
 
-## Conclusion
+## 🔍 Best Practices
 
-MWAP implements a comprehensive role-based access control system that ensures users can only access the features and data they are authorized to use. This is implemented at multiple levels:
+### 1. Always Check Permissions
 
-1. **Route level**: Using `RoleRoute` to restrict access to certain routes
-2. **Component level**: Conditionally rendering UI elements based on user roles
-3. **API level**: Validating permissions before making API calls
-4. **Data level**: Filtering data based on user roles
+```tsx
+// ❌ Don't assume permissions
+const deleteProject = () => {
+  api.delete(`/projects/${projectId}`); // This will fail if unauthorized
+};
 
-This approach provides a secure, user-friendly experience that adapts to each user's role and permissions.
+// ✅ Check permissions first
+const { hasProjectRole } = useRoleCheck();
+const canDelete = hasProjectRole(projectId, 'OWNER');
+
+const deleteProject = () => {
+  if (!canDelete) return;
+  api.delete(`/projects/${projectId}`);
+};
+```
+
+### 2. Graceful Degradation
+
+```tsx
+// ❌ Don't show empty sections
+{isSuperAdmin && (
+  <section>
+    <h2>Admin Tools</h2>
+    {/* Empty if not admin */}
+  </section>
+)}
+
+// ✅ Show appropriate content for each role
+{isSuperAdmin ? (
+  <AdminSection />
+) : isTenantOwner ? (
+  <TenantSection />
+) : (
+  <MemberSection />
+)}
+```
+
+### 3. Server-Side Validation
+
+```tsx
+// Always remember: Frontend role checks are for UX only
+// The backend must validate all permissions
+const createProject = async (data) => {
+  try {
+    await api.post('/projects', data);
+  } catch (error) {
+    if (error.response?.status === 403) {
+      alert('You do not have permission to create projects');
+    }
+  }
+};
+```
+
+## 📖 Related Documentation
+
+- [Authentication Guide](authentication.md) - Auth0 and user authentication
+- [API Integration Guide](api-integration.md) - Making authenticated API calls
+- [Error Handling Guide](error-handling.md) - Handling authorization errors
+- [Backend RBAC Documentation](../04-Backend/authentication.md) - Server-side role validation
+
+---
+
+*This guide covers frontend RBAC implementation. Remember that all permissions must also be validated on the backend for security.*

@@ -31,12 +31,12 @@ System design and architectural decisions
 - [Diagrams](./02-Architecture/diagrams/) - Visual architecture representations
 
 ### [03-Frontend](./03-Frontend/)
-Frontend development and architecture
-- [Folder Structure](./03-Frontend/folder-structure.md) - Frontend organization
-- [Components](./03-Frontend/components.md) - Component architecture
-- [OpenHands Prompt](./03-Frontend/openhands-prompt.md) - AI development prompts
-- [Frontend Guide](./03-Frontend/frontend.md) - Development guidelines
-- [PWA Features](./03-Frontend/PWA-features.md) - Progressive Web App capabilities
+Backend API integration guides for React developers
+- [API Integration](./03-Frontend/api-integration.md) - Complete API integration guide
+- [Authentication](./03-Frontend/authentication.md) - Auth0 integration and JWT handling
+- [Role-Based Access Control](./03-Frontend/rbac.md) - Implementing RBAC on frontend
+- [OAuth Integration](./03-Frontend/oauth-integration.md) - Cloud provider OAuth flows
+- [Error Handling](./03-Frontend/error-handling.md) - API error patterns and responses
 
 ### [04-Backend](./04-Backend/)
 Backend API and server architecture
@@ -92,7 +92,7 @@ Historical documentation and reports
 1. **New Developers**: Start with [Getting Started](./01-Getting-Started/getting-started.md)
 2. **Architecture Overview**: Review [System Design](./02-Architecture/system-design.md)
 3. **API Development**: Check [API v3](./04-Backend/API-v3.md)
-4. **Frontend Development**: See [Frontend Guide](./03-Frontend/frontend.md)
+4. **Frontend API Integration**: See [API Integration Guide](./03-Frontend/api-integration.md)
 5. **Contributing**: Follow [Contributing Guide](./08-Contribution/contributing.md)
 
 ## 🔍 Finding Information
@@ -103,7 +103,7 @@ Historical documentation and reports
 | Setup instructions | [Getting Started](./01-Getting-Started/getting-started.md) |
 | API endpoints | [API v3](./04-Backend/API-v3.md) |
 | Authentication | [Auth0 Integration](./04-Backend/auth0.md) |
-| Frontend development | [Frontend Guide](./03-Frontend/frontend.md) |
+| Frontend API integration | [API Integration Guide](./03-Frontend/api-integration.md) |
 | Testing | [Testing Guide](./06-Guides/how-to-test.md) |
 | Deployment | [Deployment Guide](./06-Guides/how-to-deploy.md) |
 | Contributing | [Contributing Guide](./08-Contribution/contributing.md) |

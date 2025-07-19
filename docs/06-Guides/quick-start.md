@@ -318,7 +318,7 @@ async create(data: CreateTaskRequest): Promise<Task> {
 ### Documentation
 - **[Full Documentation](../README.md)** - Complete guide index
 - **[API Reference](../04-Backend/API-v3.md)** - Detailed API documentation
-- **[Frontend Guide](../03-Frontend/README.md)** - Frontend development
+- **[Frontend API Integration](../03-Frontend/README.md)** - Backend API integration for React
 
 ### External Resources
 - **[Express.js Guide](https://expressjs.com/en/guide/)**

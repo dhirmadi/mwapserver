@@ -1,32 +1,30 @@
-# MWAP Frontend API Integration
+# API Integration Guide
 
-This document outlines how the MWAP frontend integrates with the backend API.
+This guide shows React developers how to integrate with the MWAP backend API using modern patterns with Axios and React Query.
 
-## Overview
+## 🔧 Setup
 
-The MWAP frontend communicates with the backend API using a combination of Axios for HTTP requests and React Query for state management. This approach provides a clean, type-safe way to interact with the API while handling caching, loading states, and error handling.
+### 1. Install Dependencies
 
-## API Client Setup
+```bash
+npm install axios @tanstack/react-query @auth0/auth0-react
+```
 
-### Base API Client
-
-The base API client is configured using Axios:
+### 2. API Client Configuration
 
 ```tsx
 // src/utils/api.ts
 import axios from 'axios';
 import { getAccessToken } from './auth';
 
-export const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:3000';
-
 export const api = axios.create({
-  baseURL: `${API_BASE_URL}/api/v1`,
+  baseURL: `${process.env.REACT_APP_API_URL}/api/v1`,
   headers: {
     'Content-Type': 'application/json',
   },
 });
 
-// Add request interceptor to include auth token
+// Add auth token to requests
 api.interceptors.request.use(async (config) => {
   const token = await getAccessToken();
   if (token) {
@@ -35,37 +33,24 @@ api.interceptors.request.use(async (config) => {
   return config;
 });
 
-// Add response interceptor for error handling
+// Handle responses and errors
 api.interceptors.response.use(
   (response) => response,
   (error) => {
-    // Handle common errors (401, 403, 500, etc.)
-    if (error.response) {
-      const { status } = error.response;
-      
-      if (status === 401) {
-        // Redirect to login or refresh token
-      } else if (status === 403) {
-        // Handle forbidden access
-      } else if (status >= 500) {
-        // Handle server errors
-      }
-    } else if (error.request) {
-      // Handle network errors
+    if (error.response?.status === 401) {
+      // Handle token expiry - redirect to login
+      window.location.href = '/login';
     }
-    
     return Promise.reject(error);
   }
 );
 ```
 
-### React Query Setup
-
-React Query is configured to work with the API client:
+### 3. React Query Setup
 
 ```tsx
 // src/utils/queryClient.ts
-import { QueryClient } from 'react-query';
+import { QueryClient } from '@tanstack/react-query';
 
 export const queryClient = new QueryClient({
   defaultOptions: {
@@ -76,32 +61,67 @@ export const queryClient = new QueryClient({
     },
   },
 });
+
+// src/App.tsx
+import { QueryClientProvider } from '@tanstack/react-query';
+import { queryClient } from './utils/queryClient';
+
+function App() {
+  return (
+    <QueryClientProvider client={queryClient}>
+      {/* Your app */}
+    </QueryClientProvider>
+  );
+}
 ```
 
-## Custom Hooks for API Calls
+## 🔐 Authentication Integration
 
-API calls are encapsulated in custom hooks organized by domain:
+```tsx
+// src/utils/auth.ts
+import { useAuth0 } from '@auth0/auth0-react';
+
+export const getAccessToken = async (): Promise<string | null> => {
+  const { getAccessTokenSilently, isAuthenticated } = useAuth0();
+  
+  if (!isAuthenticated) return null;
+  
+  try {
+    return await getAccessTokenSilently();
+  } catch (error) {
+    console.error('Failed to get access token:', error);
+    return null;
+  }
+};
+```
+
+## 📡 API Hooks by Domain
 
 ### User Hooks
 
 ```tsx
-// src/hooks/useUserRoles.ts
-import { useQuery } from 'react-query';
+// src/hooks/useUser.ts
+import { useQuery } from '@tanstack/react-query';
 import { api } from '../utils/api';
-import { UserRolesResponse } from '../types/user';
+
+interface UserRoles {
+  isSuperAdmin: boolean;
+  isTenantOwner: boolean;
+  tenantId: string | null;
+  projectRoles: Array<{
+    projectId: string;
+    role: 'OWNER' | 'DEPUTY' | 'MEMBER';
+  }>;
+}
 
 export const useUserRoles = () => {
-  return useQuery<UserRolesResponse, Error>(
-    'userRoles',
-    async () => {
+  return useQuery<UserRoles>({
+    queryKey: ['user', 'roles'],
+    queryFn: async () => {
       const response = await api.get('/users/me/roles');
-      return response.data;
+      return response.data.data;
     },
-    {
-      staleTime: 5 * 60 * 1000, // 5 minutes
-      cacheTime: 10 * 60 * 1000, // 10 minutes
-    }
-  );
+  });
 };
 ```
 
@@ -109,31 +129,53 @@ export const useUserRoles = () => {
 
 ```tsx
 // src/hooks/useTenant.ts
-import { useQuery, useMutation, useQueryClient } from 'react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '../utils/api';
-import { Tenant } from '../types/tenant';
+
+interface Tenant {
+  _id: string;
+  name: string;
+  description?: string;
+  ownerId: string;
+  settings: Record<string, any>;
+}
 
 export const useTenant = () => {
-  return useQuery<Tenant, Error>('tenant', async () => {
-    const response = await api.get('/tenants/me');
-    return response.data;
+  return useQuery<Tenant>({
+    queryKey: ['tenant'],
+    queryFn: async () => {
+      const response = await api.get('/tenants/me');
+      return response.data.data;
+    },
+  });
+};
+
+export const useCreateTenant = () => {
+  const queryClient = useQueryClient();
+  
+  return useMutation({
+    mutationFn: async (data: { name: string; description?: string }) => {
+      const response = await api.post('/tenants', data);
+      return response.data.data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['tenant'] });
+    },
   });
 };
 
 export const useUpdateTenant = () => {
   const queryClient = useQueryClient();
   
-  return useMutation<Tenant, Error, Partial<Tenant>>(
-    async (updatedTenant) => {
-      const response = await api.patch(`/tenants/${updatedTenant._id}`, updatedTenant);
-      return response.data;
+  return useMutation({
+    mutationFn: async ({ id, ...data }: { id: string } & Partial<Tenant>) => {
+      const response = await api.patch(`/tenants/${id}`, data);
+      return response.data.data;
     },
-    {
-      onSuccess: () => {
-        queryClient.invalidateQueries('tenant');
-      },
-    }
-  );
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['tenant'] });
+    },
+  });
 };
 ```
 
@@ -141,139 +183,79 @@ export const useUpdateTenant = () => {
 
 ```tsx
 // src/hooks/useProjects.ts
-import { useQuery, useMutation, useQueryClient } from 'react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '../utils/api';
-import { Project } from '../types/project';
+
+interface Project {
+  _id: string;
+  name: string;
+  description?: string;
+  tenantId: string;
+  projectTypeId: string;
+  settings: Record<string, any>;
+}
 
 export const useProjects = () => {
-  return useQuery<Project[], Error>('projects', async () => {
-    const response = await api.get('/projects');
-    return response.data;
+  return useQuery<Project[]>({
+    queryKey: ['projects'],
+    queryFn: async () => {
+      const response = await api.get('/projects');
+      return response.data.data;
+    },
   });
 };
 
 export const useProject = (id: string) => {
-  return useQuery<Project, Error>(['project', id], async () => {
-    const response = await api.get(`/projects/${id}`);
-    return response.data;
-  }, {
-    enabled: !!id, // Only run if id is provided
+  return useQuery<Project>({
+    queryKey: ['project', id],
+    queryFn: async () => {
+      const response = await api.get(`/projects/${id}`);
+      return response.data.data;
+    },
+    enabled: !!id,
   });
 };
 
 export const useCreateProject = () => {
   const queryClient = useQueryClient();
   
-  return useMutation<Project, Error, Omit<Project, '_id'>>(
-    async (newProject) => {
-      const response = await api.post('/projects', newProject);
-      return response.data;
+  return useMutation({
+    mutationFn: async (data: Omit<Project, '_id'>) => {
+      const response = await api.post('/projects', data);
+      return response.data.data;
     },
-    {
-      onSuccess: () => {
-        queryClient.invalidateQueries('projects');
-      },
-    }
-  );
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['projects'] });
+    },
+  });
 };
 
-export const useUpdateProject = (id: string) => {
+export const useUpdateProject = () => {
   const queryClient = useQueryClient();
   
-  return useMutation<Project, Error, Partial<Project>>(
-    async (updatedProject) => {
-      const response = await api.patch(`/projects/${id}`, updatedProject);
-      return response.data;
+  return useMutation({
+    mutationFn: async ({ id, ...data }: { id: string } & Partial<Project>) => {
+      const response = await api.patch(`/projects/${id}`, data);
+      return response.data.data;
     },
-    {
-      onSuccess: () => {
-        queryClient.invalidateQueries('projects');
-        queryClient.invalidateQueries(['project', id]);
-      },
-    }
-  );
+    onSuccess: (_, { id }) => {
+      queryClient.invalidateQueries({ queryKey: ['projects'] });
+      queryClient.invalidateQueries({ queryKey: ['project', id] });
+    },
+  });
 };
 
 export const useDeleteProject = () => {
   const queryClient = useQueryClient();
   
-  return useMutation<void, Error, string>(
-    async (id) => {
+  return useMutation({
+    mutationFn: async (id: string) => {
       await api.delete(`/projects/${id}`);
     },
-    {
-      onSuccess: () => {
-        queryClient.invalidateQueries('projects');
-      },
-    }
-  );
-};
-```
-
-### Project Members Hooks
-
-```tsx
-// src/hooks/useProjectMembers.ts
-import { useQuery, useMutation, useQueryClient } from 'react-query';
-import { api } from '../utils/api';
-import { ProjectMember } from '../types/project';
-
-export const useProjectMembers = (projectId: string) => {
-  return useQuery<ProjectMember[], Error>(
-    ['projectMembers', projectId], 
-    async () => {
-      const response = await api.get(`/projects/${projectId}/members`);
-      return response.data;
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['projects'] });
     },
-    {
-      enabled: !!projectId, // Only run if projectId is provided
-    }
-  );
-};
-
-export const useAddProjectMember = (projectId: string) => {
-  const queryClient = useQueryClient();
-  
-  return useMutation<void, Error, { userId: string, role: string }>(
-    async ({ userId, role }) => {
-      await api.post(`/projects/${projectId}/members`, { userId, role });
-    },
-    {
-      onSuccess: () => {
-        queryClient.invalidateQueries(['projectMembers', projectId]);
-      },
-    }
-  );
-};
-
-export const useUpdateProjectMember = (projectId: string) => {
-  const queryClient = useQueryClient();
-  
-  return useMutation<void, Error, { userId: string, role: string }>(
-    async ({ userId, role }) => {
-      await api.patch(`/projects/${projectId}/members/${userId}`, { role });
-    },
-    {
-      onSuccess: () => {
-        queryClient.invalidateQueries(['projectMembers', projectId]);
-      },
-    }
-  );
-};
-
-export const useRemoveProjectMember = (projectId: string) => {
-  const queryClient = useQueryClient();
-  
-  return useMutation<void, Error, string>(
-    async (userId) => {
-      await api.delete(`/projects/${projectId}/members/${userId}`);
-    },
-    {
-      onSuccess: () => {
-        queryClient.invalidateQueries(['projectMembers', projectId]);
-      },
-    }
-  );
+  });
 };
 ```
 
@@ -281,212 +263,100 @@ export const useRemoveProjectMember = (projectId: string) => {
 
 ```tsx
 // src/hooks/useCloudProviders.ts
-import { useQuery, useMutation, useQueryClient } from 'react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '../utils/api';
-import { CloudProvider } from '../types/cloudProvider';
 
+interface CloudProvider {
+  _id: string;
+  name: string;
+  slug: string;
+  oauth: {
+    authUrl: string;
+    tokenUrl: string;
+    scope: string[];
+  };
+}
+
+// Available to all authenticated users
 export const useCloudProviders = () => {
-  return useQuery<CloudProvider[], Error>('cloudProviders', async () => {
-    const response = await api.get('/cloud-providers');
-    return response.data;
-  });
-};
-
-export const useCloudProvider = (id: string) => {
-  return useQuery<CloudProvider, Error>(
-    ['cloudProvider', id], 
-    async () => {
-      const response = await api.get(`/cloud-providers/${id}`);
-      return response.data;
+  return useQuery<CloudProvider[]>({
+    queryKey: ['cloudProviders'],
+    queryFn: async () => {
+      const response = await api.get('/cloud-providers');
+      return response.data.data;
     },
-    {
-      enabled: !!id, // Only run if id is provided
-    }
-  );
+  });
 };
 
 // SuperAdmin only
 export const useCreateCloudProvider = () => {
   const queryClient = useQueryClient();
   
-  return useMutation<CloudProvider, Error, Omit<CloudProvider, '_id'>>(
-    async (newProvider) => {
-      const response = await api.post('/cloud-providers', newProvider);
-      return response.data;
+  return useMutation({
+    mutationFn: async (data: Omit<CloudProvider, '_id'>) => {
+      const response = await api.post('/cloud-providers', data);
+      return response.data.data;
     },
-    {
-      onSuccess: () => {
-        queryClient.invalidateQueries('cloudProviders');
-      },
-    }
-  );
-};
-
-// SuperAdmin only
-export const useUpdateCloudProvider = (id: string) => {
-  const queryClient = useQueryClient();
-  
-  return useMutation<CloudProvider, Error, Partial<CloudProvider>>(
-    async (updatedProvider) => {
-      const response = await api.patch(`/cloud-providers/${id}`, updatedProvider);
-      return response.data;
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['cloudProviders'] });
     },
-    {
-      onSuccess: () => {
-        queryClient.invalidateQueries('cloudProviders');
-        queryClient.invalidateQueries(['cloudProvider', id]);
-      },
-    }
-  );
-};
-
-// SuperAdmin only
-export const useDeleteCloudProvider = () => {
-  const queryClient = useQueryClient();
-  
-  return useMutation<void, Error, string>(
-    async (id) => {
-      await api.delete(`/cloud-providers/${id}`);
-    },
-    {
-      onSuccess: () => {
-        queryClient.invalidateQueries('cloudProviders');
-      },
-    }
-  );
+  });
 };
 ```
 
-### Cloud Provider Integration Hooks
+### Cloud Integration Hooks
 
 ```tsx
 // src/hooks/useCloudIntegrations.ts
-import { useQuery, useMutation, useQueryClient } from 'react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '../utils/api';
-import { CloudProviderIntegration } from '../types/cloudProvider';
+
+interface CloudIntegration {
+  _id: string;
+  name: string;
+  providerId: string;
+  tenantId: string;
+  status: 'pending' | 'active' | 'error';
+  lastSyncAt?: string;
+}
 
 export const useCloudIntegrations = (tenantId: string) => {
-  return useQuery<CloudProviderIntegration[], Error>(
-    ['cloudIntegrations', tenantId], 
-    async () => {
+  return useQuery<CloudIntegration[]>({
+    queryKey: ['cloudIntegrations', tenantId],
+    queryFn: async () => {
       const response = await api.get(`/tenants/${tenantId}/integrations`);
-      return response.data;
+      return response.data.data;
     },
-    {
-      enabled: !!tenantId, // Only run if tenantId is provided
-    }
-  );
+    enabled: !!tenantId,
+  });
 };
 
 export const useCreateCloudIntegration = (tenantId: string) => {
   const queryClient = useQueryClient();
   
-  return useMutation<CloudProviderIntegration, Error, Omit<CloudProviderIntegration, '_id'>>(
-    async (newIntegration) => {
-      const response = await api.post(`/tenants/${tenantId}/integrations`, newIntegration);
-      return response.data;
+  return useMutation({
+    mutationFn: async (data: { providerId: string; name: string }) => {
+      const response = await api.post(`/tenants/${tenantId}/integrations`, data);
+      return response.data.data;
     },
-    {
-      onSuccess: () => {
-        queryClient.invalidateQueries(['cloudIntegrations', tenantId]);
-      },
-    }
-  );
-};
-
-export const useDeleteCloudIntegration = (tenantId: string) => {
-  const queryClient = useQueryClient();
-  
-  return useMutation<void, Error, string>(
-    async (integrationId) => {
-      await api.delete(`/tenants/${tenantId}/integrations/${integrationId}`);
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['cloudIntegrations', tenantId] });
     },
-    {
-      onSuccess: () => {
-        queryClient.invalidateQueries(['cloudIntegrations', tenantId]);
-      },
-    }
-  );
-};
-```
-
-### Project Type Hooks
-
-```tsx
-// src/hooks/useProjectTypes.ts
-import { useQuery, useMutation, useQueryClient } from 'react-query';
-import { api } from '../utils/api';
-import { ProjectType } from '../types/projectType';
-
-export const useProjectTypes = () => {
-  return useQuery<ProjectType[], Error>('projectTypes', async () => {
-    const response = await api.get('/project-types');
-    return response.data;
   });
 };
 
-export const useProjectType = (id: string) => {
-  return useQuery<ProjectType, Error>(
-    ['projectType', id], 
-    async () => {
-      const response = await api.get(`/project-types/${id}`);
-      return response.data;
-    },
-    {
-      enabled: !!id, // Only run if id is provided
-    }
-  );
-};
-
-// SuperAdmin only
-export const useCreateProjectType = () => {
+export const useRefreshIntegrationToken = (tenantId: string) => {
   const queryClient = useQueryClient();
   
-  return useMutation<ProjectType, Error, Omit<ProjectType, '_id'>>(
-    async (newType) => {
-      const response = await api.post('/project-types', newType);
-      return response.data;
+  return useMutation({
+    mutationFn: async (integrationId: string) => {
+      const response = await api.post(`/tenants/${tenantId}/integrations/${integrationId}/refresh-token`);
+      return response.data.data;
     },
-    {
-      onSuccess: () => {
-        queryClient.invalidateQueries('projectTypes');
-      },
-    }
-  );
-};
-
-// SuperAdmin only
-export const useUpdateProjectType = (id: string) => {
-  const queryClient = useQueryClient();
-  
-  return useMutation<ProjectType, Error, Partial<ProjectType>>(
-    async (updatedType) => {
-      const response = await api.patch(`/project-types/${id}`, updatedType);
-      return response.data;
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['cloudIntegrations', tenantId] });
     },
-    {
-      onSuccess: () => {
-        queryClient.invalidateQueries('projectTypes');
-        queryClient.invalidateQueries(['projectType', id]);
-      },
-    }
-  );
-};
-
-// SuperAdmin only
-export const useDeleteProjectType = () => {
-  const queryClient = useQueryClient();
-  
-  return useMutation<void, Error, string>(
-    async (id) => {
-      await api.delete(`/project-types/${id}`);
-    },
-    {
-      onSuccess: () => {
-        queryClient.invalidateQueries('projectTypes');
-      },
-    }
-  );
+  });
 };
 ```
 
@@ -494,225 +364,197 @@ export const useDeleteProjectType = () => {
 
 ```tsx
 // src/hooks/useFiles.ts
-import { useQuery } from 'react-query';
+import { useQuery } from '@tanstack/react-query';
 import { api } from '../utils/api';
-import { File } from '../types/file';
 
-export const useFiles = (
-  projectId: string, 
-  options?: { 
-    folder?: string; 
-    recursive?: boolean; 
-    fileTypes?: string[]; 
-    limit?: number; 
-    page?: number;
-  }
-) => {
-  return useQuery<File[], Error>(
-    ['files', projectId, options], 
-    async () => {
+interface VirtualFile {
+  id: string;
+  name: string;
+  path: string;
+  size: number;
+  mimeType: string;
+  providerId: string;
+  cloudFileId: string;
+  lastModified: string;
+}
+
+export const useProjectFiles = (projectId: string, options?: {
+  path?: string;
+  provider?: string;
+  search?: string;
+}) => {
+  return useQuery<VirtualFile[]>({
+    queryKey: ['files', projectId, options],
+    queryFn: async () => {
       const params = new URLSearchParams();
-      
-      if (options?.folder) params.append('folder', options.folder);
-      if (options?.recursive) params.append('recursive', 'true');
-      if (options?.fileTypes) params.append('fileTypes', options.fileTypes.join(','));
-      if (options?.limit) params.append('limit', options.limit.toString());
-      if (options?.page) params.append('page', options.page.toString());
+      if (options?.path) params.append('path', options.path);
+      if (options?.provider) params.append('provider', options.provider);
+      if (options?.search) params.append('search', options.search);
       
       const response = await api.get(`/projects/${projectId}/files?${params.toString()}`);
-      return response.data;
+      return response.data.data;
     },
-    {
-      enabled: !!projectId, // Only run if projectId is provided
+    enabled: !!projectId,
+  });
+};
+```
+
+## 🎯 Usage Examples
+
+### Component Integration
+
+```tsx
+// src/components/ProjectList.tsx
+import { useProjects, useCreateProject } from '../hooks/useProjects';
+import { useUserRoles } from '../hooks/useUser';
+
+export const ProjectList: React.FC = () => {
+  const { data: projects, isLoading, error } = useProjects();
+  const { data: userRoles } = useUserRoles();
+  const createProject = useCreateProject();
+  
+  const canCreateProject = userRoles?.isTenantOwner || userRoles?.isSuperAdmin;
+  
+  const handleCreateProject = async (projectData: any) => {
+    try {
+      await createProject.mutateAsync(projectData);
+      // Success handled by React Query cache invalidation
+    } catch (error) {
+      // Error handling
+      console.error('Failed to create project:', error);
     }
+  };
+  
+  if (isLoading) return <div>Loading projects...</div>;
+  if (error) return <div>Error loading projects</div>;
+  
+  return (
+    <div>
+      <h2>Projects</h2>
+      {canCreateProject && (
+        <button onClick={() => handleCreateProject(/* data */)}>
+          Create Project
+        </button>
+      )}
+      <ul>
+        {projects?.map(project => (
+          <li key={project._id}>{project.name}</li>
+        ))}
+      </ul>
+    </div>
   );
 };
 ```
 
-## Using API Hooks in Components
-
-These hooks are used in components to fetch and manipulate data:
+### Form with Validation
 
 ```tsx
-// Example: Project List Component
-import React from 'react';
-import { useProjects, useCreateProject } from '../hooks/useProjects';
-import { ProjectCard } from './ProjectCard';
-import { CreateProjectModal } from './CreateProjectModal';
-import { ErrorDisplay } from '../components/common/ErrorDisplay';
-import { LoadingSpinner } from '../components/common/LoadingSpinner';
+// src/components/CreateTenantForm.tsx
+import { useForm } from 'react-hook-form';
+import { useCreateTenant } from '../hooks/useTenant';
 
-export const ProjectList: React.FC = () => {
-  const [createModalOpen, setCreateModalOpen] = React.useState(false);
-  const { data: projects, isLoading, error, refetch } = useProjects();
-  const createProject = useCreateProject();
+interface TenantFormData {
+  name: string;
+  description?: string;
+}
+
+export const CreateTenantForm: React.FC = () => {
+  const { register, handleSubmit, formState: { errors } } = useForm<TenantFormData>();
+  const createTenant = useCreateTenant();
   
-  if (isLoading) {
-    return <LoadingSpinner />;
-  }
-  
-  if (error) {
-    return <ErrorDisplay error={error} />;
-  }
-  
-  const handleCreateProject = async (newProject) => {
+  const onSubmit = async (data: TenantFormData) => {
     try {
-      await createProject.mutateAsync(newProject);
-      setCreateModalOpen(false);
+      await createTenant.mutateAsync(data);
+      // Navigate to tenant dashboard
     } catch (error) {
       // Handle error
     }
   };
   
   return (
-    <div>
-      <div className="flex justify-between items-center mb-4">
-        <h1 className="text-2xl font-bold">Projects</h1>
-        <button 
-          className="btn btn-primary"
-          onClick={() => setCreateModalOpen(true)}
-        >
-          Create Project
-        </button>
+    <form onSubmit={handleSubmit(onSubmit)}>
+      <div>
+        <label htmlFor="name">Tenant Name</label>
+        <input
+          id="name"
+          {...register('name', { required: 'Name is required' })}
+        />
+        {errors.name && <span>{errors.name.message}</span>}
       </div>
       
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        {projects?.map(project => (
-          <ProjectCard key={project._id} project={project} />
-        ))}
+      <div>
+        <label htmlFor="description">Description</label>
+        <textarea
+          id="description"
+          {...register('description')}
+        />
       </div>
       
-      <CreateProjectModal 
-        isOpen={createModalOpen}
-        onClose={() => setCreateModalOpen(false)}
-        onSubmit={handleCreateProject}
-        isLoading={createProject.isLoading}
-      />
+      <button type="submit" disabled={createTenant.isPending}>
+        {createTenant.isPending ? 'Creating...' : 'Create Tenant'}
+      </button>
+    </form>
+  );
+};
+```
+
+## 🚨 Error Handling
+
+### Global Error Handling
+
+```tsx
+// src/hooks/useApiError.ts
+import { useCallback } from 'react';
+import { useAuth0 } from '@auth0/auth0-react';
+
+export const useApiError = () => {
+  const { loginWithRedirect } = useAuth0();
+  
+  const handleError = useCallback((error: any) => {
+    if (error.response?.status === 401) {
+      // Token expired or invalid
+      loginWithRedirect();
+    } else if (error.response?.status === 403) {
+      // Insufficient permissions
+      alert('You do not have permission to perform this action');
+    } else if (error.response?.status >= 500) {
+      // Server error
+      alert('Server error. Please try again later.');
+    } else {
+      // Other errors
+      alert(error.response?.data?.error?.message || 'An error occurred');
+    }
+  }, [loginWithRedirect]);
+  
+  return { handleError };
+};
+```
+
+### Component Error States
+
+```tsx
+// Error handling in components
+const { data, isLoading, error, refetch } = useProjects();
+
+if (isLoading) return <LoadingSpinner />;
+
+if (error) {
+  return (
+    <div className="error-state">
+      <p>Failed to load projects</p>
+      <button onClick={() => refetch()}>Try Again</button>
     </div>
   );
-};
+}
 ```
 
-## Error Handling
+## 📖 Related Documentation
 
-API errors are handled at multiple levels:
+- [Authentication Guide](authentication.md) - Auth0 integration details
+- [Error Handling Guide](error-handling.md) - Comprehensive error handling patterns
+- [OAuth Integration Guide](oauth-integration.md) - Cloud provider OAuth flows
+- [Backend API Reference](../04-Backend/API-v3.md) - Complete API endpoint documentation
 
-1. **Global level**: Axios interceptors handle common errors (401, 403, 500, etc.)
-2. **Query level**: React Query provides error states for each query
-3. **Component level**: Components display appropriate error messages
+---
 
-Example of component-level error handling:
-
-```tsx
-import React from 'react';
-import { useProjects } from '../hooks/useProjects';
-import { ErrorDisplay } from '../components/common/ErrorDisplay';
-import { LoadingSpinner } from '../components/common/LoadingSpinner';
-
-export const ProjectList: React.FC = () => {
-  const { data: projects, isLoading, error, refetch } = useProjects();
-  
-  if (isLoading) {
-    return <LoadingSpinner />;
-  }
-  
-  if (error) {
-    return (
-      <ErrorDisplay 
-        error={error} 
-        message="Failed to load projects"
-        onRetry={refetch}
-      />
-    );
-  }
-  
-  // Render projects...
-};
-```
-
-## Optimistic Updates
-
-For a better user experience, optimistic updates are used for mutations:
-
-```tsx
-export const useUpdateProject = (id: string) => {
-  const queryClient = useQueryClient();
-  
-  return useMutation<Project, Error, Partial<Project>>(
-    async (updatedProject) => {
-      const response = await api.patch(`/projects/${id}`, updatedProject);
-      return response.data;
-    },
-    {
-      // Optimistically update the cache
-      onMutate: async (updatedProject) => {
-        // Cancel any outgoing refetches
-        await queryClient.cancelQueries(['project', id]);
-        
-        // Snapshot the previous value
-        const previousProject = queryClient.getQueryData<Project>(['project', id]);
-        
-        // Optimistically update to the new value
-        if (previousProject) {
-          queryClient.setQueryData<Project>(['project', id], {
-            ...previousProject,
-            ...updatedProject,
-          });
-        }
-        
-        return { previousProject };
-      },
-      // If the mutation fails, use the context returned from onMutate to roll back
-      onError: (err, newProject, context) => {
-        if (context?.previousProject) {
-          queryClient.setQueryData<Project>(['project', id], context.previousProject);
-        }
-      },
-      // Always refetch after error or success
-      onSettled: () => {
-        queryClient.invalidateQueries(['project', id]);
-        queryClient.invalidateQueries('projects');
-      },
-    }
-  );
-};
-```
-
-## Pagination and Filtering
-
-For endpoints that support pagination and filtering:
-
-```tsx
-export const useProjects = (
-  options?: { 
-    page?: number; 
-    limit?: number; 
-    search?: string; 
-    sortBy?: string; 
-    sortOrder?: 'asc' | 'desc';
-  }
-) => {
-  return useQuery<{ data: Project[]; total: number; page: number; limit: number }, Error>(
-    ['projects', options], 
-    async () => {
-      const params = new URLSearchParams();
-      
-      if (options?.page) params.append('page', options.page.toString());
-      if (options?.limit) params.append('limit', options.limit.toString());
-      if (options?.search) params.append('search', options.search);
-      if (options?.sortBy) params.append('sortBy', options.sortBy);
-      if (options?.sortOrder) params.append('sortOrder', options.sortOrder);
-      
-      const response = await api.get(`/projects?${params.toString()}`);
-      return response.data;
-    },
-    {
-      keepPreviousData: true, // Keep previous data while fetching new data
-    }
-  );
-};
-```
-
-## Conclusion
-
-This API integration approach provides a clean, type-safe way to interact with the backend API while handling caching, loading states, and error handling. By encapsulating API calls in custom hooks, components can focus on rendering and user interaction, leading to a more maintainable and scalable codebase.
+*This guide covers the core patterns for integrating with the MWAP backend API. For advanced patterns and specific use cases, refer to the related documentation.*
