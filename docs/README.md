@@ -64,18 +64,15 @@ Comprehensive development standards and best practices for consistent, high-qual
 - [Environment Standards](./07-Standards/environment-standards.md) - Environment configuration and deployment practices
 
 ### [08-Contribution](./08-Contribution/)
-Contributing to the project
-- [Contributing Guide](./08-Contribution/contributing.md) - How to contribute
-- [Branching Strategy](./08-Contribution/branching.md) - Git workflow
-- [PR Guidelines](./08-Contribution/PR-guidelines.md) - Pull request process
-- [Issue Templates](./08-Contribution/issue-template.md) - Bug reports and features
+Comprehensive contribution guides for developers, documentation contributors, and community members
+- [Contributing Guide](./08-Contribution/contributing-guide.md) - Complete contribution workflow including development, PR process, issue management, and community guidelines
+- [Documentation Guide](./08-Contribution/documentation-guide.md) - Documentation standards, writing guidelines, validation tools, and contribution process
 
 ### [09-Reports-and-History](./09-Reports-and-History/)
-Historical documentation and reports
-- [Refactoring Reports](./09-Reports-and-History/refactoring/) - Code refactoring history
-- [API Migration](./09-Reports-and-History/api-migration.md) - API evolution
-- [Audit Reports](./09-Reports-and-History/audit-reports.md) - Security and compliance
-- [Changelogs](./09-Reports-and-History/changelogs/) - Detailed version history
+Comprehensive reports on project status, documentation evolution, and historical integration patterns
+- [Project Status](./09-Reports-and-History/project-status.md) - Complete project status, development plan, and progress tracking with technical architecture and roadmap
+- [Documentation Evolution](./09-Reports-and-History/documentation-evolution.md) - Documentation improvement history, quality metrics, and continuous enhancement procedures
+- [Legacy Integrations](./09-Reports-and-History/legacy-integrations.md) - Historical integration patterns, API migration guides, and OAuth implementation evolution
 
 ## 🚀 Quick Start
 
@@ -83,7 +80,7 @@ Historical documentation and reports
 2. **Architecture Overview**: Review [Architecture](./02-Architecture/architecture.md)
 3. **Backend Development**: Check [Backend Development Guide](./04-Backend/backend-guide.md)
 4. **Frontend Integration**: See [Frontend Integration Guide](./03-Frontend/frontend-guide.md)
-5. **Contributing**: Follow [Contributing Guide](./08-Contribution/contributing.md)
+5. **Contributing**: Follow [Contributing Guide](./08-Contribution/contributing-guide.md)
 
 ## 🔍 Finding Information
 
@@ -102,7 +99,7 @@ Historical documentation and reports
 | Development standards | [Development Standards](./07-Standards/development-standards.md) |
 | Git workflow | [Git Workflow](./07-Standards/git-workflow.md) |
 | Environment setup | [Environment Standards](./07-Standards/environment-standards.md) |
-| Contributing | [Contributing Guide](./08-Contribution/contributing.md) |
+| Contributing | [Contributing Guide](./08-Contribution/contributing-guide.md) |
 
 ## 📝 Documentation Standards
 
