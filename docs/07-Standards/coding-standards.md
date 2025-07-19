@@ -1,196 +1,474 @@
-# MWAP Coding Standards
+# Coding Standards
 
-This document defines the coding standards and conventions for the MWAP platform to ensure consistency, maintainability, and quality across the codebase.
+This document outlines the coding standards, conventions, and best practices for the MWAP platform development.
 
-## 🎯 Core Principles
+## 📋 Overview
 
-### 1. Type Safety First
-- **TypeScript strict mode**: All code must compile with `strict: true`
-- **No implicit any**: Explicit typing required for all variables and functions
-- **Runtime validation**: Use Zod schemas for API input validation
-- **Type inference**: Leverage TypeScript's type inference where possible
+Consistent coding standards ensure maintainable, readable, and high-quality code across the MWAP platform. These standards apply to both backend (Node.js/TypeScript) and frontend (React/TypeScript) development.
 
-### 2. Modern JavaScript/TypeScript
-- **Native ESM modules**: Use `import`/`export` syntax exclusively
-- **Async/await**: Prefer async/await over Promise chains
-- **Modern syntax**: Use ES2020+ features (optional chaining, nullish coalescing)
-- **No CommonJS**: Avoid `require()` and `module.exports`
+## 🎯 General Principles
 
-### 3. Security by Default
-- **Input validation**: Validate all external inputs
-- **Error handling**: Never expose internal errors to clients
-- **Authentication**: Require authentication for all non-public endpoints
-- **Authorization**: Implement proper role-based access control
+### Code Quality Principles
+- **Readability**: Code should be self-documenting and easy to understand
+- **Consistency**: Follow established patterns and conventions
+- **Simplicity**: Prefer simple, clear solutions over complex ones
+- **DRY (Don't Repeat Yourself)**: Avoid code duplication
+- **SOLID Principles**: Write maintainable and extensible code
+- **Performance**: Consider performance implications of code decisions
 
-## 📁 File Organization
+### TypeScript First
+- All code must be written in TypeScript with strict type checking
+- No `any` types unless absolutely necessary (and documented why)
+- Proper type definitions for all functions, interfaces, and classes
+- Use type guards and proper type narrowing
 
-### Directory Structure
-
-```
-src/
-├── features/              # Feature modules (domain-driven)
-│   └── {feature}/
-│       ├── {feature}.routes.ts      # Express routes
-│       ├── {feature}.controller.ts  # Request handlers
-│       ├── {feature}.service.ts     # Business logic
-│       └── {feature}.types.ts       # TypeScript types
-├── middleware/            # Express middleware
-├── utils/                 # Shared utilities
-├── schemas/              # Zod validation schemas
-├── config/               # Configuration files
-└── docs/                 # API documentation
-```
+## 📁 Project Structure Standards
 
 ### File Naming Conventions
+```
+# Files and directories
+kebab-case for directories: user-management/
+PascalCase for components: UserProfile.tsx
+camelCase for utilities: userHelpers.ts
+lowercase for configs: package.json, tsconfig.json
 
-- **Files**: Use kebab-case for file names (`user-service.ts`)
-- **Directories**: Use kebab-case for directory names (`cloud-providers/`)
-- **Components**: Use PascalCase for class names (`UserService`)
-- **Functions**: Use camelCase for function names (`getUserById`)
-- **Constants**: Use UPPER_SNAKE_CASE for constants (`MAX_RETRY_ATTEMPTS`)
-
-## 🏗️ Architecture Patterns
-
-### Feature Module Structure
-
-Each feature must follow this structure:
-
-```typescript
-// {feature}.routes.ts
-export function get{Feature}Router(): Router {
-  const router = Router();
-  // Route definitions
-  return router;
-}
-
-// {feature}.controller.ts
-export async function create{Feature}(req: Request, res: Response) {
-  // Controller logic
-}
-
-// {feature}.service.ts
-export class {Feature}Service {
-  // Business logic
-}
-
-// {feature}.types.ts
-export interface {Feature} {
-  // Type definitions
-}
+# TypeScript files
+.ts for regular TypeScript files
+.tsx for React components
+.test.ts/.test.tsx for test files
+.types.ts for type definition files
+.schema.ts for validation schemas
 ```
 
-### Dependency Injection Pattern
-
-```typescript
-// Service with injected dependencies
-export class TenantService {
-  constructor(
-    private collection: Collection<Tenant>,
-    private auditLogger: AuditLogger
-  ) {}
-  
-  async createTenant(data: CreateTenantRequest): Promise<Tenant> {
-    // Implementation
-  }
-}
-
-// Factory function for service creation
-export function createTenantService(): TenantService {
-  return new TenantService(
-    db.collection<Tenant>('tenants'),
-    auditLogger
-  );
-}
+### Directory Organization
+```
+src/
+├── components/          # Shared UI components (frontend)
+├── features/           # Feature-based modules
+│   └── feature-name/   # kebab-case feature names
+│       ├── components/ # Feature-specific components
+│       ├── hooks/      # Feature-specific hooks
+│       ├── services/   # Feature business logic
+│       ├── types/      # Feature type definitions
+│       └── utils/      # Feature utilities
+├── hooks/              # Shared custom hooks (frontend)
+├── services/           # Shared business logic
+├── types/              # Shared type definitions
+├── utils/              # Shared utilities
+└── __tests__/          # Test files (mirror src structure)
 ```
 
-## 🔧 TypeScript Standards
+## 💻 TypeScript Standards
 
 ### Type Definitions
-
 ```typescript
-// ✅ Good: Explicit interface definitions
-interface CreateUserRequest {
-  name: string;
+// Use interfaces for object shapes
+interface User {
+  id: string;
   email: string;
-  role?: UserRole;
+  name: string;
+  createdAt: Date;
 }
 
-// ✅ Good: Union types for enums
-type UserRole = 'ADMIN' | 'USER' | 'GUEST';
+// Use types for unions, primitives, and computed types
+type UserRole = 'admin' | 'member' | 'viewer';
+type UserWithRole = User & { role: UserRole };
 
-// ✅ Good: Generic types
+// Prefer readonly for immutable data
+interface ReadonlyConfig {
+  readonly apiUrl: string;
+  readonly features: readonly string[];
+}
+
+// Use generics for reusable types
 interface ApiResponse<T> {
   success: boolean;
   data: T;
   message?: string;
 }
-
-// ❌ Bad: Using any
-function processData(data: any): any {
-  return data;
-}
-
-// ✅ Good: Proper typing
-function processData<T>(data: T): T {
-  return data;
-}
 ```
 
-### Function Signatures
-
+### Function Standards
 ```typescript
-// ✅ Good: Clear parameter and return types
-async function getUserById(
-  id: string,
-  includeDeleted: boolean = false
-): Promise<User | null> {
-  // Implementation
-}
+// Use function expressions with explicit return types
+const getUserById = async (id: string): Promise<User | null> => {
+  const user = await userService.findById(id);
+  return user;
+};
 
-// ✅ Good: Destructured parameters with types
-async function createUser({
-  name,
-  email,
-  role = 'USER'
-}: CreateUserRequest): Promise<User> {
-  // Implementation
-}
+// Use arrow functions for simple operations
+const isValidEmail = (email: string): boolean => /\S+@\S+\.\S+/.test(email);
+
+// Use proper async/await instead of promises
+// ✅ Good
+const fetchUser = async (id: string): Promise<User> => {
+  try {
+    const response = await api.get(`/users/${id}`);
+    return response.data;
+  } catch (error) {
+    throw new UserNotFoundError(`User ${id} not found`);
+  }
+};
+
+// ❌ Avoid
+const fetchUser = (id: string): Promise<User> => {
+  return api.get(`/users/${id}`)
+    .then(response => response.data)
+    .catch(error => {
+      throw new UserNotFoundError(`User ${id} not found`);
+    });
+};
 ```
 
-### Error Handling
-
+### Error Handling Standards
 ```typescript
-// ✅ Good: Custom error classes
-export class ValidationError extends Error {
+// Custom error classes
+class AppError extends Error {
   constructor(
-    public field: string,
-    public value: unknown,
-    message: string
+    message: string,
+    public statusCode: number = 500,
+    public code: string = 'INTERNAL_ERROR'
   ) {
     super(message);
-    this.name = 'ValidationError';
+    this.name = this.constructor.name;
   }
 }
 
-// ✅ Good: Proper error throwing
-if (!user) {
-  throw new NotFoundError('user', id);
+class ValidationError extends AppError {
+  constructor(message: string, public field?: string) {
+    super(message, 400, 'VALIDATION_ERROR');
+  }
 }
 
-// ✅ Good: Error handling in async functions
-try {
-  const result = await riskyOperation();
-  return result;
-} catch (error) {
-  logger.error('Operation failed', { error, context });
-  throw new AppError('operation/failed', 'Operation could not be completed');
+// Proper error handling in async functions
+const createUser = async (userData: CreateUserRequest): Promise<User> => {
+  try {
+    validateUserData(userData);
+    const user = await userService.create(userData);
+    return user;
+  } catch (error) {
+    if (error instanceof ValidationError) {
+      throw error; // Re-throw known errors
+    }
+    throw new AppError('Failed to create user', 500, 'USER_CREATION_FAILED');
+  }
+};
+```
+
+## ⚛️ React/Frontend Standards
+
+### Component Standards
+```typescript
+// Use function components with proper typing
+interface UserProfileProps {
+  userId: string;
+  onUpdate?: (user: User) => void;
+  className?: string;
+}
+
+export const UserProfile: React.FC<UserProfileProps> = ({
+  userId,
+  onUpdate,
+  className,
+}) => {
+  const { data: user, isLoading, error } = useUser(userId);
+
+  if (isLoading) return <Skeleton />;
+  if (error) return <ErrorMessage error={error} />;
+  if (!user) return <NotFound />;
+
+  return (
+    <div className={className}>
+      {/* Component content */}
+    </div>
+  );
+};
+```
+
+### Hook Standards
+```typescript
+// Custom hooks should start with 'use'
+export const useLocalStorage = <T>(
+  key: string,
+  initialValue: T
+): [T, (value: T) => void] => {
+  const [storedValue, setStoredValue] = useState<T>(() => {
+    try {
+      const item = window.localStorage.getItem(key);
+      return item ? JSON.parse(item) : initialValue;
+    } catch (error) {
+      console.error(`Error reading localStorage key "${key}":`, error);
+      return initialValue;
+    }
+  });
+
+  const setValue = useCallback((value: T) => {
+    try {
+      setStoredValue(value);
+      window.localStorage.setItem(key, JSON.stringify(value));
+    } catch (error) {
+      console.error(`Error setting localStorage key "${key}":`, error);
+    }
+  }, [key]);
+
+  return [storedValue, setValue];
+};
+```
+
+### State Management Standards
+```typescript
+// Use proper state typing
+const [user, setUser] = useState<User | null>(null);
+const [loading, setLoading] = useState<boolean>(false);
+const [error, setError] = useState<string | null>(null);
+
+// Use reducer for complex state
+interface UserState {
+  user: User | null;
+  loading: boolean;
+  error: string | null;
+}
+
+type UserAction =
+  | { type: 'SET_LOADING'; payload: boolean }
+  | { type: 'SET_USER'; payload: User }
+  | { type: 'SET_ERROR'; payload: string }
+  | { type: 'RESET' };
+
+const userReducer = (state: UserState, action: UserAction): UserState => {
+  switch (action.type) {
+    case 'SET_LOADING':
+      return { ...state, loading: action.payload };
+    case 'SET_USER':
+      return { ...state, user: action.payload, loading: false, error: null };
+    case 'SET_ERROR':
+      return { ...state, error: action.payload, loading: false };
+    case 'RESET':
+      return { user: null, loading: false, error: null };
+    default:
+      return state;
+  }
+};
+```
+
+## 🚀 Backend/Node.js Standards
+
+### Express Controller Standards
+```typescript
+// Controller class structure
+export class UsersController {
+  constructor(private userService: UserService) {}
+
+  // Use arrow functions to maintain 'this' context
+  getById = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      const { id } = req.params;
+      const user = await this.userService.getById(id);
+      
+      res.json({
+        success: true,
+        data: user,
+      });
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  create = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      const userData = req.body as CreateUserRequest;
+      const user = await this.userService.create(userData);
+      
+      res.status(201).json({
+        success: true,
+        data: user,
+        message: 'User created successfully',
+      });
+    } catch (error) {
+      next(error);
+    }
+  };
 }
 ```
 
-## 🎨 Code Style
+### Service Layer Standards
+```typescript
+// Service class structure
+export class UserService {
+  constructor(private userRepository: UserRepository) {}
+
+  async getById(id: string): Promise<User> {
+    if (!isValidObjectId(id)) {
+      throw new ValidationError('Invalid user ID format');
+    }
+
+    const user = await this.userRepository.findById(id);
+    if (!user) {
+      throw new NotFoundError('User not found');
+    }
+
+    return user;
+  }
+
+  async create(userData: CreateUserRequest): Promise<User> {
+    // Validate input
+    await this.validateCreateUserData(userData);
+    
+    // Check for existing user
+    const existingUser = await this.userRepository.findByEmail(userData.email);
+    if (existingUser) {
+      throw new ConflictError('User with this email already exists');
+    }
+
+    // Create user
+    const user = await this.userRepository.create({
+      ...userData,
+      id: generateId(),
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    });
+
+    return user;
+  }
+
+  private async validateCreateUserData(data: CreateUserRequest): Promise<void> {
+    // Use Zod or similar for validation
+    const result = CreateUserSchema.safeParse(data);
+    if (!result.success) {
+      throw new ValidationError('Invalid user data', result.error.message);
+    }
+  }
+}
+```
+
+## 🔍 Code Review Standards
+
+### Code Review Checklist
+
+#### General
+- [ ] Code follows TypeScript strict mode requirements
+- [ ] No `any` types without justification
+- [ ] Proper error handling implemented
+- [ ] Code is properly tested
+- [ ] Documentation updated if needed
+
+#### Security
+- [ ] Input validation implemented
+- [ ] No hardcoded secrets or sensitive data
+- [ ] Proper authorization checks
+- [ ] SQL/NoSQL injection prevention
+
+#### Performance
+- [ ] No unnecessary re-renders (React)
+- [ ] Proper database query optimization
+- [ ] Appropriate use of caching
+- [ ] Memory leak prevention
+
+#### Maintainability
+- [ ] Code follows established patterns
+- [ ] Functions are small and focused
+- [ ] Proper separation of concerns
+- [ ] Consistent naming conventions
+
+### Review Process
+1. **Self-review**: Author reviews their own code before requesting review
+2. **Automated checks**: All CI checks must pass
+3. **Peer review**: At least one team member reviews the code
+4. **Testing**: Manual testing of new features
+5. **Documentation**: Update relevant documentation
+
+## 🧪 Testing Standards
+
+### Test Structure
+```typescript
+// Test file naming: ComponentName.test.tsx or functionName.test.ts
+describe('UserService', () => {
+  let userService: UserService;
+  let mockUserRepository: jest.Mocked<UserRepository>;
+
+  beforeEach(() => {
+    mockUserRepository = {
+      findById: jest.fn(),
+      create: jest.fn(),
+      findByEmail: jest.fn(),
+    } as any;
+    
+    userService = new UserService(mockUserRepository);
+  });
+
+  describe('getById', () => {
+    it('should return user when found', async () => {
+      // Arrange
+      const userId = 'valid-id';
+      const expectedUser = { id: userId, email: 'test@example.com' };
+      mockUserRepository.findById.mockResolvedValue(expectedUser);
+
+      // Act
+      const result = await userService.getById(userId);
+
+      // Assert
+      expect(result).toEqual(expectedUser);
+      expect(mockUserRepository.findById).toHaveBeenCalledWith(userId);
+    });
+
+    it('should throw error when user not found', async () => {
+      // Arrange
+      const userId = 'non-existent-id';
+      mockUserRepository.findById.mockResolvedValue(null);
+
+      // Act & Assert
+      await expect(userService.getById(userId)).rejects.toThrow(NotFoundError);
+    });
+  });
+});
+```
+
+### Test Categories
+- **Unit Tests**: Test individual functions/methods
+- **Integration Tests**: Test component interactions
+- **E2E Tests**: Test complete user workflows
+- **Performance Tests**: Test performance characteristics
+
+## 📝 Documentation Standards
+
+### Code Documentation
+```typescript
+/**
+ * Retrieves user information by ID with caching support
+ * 
+ * @param id - The unique user identifier
+ * @param options - Optional retrieval options
+ * @returns Promise resolving to user data or null if not found
+ * 
+ * @throws {ValidationError} When ID format is invalid
+ * @throws {NotFoundError} When user doesn't exist
+ * 
+ * @example
+ * ```typescript
+ * const user = await getUserById('user123', { includeProfile: true });
+ * console.log(user?.email);
+ * ```
+ */
+async getUserById(
+  id: string, 
+  options: GetUserOptions = {}
+): Promise<User | null> {
+  // Implementation
+}
+```
+
+### README Standards
+Every feature/module should have a README with:
+- Purpose and overview
+- Installation/setup instructions
+- Usage examples
+- API documentation (if applicable)
+- Contributing guidelines
+- License information
+
+## 🔧 Tool Configuration
 
 ### ESLint Configuration
-
 ```json
 {
   "extends": [
@@ -199,426 +477,124 @@ try {
   ],
   "rules": {
     "@typescript-eslint/no-explicit-any": "error",
-    "@typescript-eslint/no-unused-vars": "error",
     "@typescript-eslint/explicit-function-return-type": "warn",
+    "@typescript-eslint/no-unused-vars": "error",
     "prefer-const": "error",
     "no-var": "error"
   }
 }
 ```
 
-### Formatting Rules
-
-```typescript
-// ✅ Good: Consistent formatting
-const config = {
-  database: {
-    host: process.env.DB_HOST,
-    port: parseInt(process.env.DB_PORT || '5432', 10),
-    name: process.env.DB_NAME,
-  },
-  auth: {
-    secret: process.env.JWT_SECRET,
-    expiresIn: '24h',
-  },
-};
-
-// ✅ Good: Proper indentation and spacing
-if (user.role === 'ADMIN') {
-  await performAdminAction();
-} else if (user.role === 'USER') {
-  await performUserAction();
-} else {
-  throw new UnauthorizedError('Invalid role');
+### Prettier Configuration
+```json
+{
+  "semi": true,
+  "trailingComma": "es5",
+  "singleQuote": true,
+  "printWidth": 100,
+  "tabWidth": 2,
+  "useTabs": false
 }
 ```
 
-### Import Organization
-
-```typescript
-// ✅ Good: Import order
-// 1. Node.js built-ins
-import { readFile } from 'fs/promises';
-
-// 2. External libraries
-import express from 'express';
-import { z } from 'zod';
-
-// 3. Internal modules (absolute paths)
-import { authenticateJWT } from '../middleware/auth.js';
-import { UserService } from '../services/user.service.js';
-
-// 4. Relative imports
-import { validateRequest } from './utils.js';
-```
-
-## 🔐 Security Standards
-
-### Input Validation
-
-```typescript
-// ✅ Good: Zod schema validation
-const CreateUserSchema = z.object({
-  name: z.string().min(1).max(100),
-  email: z.string().email(),
-  role: z.enum(['ADMIN', 'USER', 'GUEST']).optional(),
-});
-
-// ✅ Good: Controller validation
-export async function createUser(req: Request, res: Response) {
-  const data = CreateUserSchema.parse(req.body);
-  const user = await userService.create(data);
-  res.json(SuccessResponse(user));
-}
-```
-
-### Authentication & Authorization
-
-```typescript
-// ✅ Good: Middleware usage
-router.post('/users', 
-  authenticateJWT(),
-  requireRole('ADMIN'),
-  wrapAsyncHandler(createUser)
-);
-
-// ✅ Good: Authorization checks
-export async function updateUser(req: Request, res: Response) {
-  const { id } = req.params;
-  const userId = req.auth.sub;
-  
-  // Check if user can update this resource
-  if (id !== userId && !req.auth.roles.includes('ADMIN')) {
-    throw new ForbiddenError('Cannot update other users');
-  }
-  
-  // Proceed with update
-}
-```
-
-### Data Sanitization
-
-```typescript
-// ✅ Good: Sanitize sensitive data
-function sanitizeUser(user: User): PublicUser {
-  const { password, internalNotes, ...publicUser } = user;
-  return publicUser;
-}
-
-// ✅ Good: Log sanitization
-logger.info('User created', {
-  userId: user.id,
-  email: user.email,
-  // Don't log sensitive data
-});
-```
-
-## 📊 Database Standards
-
-### Schema Design
-
-```typescript
-// ✅ Good: Clear interface definitions
-interface User {
-  id: string;
-  name: string;
-  email: string;
-  role: UserRole;
-  createdAt: Date;
-  updatedAt: Date;
-  deletedAt?: Date;
-}
-
-// ✅ Good: Zod schema for validation
-const UserSchema = z.object({
-  id: z.string().uuid(),
-  name: z.string().min(1).max(100),
-  email: z.string().email(),
-  role: z.enum(['ADMIN', 'USER', 'GUEST']),
-  createdAt: z.date(),
-  updatedAt: z.date(),
-  deletedAt: z.date().optional(),
-});
-```
-
-### Query Patterns
-
-```typescript
-// ✅ Good: Service layer for database operations
-export class UserService {
-  private collection: Collection<User>;
-  
-  async findById(id: string): Promise<User | null> {
-    return await this.collection.findOne({ 
-      id, 
-      deletedAt: { $exists: false } 
-    });
-  }
-  
-  async create(data: CreateUserRequest): Promise<User> {
-    const user: User = {
-      id: generateId(),
-      ...data,
-      createdAt: new Date(),
-      updatedAt: new Date(),
-    };
-    
-    await this.collection.insertOne(user);
-    return user;
+### TypeScript Configuration
+```json
+{
+  "compilerOptions": {
+    "strict": true,
+    "noImplicitAny": true,
+    "noImplicitReturns": true,
+    "noImplicitThis": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true
   }
 }
-```
-
-## 🧪 Testing Standards
-
-### Test Structure
-
-```typescript
-// ✅ Good: Descriptive test organization
-describe('UserService', () => {
-  describe('createUser', () => {
-    it('should create a user with valid data', async () => {
-      // Arrange
-      const userData = {
-        name: 'John Doe',
-        email: 'john@example.com',
-      };
-      
-      // Act
-      const user = await userService.create(userData);
-      
-      // Assert
-      expect(user).toMatchObject(userData);
-      expect(user.id).toBeDefined();
-      expect(user.createdAt).toBeInstanceOf(Date);
-    });
-    
-    it('should throw validation error for invalid email', async () => {
-      // Arrange
-      const invalidData = {
-        name: 'John Doe',
-        email: 'invalid-email',
-      };
-      
-      // Act & Assert
-      await expect(userService.create(invalidData))
-        .rejects
-        .toThrow('Invalid email format');
-    });
-  });
-});
-```
-
-### Mock Usage
-
-```typescript
-// ✅ Good: Type-safe mocks
-const mockUserCollection = {
-  findOne: vi.fn(),
-  insertOne: vi.fn(),
-  updateOne: vi.fn(),
-} as unknown as Collection<User>;
-
-// ✅ Good: Mock setup
-beforeEach(() => {
-  vi.clearAllMocks();
-  mockUserCollection.findOne.mockResolvedValue(null);
-});
-```
-
-## 📝 Documentation Standards
-
-### Code Comments
-
-```typescript
-// ✅ Good: JSDoc for public APIs
-/**
- * Creates a new user in the system
- * @param data - User creation data
- * @param options - Additional options for user creation
- * @returns Promise resolving to the created user
- * @throws ValidationError when data is invalid
- * @throws ConflictError when email already exists
- */
-export async function createUser(
-  data: CreateUserRequest,
-  options: CreateUserOptions = {}
-): Promise<User> {
-  // Implementation
-}
-
-// ✅ Good: Inline comments for complex logic
-// Calculate the user's effective permissions based on role and tenant
-const effectivePermissions = user.role === 'ADMIN' 
-  ? ALL_PERMISSIONS 
-  : tenant.permissions.filter(p => user.permissions.includes(p));
-```
-
-### API Documentation
-
-```typescript
-// ✅ Good: OpenAPI/Swagger annotations
-/**
- * @swagger
- * /api/v1/users:
- *   post:
- *     summary: Create a new user
- *     tags: [Users]
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             $ref: '#/components/schemas/CreateUserRequest'
- *     responses:
- *       201:
- *         description: User created successfully
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/User'
- */
 ```
 
 ## 🚀 Performance Standards
 
-### Async Operations
+### General Performance Guidelines
+- Use lazy loading for large components/modules
+- Implement proper caching strategies
+- Optimize database queries with indexes
+- Use compression for API responses
+- Implement proper error boundaries
 
+### React Performance
 ```typescript
-// ✅ Good: Proper async/await usage
-export async function getUsersWithProjects(userIds: string[]): Promise<UserWithProjects[]> {
-  // Parallel execution for independent operations
-  const [users, projects] = await Promise.all([
-    userService.findByIds(userIds),
-    projectService.findByUserIds(userIds),
-  ]);
-  
-  // Combine results efficiently
-  return users.map(user => ({
-    ...user,
-    projects: projects.filter(p => p.userId === user.id),
-  }));
-}
+// Use React.memo for expensive components
+export const ExpensiveComponent = React.memo<Props>(({ data, onUpdate }) => {
+  // Expensive calculations
+  const processedData = useMemo(() => {
+    return data.map(item => expensiveCalculation(item));
+  }, [data]);
 
-// ❌ Bad: Sequential execution
-export async function getUsersWithProjectsSequential(userIds: string[]): Promise<UserWithProjects[]> {
-  const users = await userService.findByIds(userIds);
-  const projects = await projectService.findByUserIds(userIds); // Waits unnecessarily
-  
-  return users.map(user => ({
-    ...user,
-    projects: projects.filter(p => p.userId === user.id),
-  }));
-}
-```
+  // Stable callbacks
+  const handleUpdate = useCallback((id: string) => {
+    onUpdate(id);
+  }, [onUpdate]);
 
-### Memory Management
-
-```typescript
-// ✅ Good: Streaming for large datasets
-export async function exportUsers(res: Response): Promise<void> {
-  const cursor = userCollection.find({}).stream();
-  
-  res.setHeader('Content-Type', 'application/json');
-  res.write('[');
-  
-  let first = true;
-  cursor.on('data', (user) => {
-    if (!first) res.write(',');
-    res.write(JSON.stringify(sanitizeUser(user)));
-    first = false;
-  });
-  
-  cursor.on('end', () => {
-    res.write(']');
-    res.end();
-  });
-}
-```
-
-## 🔄 Git Standards
-
-### Commit Messages
-
-```bash
-# ✅ Good: Conventional commit format
-feat(auth): add OAuth 2.0 integration for Google Drive
-fix(users): resolve email validation edge case
-docs(api): update authentication endpoint documentation
-refactor(tenants): extract tenant validation logic
-test(projects): add integration tests for project creation
-
-# ❌ Bad: Unclear commit messages
-fix bug
-update code
-changes
-```
-
-### Branch Naming
-
-```bash
-# ✅ Good: Descriptive branch names
-feature/oauth-google-drive-integration
-fix/user-email-validation-bug
-docs/api-authentication-update
-refactor/tenant-validation-extraction
-```
-
-## 📋 Code Review Checklist
-
-### Before Submitting PR
-
-- [ ] All TypeScript errors resolved
-- [ ] ESLint warnings addressed
-- [ ] Tests pass locally
-- [ ] Code follows naming conventions
-- [ ] Security considerations addressed
-- [ ] Documentation updated if needed
-- [ ] No sensitive data in code
-- [ ] Error handling implemented
-- [ ] Input validation added
-
-### During Code Review
-
-- [ ] Code is readable and maintainable
-- [ ] Business logic is correct
-- [ ] Error handling is appropriate
-- [ ] Security vulnerabilities addressed
-- [ ] Performance considerations evaluated
-- [ ] Tests cover edge cases
-- [ ] Documentation is accurate
-- [ ] Breaking changes are documented
-
-## 🎯 Quality Metrics
-
-### Code Quality Targets
-
-- **TypeScript Coverage**: 100% (no `any` types)
-- **Test Coverage**: 85%+ overall, 90%+ for services
-- **ESLint Compliance**: 0 errors, minimal warnings
-- **Documentation**: All public APIs documented
-- **Security**: 0 known vulnerabilities
-
-### Monitoring
-
-```typescript
-// ✅ Good: Structured logging for monitoring
-logger.info('User action completed', {
-  userId: req.auth.sub,
-  action: 'create_project',
-  projectId: project.id,
-  duration: Date.now() - startTime,
-  success: true,
+  return <div>{/* Component content */}</div>;
 });
 
-// ✅ Good: Error tracking
-logger.error('Database operation failed', {
-  operation: 'user_creation',
-  error: error.message,
-  stack: error.stack,
-  userId: req.auth.sub,
+// Use proper key props for lists
+{items.map(item => (
+  <ItemComponent 
+    key={item.id} // Use stable, unique keys
+    item={item} 
+  />
+))}
+```
+
+### Backend Performance
+```typescript
+// Use database indexes
+await db.collection('users').createIndex({ email: 1 }, { unique: true });
+
+// Implement pagination
+const getUsers = async (page: number = 1, limit: number = 20) => {
+  const skip = (page - 1) * limit;
+  return await db.collection('users')
+    .find({})
+    .skip(skip)
+    .limit(limit)
+    .toArray();
+};
+
+// Use projection to limit returned fields
+const getUserSummary = async (id: string) => {
+  return await db.collection('users').findOne(
+    { _id: new ObjectId(id) },
+    { projection: { name: 1, email: 1, _id: 1 } }
+  );
+};
+```
+
+## 📊 Monitoring & Logging Standards
+
+### Logging Standards
+```typescript
+// Use structured logging
+logger.info('User created successfully', {
+  userId: user.id,
+  email: user.email,
+  timestamp: new Date().toISOString(),
+  requestId: req.id,
+});
+
+// Log levels
+// ERROR: System errors, exceptions
+// WARN: Deprecated features, recoverable errors
+// INFO: General application flow
+// DEBUG: Detailed diagnostic information
+
+// Never log sensitive information
+logger.info('User authenticated', {
+  userId: user.id,
+  // DON'T LOG: password, tokens, personal data
 });
 ```
 
 ---
-*These coding standards ensure consistency, maintainability, and quality across the MWAP codebase. All team members are expected to follow these guidelines.*
+
+*These coding standards ensure consistency, maintainability, and quality across the MWAP platform codebase.*

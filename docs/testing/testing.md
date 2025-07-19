@@ -1,169 +1,148 @@
-# Testing Strategy
+# MWAP Testing Strategy
 
-## Current Test Coverage
+This document defines the canonical testing strategy and philosophy for the MWAP backend system.
 
-### Core Layer Tests (Implemented)
-- `utils/validate.ts`: Schema validation utilities
-- `utils/auth.ts`: Token handling utilities
-- `utils/errors.ts`: Custom error classes
+## 🧪 Testing Philosophy
 
-### Features Layer Tests (Not Yet Implemented)
-The features layer (e.g., tenants) is currently not testable without modifying production code due to tight coupling with external dependencies.
+MWAP uses **[Vitest](https://vitest.dev/)** for unit and service-level testing, aligned with these core principles:
 
-## Making Features Layer Testable
+- ✅ **Pure ESM support** (no CommonJS)
+- ✅ **Centralized test organization** in `tests/` folder
+- ✅ **Simple mocks** for MongoDB and Auth0 (no DB containers)
+- ✅ **Focused testing** for service logic, middleware, and schema validation
+- ✅ **Type-safe testing** with TypeScript throughout
 
-### 1. Dependency Injection
-To make the features layer testable, we need to modify the code to support dependency injection:
+## 🎯 Testing Approach
 
-```typescript
-// Before
-export class TenantService {
-  private collection: Collection<Tenant>;
+### Minimal and Meaningful Testing
+- Test services, guards, and validations where business logic resides
+- Avoid testing trivial getters/setters
+- Focus on edge cases and error conditions
+- Prioritize integration points and critical paths
 
-  constructor() {
-    this.collection = db.collection<Tenant>('tenants');
-  }
-}
+### ESM-Only Architecture
+- No CommonJS or Jest artifacts allowed
+- Use Vitest for pure ESM compatibility
+- Leverage native ES modules throughout test suite
+- Maintain consistency with production ESM usage
 
-// After
-export class TenantService {
-  private collection: Collection<Tenant>;
-  private superadminCollection: Collection<any>;
-  private auditLogger: AuditLogger;
+### Thin Controller, Fat Service Pattern
+- Controllers should be thin layers with minimal logic to test
+- Service logic is isolated and thoroughly testable
+- Business rules are concentrated in service classes
+- Validation logic is centralized and unit testable
 
-  constructor(
-    tenantCollection: Collection<Tenant>,
-    superadminCollection: Collection<any>,
-    auditLogger: AuditLogger
-  ) {
-    this.collection = tenantCollection;
-    this.superadminCollection = superadminCollection;
-    this.auditLogger = auditLogger;
-  }
-}
+### Mocks Over Containers
+- Use simple mocks for external dependencies
+- No test databases or Auth0 sandboxes
+- Mock at the service boundary level
+- Keep test setup lightweight and fast
+
+## 📁 Test Organization
+
+```
+tests/
+├── setupTests.ts          # Global test configuration
+├── utils/                 # Utility function tests
+│   ├── auth.test.ts      # Authentication utilities
+│   ├── validate.test.ts  # Validation utilities
+│   └── errors.test.ts    # Error handling
+└── features/              # Feature-specific tests
+    ├── tenants/          # Tenant module tests
+    ├── projects/         # Project module tests
+    ├── cloud-providers/  # Cloud provider tests
+    └── oauth/            # OAuth flow tests
 ```
 
-### 2. Test Utilities Needed
+## 🚀 Testing Commands
 
-#### Database Mocking
-```typescript
-// tests/utils/db.mock.ts
-export class MockCollection<T> {
-  private data: T[] = [];
-  
-  async findOne(query: any): Promise<T | null> {
-    // Implement mock query logic
-  }
-  
-  async insertOne(doc: T): Promise<any> {
-    // Implement mock insert logic
-  }
-  
-  // ... other collection methods
-}
+```bash
+# Run all tests
+npm test
+
+# Run tests with coverage
+npm run test:coverage
+
+# Run tests in watch mode
+npm run test:watch
+
+# Run specific test file
+npm test -- auth.test.ts
 ```
 
-#### Auth Mocking
+## 🎯 Coverage Targets
+
+- **Core Utils**: 90%+ coverage
+- **Service Layer**: 80%+ coverage  
+- **Middleware**: 85%+ coverage
+- **Overall**: 80%+ coverage
+
+## 📋 Testing Standards
+
+### Test Structure
+- Use descriptive test names that explain expected behavior
+- Follow AAA pattern: Arrange, Act, Assert
+- Group related tests using `describe` blocks
+- Keep tests focused on single behaviors
+
+### Test Data
+- Use factory functions for consistent test data generation
+- Avoid hardcoded values where possible
+- Clean up test data after tests
+- Isolate tests from each other
+
+### Async Testing
 ```typescript
-// tests/utils/auth.mock.ts
-export const mockJwtToken = {
-  sub: 'test-user-id',
-  email: 'test@example.com',
-  name: 'Test User'
-};
+// Proper async/await usage
+it('should create tenant asynchronously', async () => {
+  const result = await tenantService.create(testData);
+  expect(result).toBeDefined();
+});
 
-export const mockAuthMiddleware = (req: Request, _res: Response, next: NextFunction) => {
-  req.auth = mockJwtToken;
-  next();
-};
-```
-
-#### Audit Logger Mocking
-```typescript
-// tests/utils/logger.mock.ts
-export class MockAuditLogger {
-  private logs: any[] = [];
-  
-  log(action: string, userId: string, resourceId: string, details?: any) {
-    this.logs.push({ action, userId, resourceId, details });
-  }
-  
-  getLogs() {
-    return this.logs;
-  }
-}
-```
-
-### 3. Integration Test Setup
-
-#### Test Database Setup
-```typescript
-// tests/setup/db.ts
-import { MongoClient } from 'mongodb';
-
-export async function setupTestDb() {
-  const client = await MongoClient.connect(process.env.TEST_MONGODB_URI!);
-  const db = client.db();
-  
-  // Clear test data
-  await db.collection('tenants').deleteMany({});
-  await db.collection('superadmins').deleteMany({});
-  
-  return { client, db };
-}
-```
-
-#### Example Integration Test
-```typescript
-// tests/features/tenants/tenants.service.integration.test.ts
-describe('TenantService Integration', () => {
-  let db: Db;
-  let client: MongoClient;
-  let service: TenantService;
-  
-  beforeAll(async () => {
-    ({ client, db } = await setupTestDb());
-    service = new TenantService(
-      db.collection('tenants'),
-      db.collection('superadmins'),
-      new MockAuditLogger()
-    );
-  });
-  
-  afterAll(async () => {
-    await client.close();
-  });
-  
-  // Test cases...
+// Testing promise rejections
+it('should reject invalid tenant data', async () => {
+  await expect(tenantService.create(invalidData))
+    .rejects
+    .toThrow('Validation failed');
 });
 ```
 
-## Next Steps
+### Error Testing
+- Test error conditions explicitly
+- Verify proper error types and messages
+- Test edge cases and boundary conditions
+- Ensure graceful error handling
 
-1. Refactor production code to support dependency injection
-2. Create test utilities and mocks
-3. Set up integration test infrastructure
-4. Implement unit tests for features layer
-5. Implement integration tests
+## 🔄 Phase 8 Implementation Plan
 
-## Testing Guidelines
+Testing is currently in **Phase 8** (postponed until all core functionality is complete). The testing strategy includes:
 
-1. **Unit Tests**
-   - Mock all external dependencies
-   - Test edge cases and error conditions
-   - Use dependency injection to isolate components
+1. **Complete Service Testing**
+   - Implement tests for all service classes
+   - Mock external dependencies appropriately
+   - Achieve target coverage goals
 
-2. **Integration Tests**
-   - Use test database instance
-   - Clean up test data between tests
-   - Test complete workflows
+2. **Integration Test Suite**
+   - End-to-end API testing
+   - Database integration tests
+   - OAuth flow testing
 
-3. **Test Data**
-   - Use factories to generate test data
-   - Avoid hardcoding test values
-   - Clean up test data after tests
+3. **Performance Testing**
+   - Load testing for critical endpoints
+   - Memory leak detection
+   - Response time benchmarks
 
-4. **Mocking**
-   - Mock at the lowest level possible
-   - Verify mock interactions
-   - Keep mocks simple and focused
+4. **Security Testing**
+   - Authentication bypass attempts
+   - Authorization boundary testing
+   - Input validation security tests
+
+## 📚 Additional Resources
+
+- **[Testing Guide](../06-Guides/how-to-test.md)**: Comprehensive testing setup and examples
+- **[Integration Testing](./INTEGRATION_TESTING.md)**: Integration testing approach and setup
+- **[Test Status](./tests-readme.md)**: Current test coverage and implementation status
+
+---
+
+*This document defines the core testing philosophy for MWAP. For detailed implementation examples and setup instructions, refer to the comprehensive testing guide.* 
