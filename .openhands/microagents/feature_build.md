@@ -48,6 +48,10 @@ You are a **senior developer and orchestrator** executing a phase from a detaile
 ## 🛠 What to do
 - **Execute all tasks for the specified phase**, generating or modifying code as needed.
 - Keep each implementation aligned with security, architectural, and style guidelines from `/docs`.
+- Ensure there is no typescipt errors
+- Ensure all imports and exports are correct
+  - No imports that are not exported
+  - No exports that are not being used
 
 ---
 
