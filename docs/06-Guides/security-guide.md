@@ -1,6 +1,6 @@
-# Security Guide
+# MWAP Security Guide
 
-This guide covers security best practices, common vulnerabilities, and security implementation patterns for the MWAP platform.
+This comprehensive guide covers authentication setup, authorization patterns, OAuth integrations, and security best practices for the MWAP platform.
 
 ## 🔒 Security Overview
 
@@ -20,12 +20,62 @@ MWAP is built with security as a fundamental design principle, implementing defe
 
 ## 🛡️ Authentication Security
 
+### Auth0 Integration Setup
+
+#### Step 1: Auth0 Account Configuration
+1. **Create Auth0 Account**: Go to [auth0.com](https://auth0.com) and create an account
+2. **Create Tenant**: Set up separate tenants for development and production
+3. **Note Domain**: Your tenant domain (e.g., `your-tenant.auth0.com`)
+
+#### Step 2: Create Auth0 API
+1. Navigate to **APIs** in Auth0 Dashboard
+2. Click **Create API**
+3. Configure:
+   - **Name**: `MWAP API`
+   - **Identifier**: `https://api.yourapp.com` (becomes AUTH0_AUDIENCE)
+   - **Signing Algorithm**: `RS256`
+4. Enable **RBAC** and **Add Permissions in the Access Token**
+
+#### Step 3: Create Auth0 Application
+1. Navigate to **Applications** in Auth0 Dashboard
+2. Click **Create Application**
+3. Configure:
+   - **Name**: `MWAP Frontend`
+   - **Type**: `Single Page Application`
+4. Configure Application Settings:
+   ```
+   Allowed Callback URLs: http://localhost:3000/callback, https://yourapp.com/callback
+   Allowed Logout URLs: http://localhost:3000, https://yourapp.com
+   Allowed Web Origins: http://localhost:3000, https://yourapp.com
+   Allowed Origins (CORS): http://localhost:3000, https://yourapp.com
+   ```
+
 ### Auth0 Security Configuration
 
-#### Production Auth0 Setup
-```javascript
-// Secure Auth0 configuration
-const auth0Config = {
+#### Environment Variables
+```bash
+# .env
+AUTH0_DOMAIN=your-tenant.auth0.com
+AUTH0_AUDIENCE=https://api.yourapp.com
+AUTH0_CLIENT_ID=your_client_id
+AUTH0_CLIENT_SECRET=your_client_secret
+```
+
+#### Secure Auth0 Configuration
+```typescript
+// config/auth0.ts
+import { JwksClient } from 'jwks-rsa';
+
+export const jwksClient = new JwksClient({
+  jwksUri: `https://${process.env.AUTH0_DOMAIN}/.well-known/jwks.json`,
+  rateLimit: true,
+  cache: true,
+  cacheMaxAge: 86400000, // 24 hours
+  timeout: 10000, // 10 seconds
+  strictSsl: true
+});
+
+export const auth0Config = {
   domain: process.env.AUTH0_DOMAIN,
   audience: process.env.AUTH0_AUDIENCE,
   algorithms: ['RS256'], // Only RS256, never HS256
@@ -35,11 +85,56 @@ const auth0Config = {
   clockTolerance: 30, // 30 seconds clock skew tolerance
   maxAge: '1d', // Maximum token age
   
-  // Rate limiting
+  // Additional security
   strictSsl: true,
   timeout: 30000,
 };
 ```
+
+#### JWT Middleware Implementation
+```typescript
+// middleware/auth.ts
+import { expressjwt as jwt } from 'express-jwt';
+import { jwksClient, auth0Config } from '../config/auth0.js';
+import { logInfo, logError } from '../utils/logger.js';
+
+export const authenticateJWT = () => {
+  return jwt({
+    secret: async (req) => {
+      try {
+        const token = req.headers.authorization?.split(' ')[1] || '';
+        
+        logInfo('Processing JWT authentication', {
+          endpoint: req.originalUrl,
+          method: req.method,
+          hasToken: !!token
+        });
+        
+        if (!token) {
+          throw new Error('Missing authorization token');
+        }
+        
+        const header = JSON.parse(Buffer.from(token.split('.')[0], 'base64').toString());
+        const key = await jwksClient.getSigningKey(header.kid);
+        
+        return key.getPublicKey();
+      } catch (error) {
+        logError('JWT key retrieval failed', { error: error.message });
+        throw error;
+      }
+    },
+    audience: auth0Config.audience,
+    issuer: auth0Config.issuer,
+    algorithms: auth0Config.algorithms,
+    clockTolerance: 30,
+    onExpired: async (req, err) => {
+      logError('JWT token expired', {
+        endpoint: req.originalUrl,
+        error: err.message
+      });
+    }
+  });
+};
 
 #### JWT Security Best Practices
 ```typescript
@@ -86,6 +181,357 @@ const checkPasswordBreach = async (password: string): Promise<boolean> => {
   // Use HaveIBeenPwned API or similar service
   // Auth0 can be configured to check against known breaches
 };
+```
+
+## 🔗 OAuth Integration Security
+
+### OAuth 2.0 Flow Overview
+
+MWAP implements secure OAuth 2.0 authorization code flow for cloud provider integrations:
+
+```
+User → Frontend → Cloud Provider → Authorization → Callback → Token Exchange → Secure Storage
+```
+
+### OAuth Architecture Components
+
+1. **OAuth Service**: Handles token exchange and refresh operations
+2. **OAuth Controller**: Processes OAuth callbacks and token refresh requests
+3. **OAuth Routes**: Exposes secure endpoints for OAuth operations
+4. **Cloud Provider Integration**: Manages provider-specific OAuth configurations
+
+### OAuth Flow Implementation
+
+#### Step 1: Cloud Provider Registration (Admin Only)
+```typescript
+// Only admins can register new cloud providers
+POST /api/v1/cloud-providers
+Authorization: Bearer <admin_token>
+Content-Type: application/json
+
+{
+  "name": "Dropbox",
+  "slug": "dropbox", 
+  "scopes": ["files.content.read", "files.metadata.read"],
+  "authUrl": "https://www.dropbox.com/oauth2/authorize",
+  "tokenUrl": "https://api.dropboxapi.com/oauth2/token",
+  "clientId": "your-dropbox-app-key",
+  "clientSecret": "your-dropbox-app-secret", // Encrypted in storage
+  "metadata": {
+    "description": "Dropbox cloud storage integration",
+    "iconUrl": "https://example.com/dropbox-icon.png"
+  }
+}
+```
+
+#### Step 2: Create Secure Integration
+```typescript
+// Frontend creates integration (tenant owner only)
+const createIntegration = async (providerId: string, tenantId: string) => {
+  const response = await fetch('/api/v1/cloud-integrations', {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${userToken}`,
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({
+      tenantId,
+      providerId,
+      name: 'My Secure Integration'
+    })
+  });
+  
+  return response.json();
+};
+```
+
+#### Step 3: Secure Authorization Flow
+```typescript
+// Build secure authorization URL with state parameter
+const buildAuthUrl = (provider: CloudProvider, integrationId: string) => {
+  const authUrl = new URL(provider.authUrl);
+  const state = generateSecureState(integrationId); // CSRF protection
+  
+  authUrl.searchParams.set('client_id', provider.clientId);
+  authUrl.searchParams.set('response_type', 'code');
+  authUrl.searchParams.set('redirect_uri', `${window.location.origin}/api/v1/oauth/callback`);
+  authUrl.searchParams.set('scope', provider.scopes.join(' '));
+  authUrl.searchParams.set('state', state); // CSRF protection
+  
+  return authUrl.toString();
+};
+
+// Generate cryptographically secure state parameter
+const generateSecureState = (integrationId: string): string => {
+  const randomBytes = crypto.getRandomValues(new Uint8Array(32));
+  const timestamp = Date.now();
+  const payload = { integrationId, timestamp };
+  
+  // Sign the payload for integrity
+  return btoa(JSON.stringify(payload)) + '.' + btoa(String.fromCharCode(...randomBytes));
+};
+```
+
+### OAuth Callback Security
+
+#### Secure Callback Handler
+```typescript
+// OAuth callback endpoint with comprehensive security
+export async function handleOAuthCallback(req: Request, res: Response) {
+  try {
+    const { code, state, error } = req.query;
+    
+    // 1. Validate required parameters
+    if (error) {
+      logWarn('OAuth authorization denied', { error, state });
+      return res.redirect('/integrations?error=authorization_denied');
+    }
+    
+    if (!code || !state) {
+      logError('OAuth callback missing parameters', { hasCode: !!code, hasState: !!state });
+      return res.redirect('/integrations?error=invalid_callback');
+    }
+    
+    // 2. Validate and decode state parameter (CSRF protection)
+    const integrationId = await validateState(state as string);
+    if (!integrationId) {
+      logError('OAuth callback invalid state', { state });
+      return res.redirect('/integrations?error=invalid_state');
+    }
+    
+    // 3. Retrieve integration and provider securely
+    const integration = await getIntegrationById(integrationId);
+    if (!integration) {
+      logError('OAuth callback integration not found', { integrationId });
+      return res.redirect('/integrations?error=integration_not_found');
+    }
+    
+    const provider = await getCloudProviderById(integration.providerId);
+    if (!provider) {
+      logError('OAuth callback provider not found', { providerId: integration.providerId });
+      return res.redirect('/integrations?error=provider_not_found');
+    }
+    
+    // 4. Exchange authorization code for tokens
+    const tokens = await exchangeCodeForTokens(code as string, provider);
+    
+    // 5. Encrypt and store tokens securely
+    await storeTokensSecurely(integrationId, tokens);
+    
+    // 6. Update integration status
+    await updateIntegrationStatus(integrationId, 'active');
+    
+    // 7. Log successful authorization
+    logInfo('OAuth authorization successful', {
+      integrationId,
+      providerId: provider._id,
+      tenantId: integration.tenantId
+    });
+    
+    // 8. Redirect to success page
+    return res.redirect('/integrations?success=authorized');
+    
+  } catch (error) {
+    logError('OAuth callback error', { error: error.message, stack: error.stack });
+    return res.redirect('/integrations?error=callback_failed');
+  }
+}
+
+// Secure token exchange
+const exchangeCodeForTokens = async (
+  code: string, 
+  provider: CloudProvider
+): Promise<OAuthTokens> => {
+  const tokenData = {
+    grant_type: 'authorization_code',
+    client_id: provider.clientId,
+    client_secret: decrypt(provider.clientSecret), // Decrypt for use
+    code,
+    redirect_uri: `${process.env.API_BASE_URL}/api/v1/oauth/callback`
+  };
+  
+  const response = await fetch(provider.tokenUrl, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/x-www-form-urlencoded',
+      'Accept': 'application/json'
+    },
+    body: new URLSearchParams(tokenData)
+  });
+  
+  if (!response.ok) {
+    throw new Error(`Token exchange failed: ${response.statusText}`);
+  }
+  
+  const tokens = await response.json();
+  return {
+    accessToken: tokens.access_token,
+    refreshToken: tokens.refresh_token,
+    expiresAt: tokens.expires_in ? new Date(Date.now() + tokens.expires_in * 1000) : undefined,
+    scope: tokens.scope?.split(' ') || provider.scopes
+  };
+};
+```
+
+### Token Security
+
+#### Secure Token Storage
+```typescript
+// Encrypt OAuth tokens before database storage
+const storeTokensSecurely = async (integrationId: string, tokens: OAuthTokens) => {
+  const encryptedTokens = {
+    accessToken: encrypt(tokens.accessToken),
+    refreshToken: tokens.refreshToken ? encrypt(tokens.refreshToken) : undefined,
+    expiresAt: tokens.expiresAt,
+    scope: tokens.scope
+  };
+  
+  await db.collection('cloudIntegrations').updateOne(
+    { _id: new ObjectId(integrationId) },
+    {
+      $set: {
+        authData: encryptedTokens,
+        status: 'active',
+        updatedAt: new Date()
+      }
+    }
+  );
+};
+
+// Secure token refresh with automatic retry
+const refreshTokenSecurely = async (integrationId: string): Promise<void> => {
+  const integration = await getIntegrationById(integrationId);
+  if (!integration || !integration.authData.refreshToken) {
+    throw new Error('Integration or refresh token not found');
+  }
+  
+  const provider = await getCloudProviderById(integration.providerId);
+  if (!provider) {
+    throw new Error('Cloud provider not found');
+  }
+  
+  try {
+    // Decrypt refresh token for use
+    const refreshToken = decrypt(integration.authData.refreshToken);
+    
+    const tokenData = {
+      grant_type: 'refresh_token',
+      client_id: provider.clientId,
+      client_secret: decrypt(provider.clientSecret),
+      refresh_token: refreshToken
+    };
+    
+    const response = await fetch(provider.tokenUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+        'Accept': 'application/json'
+      },
+      body: new URLSearchParams(tokenData)
+    });
+    
+    if (!response.ok) {
+      throw new Error(`Token refresh failed: ${response.statusText}`);
+    }
+    
+    const newTokens = await response.json();
+    
+    // Store new encrypted tokens
+    await storeTokensSecurely(integrationId, {
+      accessToken: newTokens.access_token,
+      refreshToken: newTokens.refresh_token || refreshToken, // Some providers don't return new refresh token
+      expiresAt: newTokens.expires_in ? new Date(Date.now() + newTokens.expires_in * 1000) : undefined,
+      scope: newTokens.scope?.split(' ') || integration.authData.scope
+    });
+    
+    logInfo('OAuth tokens refreshed successfully', { integrationId });
+    
+  } catch (error) {
+    logError('OAuth token refresh failed', { integrationId, error: error.message });
+    
+    // Mark integration as error state
+    await updateIntegrationStatus(integrationId, 'error');
+    throw error;
+  }
+};
+```
+
+### OAuth Security Best Practices
+
+#### CSRF Protection
+```typescript
+// Implement strong CSRF protection with state parameter
+const validateState = async (state: string): Promise<string | null> => {
+  try {
+    const [payload, signature] = state.split('.');
+    const decodedPayload = JSON.parse(atob(payload));
+    
+    // 1. Validate timestamp (prevent replay attacks)
+    const now = Date.now();
+    const maxAge = 10 * 60 * 1000; // 10 minutes
+    if (now - decodedPayload.timestamp > maxAge) {
+      logWarn('OAuth state expired', { timestamp: decodedPayload.timestamp, now });
+      return null;
+    }
+    
+    // 2. Validate integration exists and is accessible
+    const integration = await getIntegrationById(decodedPayload.integrationId);
+    if (!integration) {
+      logWarn('OAuth state invalid integration', { integrationId: decodedPayload.integrationId });
+      return null;
+    }
+    
+    return decodedPayload.integrationId;
+  } catch (error) {
+    logError('OAuth state validation failed', { error: error.message, state });
+    return null;
+  }
+};
+```
+
+#### Scope Limitation
+```typescript
+// Implement principle of least privilege for OAuth scopes
+const validateScopes = (requestedScopes: string[], providerScopes: string[]): string[] => {
+  // Only allow scopes that are configured for the provider
+  const allowedScopes = requestedScopes.filter(scope => providerScopes.includes(scope));
+  
+  if (allowedScopes.length !== requestedScopes.length) {
+    logWarn('OAuth scope restriction applied', {
+      requested: requestedScopes,
+      allowed: allowedScopes
+    });
+  }
+  
+  return allowedScopes;
+};
+```
+
+### OAuth API Endpoints
+
+#### Secure OAuth Callback
+```typescript
+// GET /api/v1/oauth/callback (Public endpoint with validation)
+app.get('/api/v1/oauth/callback', handleOAuthCallback);
+```
+
+#### Secure Token Refresh
+```typescript
+// POST /api/v1/oauth/tenants/:tenantId/integrations/:integrationId/refresh
+app.post('/api/v1/oauth/tenants/:tenantId/integrations/:integrationId/refresh',
+  authenticateJWT(),
+  requireTenantOwner('tenantId'),
+  async (req: Request, res: Response) => {
+    try {
+      const { integrationId } = req.params;
+      await refreshTokenSecurely(integrationId);
+      
+      return jsonResponse(res, { success: true }, 'Tokens refreshed successfully');
+    } catch (error) {
+      return errorResponse(res, 500, 'Token refresh failed', 'OAUTH_REFRESH_FAILED');
+    }
+  }
+);
 ```
 
 ## 🔐 Authorization Security

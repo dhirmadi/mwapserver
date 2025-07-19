@@ -14,64 +14,54 @@ High-level project information and context
 
 ### [01-Getting-Started](./01-Getting-Started/)
 Everything needed to start developing with MWAP
-- [Prerequisites](./01-Getting-Started/prerequisites.md) - System requirements
-- [Getting Started](./01-Getting-Started/getting-started.md) - Quick setup guide
-- [Environment Setup](./01-Getting-Started/env-setup.md) - Configuration details
-- [Migration & Deployment](./01-Getting-Started/migration-deployment-guide.md) - Deployment strategies
-- [Troubleshooting](./01-Getting-Started/troubleshooting.md) - Common issues and solutions
-- [FAQ](./01-Getting-Started/faq.md) - Frequently asked questions
+- [Getting Started](./01-Getting-Started/getting-started.md) - Complete setup guide (15 minutes)
+- [Team Onboarding](./01-Getting-Started/team-onboarding.md) - Developer onboarding and best practices
+- [Troubleshooting](./01-Getting-Started/troubleshooting.md) - Quick solutions for common issues
+- [FAQ](./01-Getting-Started/faq.md) - Essential questions and answers
 
 ### [02-Architecture](./02-Architecture/)
 System design and architectural decisions
-- [Overview](./02-Architecture/overview.md) - High-level architecture
-- [System Design](./02-Architecture/system-design.md) - Detailed system design
-- [Component Structure](./02-Architecture/component-structure.md) - Component organization
-- [User Flows](./02-Architecture/user-flows.md) - User interaction patterns
-- [Domain Map](./02-Architecture/v3-domainmap.md) - Domain model and relationships
+- [Architecture](./02-Architecture/architecture.md) - Comprehensive system architecture and design
+- [User Flows](./02-Architecture/user-flows.md) - User interaction patterns and workflows
+- [Reference](./02-Architecture/reference.md) - Backend API reference and domain model
+- [Utilities](./02-Architecture/utilities.md) - Utility modules documentation
 - [Diagrams](./02-Architecture/diagrams/) - Visual architecture representations
 
 ### [03-Frontend](./03-Frontend/)
-Backend API integration guides for React developers
-- [API Integration](./03-Frontend/api-integration.md) - Complete API integration guide
-- [Authentication](./03-Frontend/authentication.md) - Auth0 integration and JWT handling
-- [Role-Based Access Control](./03-Frontend/rbac.md) - Implementing RBAC on frontend
-- [OAuth Integration](./03-Frontend/oauth-integration.md) - Cloud provider OAuth flows
-- [Error Handling](./03-Frontend/error-handling.md) - API error patterns and responses
+Complete frontend integration documentation for React developers
+- [Frontend Integration Guide](./03-Frontend/frontend-guide.md) - Comprehensive React integration handbook
+- [Frontend Architecture](./03-Frontend/architecture.md) - Component structure and design patterns
 
 ### [04-Backend](./04-Backend/)
-Backend API and server architecture
-- [Express Structure](./04-Backend/express-structure.md) - Server organization
-- [API v3](./04-Backend/API-v3.md) - Complete API documentation
-- [API Configuration](./04-Backend/API-configuration.md) - API setup and configuration
-- [Auth0 Integration](./04-Backend/auth0.md) - Authentication implementation
-- [RBAC](./04-Backend/rbac.md) - Role-based access control
-- [Cloud Providers](./04-Backend/cloud-providers.md) - Cloud integration patterns
-- [Queues](./04-Backend/queues.md) - Background job processing
+Complete backend development and API documentation
+- [API Reference](./04-Backend/api-reference.md) - Comprehensive API documentation
+- [Backend Development Guide](./04-Backend/backend-guide.md) - Development patterns and setup
+- [Security Guide](./04-Backend/security.md) - Authentication, authorization, and security
+- [Infrastructure Guide](./04-Backend/infrastructure.md) - Database, cloud integrations, and scaling
+- [Features Guide](./04-Backend/features.md) - Feature development patterns and implementation
 
 ### [05-AI-Agents](./05-AI-Agents/)
 AI integration and agent development
 - [Microagents](./05-AI-Agents/microagents.md) - Agent architecture
 - [OpenHands Integration](./05-AI-Agents/openhands-integration.md) - AI development tools
+- [OpenHands Frontend Prompt](./05-AI-Agents/openhands-frontend-prompt.md) - Frontend AI development
 - [Prompt Engineering](./05-AI-Agents/prompt-engineering.md) - Effective prompting
 - [Agent Patterns](./05-AI-Agents/agent-patterns.md) - Common patterns
 - [Best Practices](./05-AI-Agents/best-practices.md) - Development guidelines
 
 ### [06-Guides](./06-Guides/)
-Step-by-step implementation guides
-- [Auth0 Integration](./06-Guides/how-to-integrate-auth0.md) - Authentication setup
-- [Adding Agents](./06-Guides/how-to-add-agent.md) - Agent development
-- [Deployment](./06-Guides/how-to-deploy.md) - Production deployment
-- [Testing](./06-Guides/how-to-test.md) - Testing strategies
-- [Debugging](./06-Guides/debugging.md) - Troubleshooting techniques
-- [Optimization](./06-Guides/optimization-report.md) - Performance optimization
+Comprehensive implementation guides covering all aspects of MWAP development and operations
+- [Development Guide](./06-Guides/development-guide.md) - Complete development workflow, debugging, and AI agents
+- [Deployment Guide](./06-Guides/deployment-guide.md) - Migration strategies and platform deployment
+- [Security Guide](./06-Guides/security-guide.md) - Authentication, authorization, and OAuth integrations
+- [Performance Guide](./06-Guides/performance-guide.md) - API configuration and optimization strategies
+- [Testing Guide](./06-Guides/testing-guide.md) - Complete testing strategies and implementation
 
 ### [07-Standards](./07-Standards/)
-Development standards and conventions
-- [Development Guide](./07-Standards/development-guide.md) - General development practices
-- [Coding Standards](./07-Standards/coding-standards.md) - Code style and conventions
-- [Naming Conventions](./07-Standards/naming.md) - Naming guidelines
-- [Environment Format](./07-Standards/.env-format.md) - Environment variable standards
-- [Commit Style](./07-Standards/commit-style.md) - Git commit conventions
+Comprehensive development standards and best practices for consistent, high-quality code
+- [Development Standards](./07-Standards/development-standards.md) - Complete development practices, coding standards, and naming conventions
+- [Git Workflow](./07-Standards/git-workflow.md) - Git workflow, branching strategy, and commit conventions
+- [Environment Standards](./07-Standards/environment-standards.md) - Environment configuration and deployment practices
 
 ### [08-Contribution](./08-Contribution/)
 Contributing to the project
@@ -90,9 +80,9 @@ Historical documentation and reports
 ## 🚀 Quick Start
 
 1. **New Developers**: Start with [Getting Started](./01-Getting-Started/getting-started.md)
-2. **Architecture Overview**: Review [System Design](./02-Architecture/system-design.md)
-3. **API Development**: Check [API v3](./04-Backend/API-v3.md)
-4. **Frontend API Integration**: See [API Integration Guide](./03-Frontend/api-integration.md)
+2. **Architecture Overview**: Review [Architecture](./02-Architecture/architecture.md)
+3. **Backend Development**: Check [Backend Development Guide](./04-Backend/backend-guide.md)
+4. **Frontend Integration**: See [Frontend Integration Guide](./03-Frontend/frontend-guide.md)
 5. **Contributing**: Follow [Contributing Guide](./08-Contribution/contributing.md)
 
 ## 🔍 Finding Information
@@ -101,11 +91,17 @@ Historical documentation and reports
 |------|-------|
 | Project overview | [Vision](./00-Overview/vision.md) |
 | Setup instructions | [Getting Started](./01-Getting-Started/getting-started.md) |
-| API endpoints | [API v3](./04-Backend/API-v3.md) |
-| Authentication | [Auth0 Integration](./04-Backend/auth0.md) |
-| Frontend API integration | [API Integration Guide](./03-Frontend/api-integration.md) |
-| Testing | [Testing Guide](./06-Guides/how-to-test.md) |
-| Deployment | [Deployment Guide](./06-Guides/how-to-deploy.md) |
+| API endpoints | [API Reference](./04-Backend/api-reference.md) |
+| Backend development | [Backend Development Guide](./04-Backend/backend-guide.md) |
+| Authentication | [Security Guide](./04-Backend/security.md) |
+| Frontend integration | [Frontend Integration Guide](./03-Frontend/frontend-guide.md) |
+| Testing | [Testing Guide](./06-Guides/testing-guide.md) |
+| Deployment | [Deployment Guide](./06-Guides/deployment-guide.md) |
+| Performance | [Performance Guide](./06-Guides/performance-guide.md) |
+| Development workflow | [Development Guide](./06-Guides/development-guide.md) |
+| Development standards | [Development Standards](./07-Standards/development-standards.md) |
+| Git workflow | [Git Workflow](./07-Standards/git-workflow.md) |
+| Environment setup | [Environment Standards](./07-Standards/environment-standards.md) |
 | Contributing | [Contributing Guide](./08-Contribution/contributing.md) |
 
 ## 📝 Documentation Standards
