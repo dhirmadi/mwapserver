@@ -30,10 +30,10 @@ docs/
 
 ### Essential Reading (Priority Order)
 1. **[Getting Started](./getting-started.md)** - Complete development setup
-2. **[System Design](../02-Architecture/system-design.md)** - Understand the architecture
-3. **[API Documentation](../04-Backend/API-v3.md)** - Learn the API endpoints
-4. **[Contributing Guide](../08-Contribution/contributing.md)** - Git workflow
-5. **[Coding Standards](../07-Standards/coding-standards.md)** - Code style guidelines
+2. **[System Design](../02-Architecture/architecture.md)** - Understand the architecture
+3. **[API Documentation](../04-Backend/api-reference.md)** - Learn the API endpoints
+4. **[Contributing Guide](../08-Contribution/contributing-guide.md)** - Git workflow
+5. **[Coding Standards](../07-Standards/development-standards.md)** - Code style guidelines
 
 ## Development Environment Setup
 

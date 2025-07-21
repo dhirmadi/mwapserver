@@ -112,7 +112,7 @@ All documentation follows these principles:
 ## 🤝 Contributing to Documentation
 
 When updating documentation:
-1. Follow the [Development Guide](./07-Standards/development-guide.md)
+1. Follow the [Development Guide](./07-Standards/development-standards.md)
 2. Ensure all information is factually accurate
 3. Include practical examples where helpful
 4. Update cross-references when moving or renaming files

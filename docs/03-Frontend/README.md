@@ -27,7 +27,7 @@ This directory contains comprehensive documentation for React developers integra
 
 1. **Read the Integration Guide** - Start with [Frontend Integration Guide](./frontend-guide.md) for complete setup instructions
 2. **Understand the Architecture** - Review [Architecture](./architecture.md) for design patterns and structure
-3. **Reference the Backend API** - Check [Backend API v3](../04-Backend/API-v3.md) for endpoint details
+3. **Reference the Backend API** - Check [Backend API v3](../04-Backend/api-reference.md) for endpoint details
 
 ## 🎯 Key Features Covered
 
@@ -41,8 +41,8 @@ This directory contains comprehensive documentation for React developers integra
 
 ## 📖 Related Documentation
 
-- [Backend API Reference](../04-Backend/API-v3.md) - Complete API documentation
-- [Backend Authentication](../04-Backend/authentication.md) - Server-side auth details
+- [Backend API Reference](../04-Backend/api-reference.md) - Complete API documentation
+- [Backend Authentication](../04-Backend/security.md) - Server-side auth details
 - [Getting Started Guide](../01-Getting-Started/getting-started.md) - Project setup
 
 ---

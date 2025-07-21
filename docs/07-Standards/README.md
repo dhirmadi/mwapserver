@@ -123,8 +123,8 @@ Each standard is comprehensive and self-contained, covering all aspects of its d
 - **[Security Guide](../06-Guides/security-guide.md)** - Security implementation and best practices
 
 ### Getting Started
-- **[Prerequisites](../01-Getting-Started/prerequisites.md)** - System requirements
-- **[Environment Setup](../01-Getting-Started/env-setup.md)** - Development environment
+- **[Prerequisites](../01-Getting-Started/getting-started.md)** - System requirements
+- **[Environment Setup](../01-Getting-Started/getting-started.md)** - Development environment
 - **[Team Onboarding](../01-Getting-Started/team-onboarding.md)** - New developer guide
 
 ## 📋 Standards Categories

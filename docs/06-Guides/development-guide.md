@@ -1035,7 +1035,7 @@ export class UserService {
 - **Cloud Integration**: Integrate with additional cloud services
 
 ### Contributing
-- Read the [Contributing Guide](../08-Contribution/contributing.md)
+- Read the [Contributing Guide](../08-Contribution/contributing-guide.md)
 - Join development discussions
 - Submit bug reports and feature requests
 - Help improve documentation

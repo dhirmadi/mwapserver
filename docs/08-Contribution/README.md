@@ -109,8 +109,8 @@ Each guide is comprehensive and self-contained, covering all aspects of its doma
 
 ### Getting Started
 - **[Getting Started](../01-Getting-Started/getting-started.md)** - Quick start guide
-- **[Prerequisites](../01-Getting-Started/prerequisites.md)** - System requirements
-- **[Environment Setup](../01-Getting-Started/env-setup.md)** - Development environment setup
+- **[Prerequisites](../01-Getting-Started/getting-started.md)** - System requirements
+- **[Environment Setup](../01-Getting-Started/getting-started.md)** - Development environment setup
 
 ## 📋 Contribution Categories
 

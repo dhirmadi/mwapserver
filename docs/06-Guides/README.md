@@ -142,8 +142,8 @@ Each guide is self-contained and comprehensive, covering all aspects of its topi
 - **[Database Design](../04-Backend/infrastructure.md)** - Database architecture and design
 
 ### Getting Started
-- **[Prerequisites](../01-Getting-Started/prerequisites.md)** - System requirements
-- **[Environment Setup](../01-Getting-Started/env-setup.md)** - Development environment
+- **[Prerequisites](../01-Getting-Started/getting-started.md)** - System requirements
+- **[Environment Setup](../01-Getting-Started/getting-started.md)** - Development environment
 
 ## 📋 Documentation Standards
 

@@ -22,8 +22,8 @@ This document outlines the team structure, contribution guidelines, and recognit
 
 ### Getting Started
 1. **Read the Documentation**: Start with [Getting Started Guide](../01-Getting-Started/getting-started.md)
-2. **Understand the Architecture**: Review [Architecture Reference](../v3-architecture-reference.md)
-3. **Follow Standards**: Adhere to [Coding Standards](../07-Standards/coding-standards.md)
+2. **Understand the Architecture**: Review [Architecture Reference](../02-Architecture/architecture.md)
+3. **Follow Standards**: Adhere to [Coding Standards](../07-Standards/development-standards.md)
 4. **Set Up Environment**: Configure your development environment properly
 
 ### Contribution Process

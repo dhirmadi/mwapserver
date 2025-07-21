@@ -96,7 +96,7 @@ const projects = await Project.find({ userId, tenantId });
 ## Deployment
 
 ### Q: How do I deploy to production?
-**A:** See the [Deployment Guide](../06-Guides/how-to-deploy.md):
+**A:** See the [Deployment Guide](../06-Guides/deployment-guide.md):
 1. Build the application: `npm run build`
 2. Set production environment variables
 3. Deploy using Docker or your preferred platform

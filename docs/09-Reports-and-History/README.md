@@ -128,13 +128,13 @@ Each report is comprehensive and self-contained, covering complete domain areas:
 
 ### Architecture Documentation
 - **[Architecture Overview](../02-Architecture/architecture.md)** - Current system architecture
-- **[System Design](../02-Architecture/system-design.md)** - Detailed technical architecture
-- **[Component Structure](../02-Architecture/component-structure.md)** - Component organization
+- **[System Design](../02-Architecture/architecture.md)** - Detailed technical architecture
+- **[Component Structure](../02-Architecture/architecture.md)** - Component organization
 
 ### Getting Started
 - **[Getting Started](../01-Getting-Started/getting-started.md)** - Platform setup and onboarding
-- **[Prerequisites](../01-Getting-Started/prerequisites.md)** - System requirements
-- **[Environment Setup](../01-Getting-Started/env-setup.md)** - Development environment
+- **[Prerequisites](../01-Getting-Started/getting-started.md)** - System requirements
+- **[Environment Setup](../01-Getting-Started/getting-started.md)** - Development environment
 
 ## 📋 Report Categories
 

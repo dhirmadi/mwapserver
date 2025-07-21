@@ -1008,4 +1008,4 @@ export const ProjectList: React.FC = () => {
 - `POST /api/v1/tenants/:id/integrations` - Create cloud integration
 
 ---
-*This comprehensive guide covers all aspects of integrating a React frontend with the MWAP backend API. For backend-specific documentation, refer to the [Backend API Reference](../04-Backend/API-v3.md).* 
+*This comprehensive guide covers all aspects of integrating a React frontend with the MWAP backend API. For backend-specific documentation, refer to the [Backend API Reference](../04-Backend/api-reference.md).* 

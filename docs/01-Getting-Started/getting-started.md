@@ -152,9 +152,9 @@ npm run docs:serve   # Serve documentation locally
 ## Next Steps
 
 1. **Explore the API**: Visit http://localhost:3000/api/docs
-2. **Read Architecture**: Check [System Design](../02-Architecture/system-design.md)
+2. **Read Architecture**: Check [System Design](../02-Architecture/architecture.md)
 3. **Join the Team**: Follow [Team Onboarding](./team-onboarding.md)
-4. **Start Contributing**: See [Contributing Guide](../08-Contribution/contributing.md)
+4. **Start Contributing**: See [Contributing Guide](../08-Contribution/contributing-guide.md)
 
 ## Need Help?
 
