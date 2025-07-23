@@ -61,6 +61,15 @@ export class OAuthCallbackSecurityService {
   private readonly REQUIRED_STATE_FIELDS = ['tenantId', 'integrationId', 'userId', 'timestamp', 'nonce'];
   private readonly MIN_NONCE_LENGTH = 16;
   
+  // Redirect URI security configuration
+  private readonly ALLOWED_REDIRECT_HOSTS = [
+    'localhost',
+    '127.0.0.1',
+    // Add production domains here when deployed
+  ];
+  private readonly ALLOWED_REDIRECT_SCHEMES = ['http', 'https'];
+  private readonly CALLBACK_PATH = '/api/v1/oauth/callback';
+  
   constructor() {
     this.cloudIntegrationsService = new CloudIntegrationsService();
     this.cloudProviderService = new CloudProviderService();
@@ -334,6 +343,7 @@ export class OAuthCallbackSecurityService {
       'VERIFICATION_ERROR': 'Access verification failed',
       'PROVIDER_ERROR': 'Authentication failed',
       'MISSING_PARAMETERS': 'Invalid request',
+      'INVALID_REDIRECT_URI': 'Invalid redirect configuration',
       'INTERNAL_ERROR': 'An error occurred'
     };
 
@@ -341,6 +351,74 @@ export class OAuthCallbackSecurityService {
     const redirectUrl = `/oauth/error?message=${encodeURIComponent(message)}`;
 
     return { message, redirectUrl };
+  }
+
+  /**
+   * Validate redirect URI security
+   * 
+   * Ensures redirect URI is safe and matches expected patterns
+   */
+  validateRedirectUri(redirectUri: string, requestHost?: string): {
+    isValid: boolean;
+    issues?: string[];
+    normalizedUri?: string;
+  } {
+    const issues: string[] = [];
+
+    try {
+      // Parse the redirect URI
+      const url = new URL(redirectUri);
+
+      // 1. Validate scheme
+      if (!this.ALLOWED_REDIRECT_SCHEMES.includes(url.protocol.slice(0, -1))) {
+        issues.push(`Invalid redirect URI scheme: ${url.protocol}`);
+      }
+
+      // 2. Validate host
+      const isAllowedHost = this.ALLOWED_REDIRECT_HOSTS.some(allowedHost => {
+        return url.hostname === allowedHost || 
+               url.hostname.endsWith(`.${allowedHost}`);
+      });
+
+      if (!isAllowedHost) {
+        issues.push(`Redirect URI host not allowed: ${url.hostname}`);
+      }
+
+      // 3. Validate path
+      if (url.pathname !== this.CALLBACK_PATH) {
+        issues.push(`Invalid redirect URI path: ${url.pathname}`);
+      }
+
+      // 4. Ensure no query parameters or fragments (security)
+      if (url.search || url.hash) {
+        issues.push('Redirect URI must not contain query parameters or fragments');
+      }
+
+      // 5. If request host is provided, ensure it matches
+      if (requestHost && url.hostname !== requestHost) {
+        // Allow this but log it for monitoring
+        logInfo('Redirect URI host differs from request host', {
+          redirectHost: url.hostname,
+          requestHost,
+          component: 'oauth_callback_security'
+        });
+      }
+
+      const normalizedUri = `${url.protocol}//${url.hostname}${url.port ? `:${url.port}` : ''}${this.CALLBACK_PATH}`;
+
+      return {
+        isValid: issues.length === 0,
+        issues: issues.length > 0 ? issues : undefined,
+        normalizedUri
+      };
+
+    } catch (error) {
+      issues.push('Invalid redirect URI format');
+      return {
+        isValid: false,
+        issues
+      };
+    }
   }
 
   /**
