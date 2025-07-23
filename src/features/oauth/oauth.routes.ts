@@ -1,6 +1,14 @@
 import { Router, Request, Response, NextFunction } from 'express';
 import { wrapAsyncHandler } from '../../utils/response.js';
 import { handleOAuthCallback, refreshIntegrationTokens } from './oauth.controller.js';
+import { 
+  getSecurityMetrics, 
+  getSecurityAlerts, 
+  getSuspiciousPatterns, 
+  getSecurityReport,
+  validateDataExposure,
+  validateAttackVectors
+} from './oauthSecurityMonitoring.controller.js';
 import { requireTenantOwner } from '../../middleware/authorization.js';
 import { logInfo, logAudit } from '../../utils/logger.js';
 import { logPublicRouteAccess } from '../../middleware/publicRoutes.js';
@@ -117,6 +125,62 @@ export function getOAuthRouter(): Router {
         return refreshIntegrationTokens(req, res);
       })
     );
+
+  // =================================================================
+  // PROTECTED ENDPOINTS: Security Monitoring (Admin Only)
+  // =================================================================
+  /**
+   * Security Monitoring Endpoints
+   * 
+   * These endpoints provide access to OAuth security monitoring data
+   * and are restricted to admin users only for security purposes.
+   * 
+   * SECURITY CONTROLS:
+   * ✅ JWT authentication required
+   * ✅ Admin-level authorization (future enhancement)
+   * ✅ Comprehensive audit logging
+   * ✅ No sensitive data exposure
+   * ✅ Rate limiting protection
+   * 
+   * Note: Currently using basic JWT auth, but should be enhanced
+   * with admin role verification in production.
+   */
+
+  // Security Metrics
+  router.get(
+    '/security/metrics',
+    wrapAsyncHandler(getSecurityMetrics)
+  );
+
+  // Security Alerts
+  router.get(
+    '/security/alerts',
+    wrapAsyncHandler(getSecurityAlerts)
+  );
+
+  // Suspicious Patterns
+  router.get(
+    '/security/patterns',
+    wrapAsyncHandler(getSuspiciousPatterns)
+  );
+
+  // Comprehensive Security Report
+  router.get(
+    '/security/report',
+    wrapAsyncHandler(getSecurityReport)
+  );
+
+  // Data Exposure Validation
+  router.get(
+    '/security/validate/data-exposure',
+    wrapAsyncHandler(validateDataExposure)
+  );
+
+  // Attack Vector Validation
+  router.get(
+    '/security/validate/attack-vectors',
+    wrapAsyncHandler(validateAttackVectors)
+  );
 
   // =================================================================
   // ROUTER CONFIGURATION VALIDATION

@@ -3,6 +3,7 @@ import { CloudIntegrationsService } from '../cloud-integrations/cloudIntegration
 import { CloudProviderService } from '../cloud-providers/cloudProviders.service.js';
 import { OAuthService } from './oauth.service.js';
 import { OAuthCallbackSecurityService } from './oauthCallbackSecurity.service.js';
+import { OAuthSecurityMonitoringService } from './oauthSecurityMonitoring.service.js';
 import { jsonResponse } from '../../utils/response.js';
 import { logInfo, logError, logAudit } from '../../utils/logger.js';
 import { ApiError } from '../../utils/errors.js';
@@ -13,6 +14,7 @@ const cloudIntegrationsService = new CloudIntegrationsService();
 const cloudProviderService = new CloudProviderService();
 const oauthService = new OAuthService();
 const oauthSecurityService = new OAuthCallbackSecurityService();
+const oauthMonitoringService = new OAuthSecurityMonitoringService();
 
 /**
  * Handle OAuth callback from cloud providers
@@ -43,6 +45,22 @@ export async function handleOAuthCallback(req: Request, res: Response) {
     securityIssues: [] as string[]
   };
 
+  // Helper function to record failed attempts for monitoring
+  const recordFailedAttempt = () => {
+    oauthMonitoringService.recordCallbackAttempt({
+      timestamp: requestContext.timestamp,
+      ip: requestContext.ip,
+      userAgent: requestContext.userAgent,
+      success: false,
+      errorCode: auditData.errorCode,
+      tenantId: auditData.tenantId,
+      integrationId: auditData.integrationId,
+      userId: auditData.userId,
+      provider: auditData.provider,
+      securityIssues: auditData.securityIssues
+    });
+  };
+
   try {
     logInfo('OAuth callback received', {
       ip: requestContext.ip,
@@ -65,6 +83,8 @@ export async function handleOAuthCallback(req: Request, res: Response) {
         providerErrorDescription: error_description
       });
       
+      recordFailedAttempt();
+      
       // Use generic error message for security
       const errorResponse = oauthSecurityService.generateErrorResponse('PROVIDER_ERROR');
       return res.redirect(errorResponse.redirectUrl);
@@ -76,6 +96,8 @@ export async function handleOAuthCallback(req: Request, res: Response) {
       auditData.errorCode = 'MISSING_PARAMETERS';
       
       await oauthSecurityService.logCallbackAttempt(auditData);
+      
+      recordFailedAttempt();
       
       const errorResponse = oauthSecurityService.generateErrorResponse('INVALID_STATE');
       return res.redirect(errorResponse.redirectUrl);
@@ -92,6 +114,8 @@ export async function handleOAuthCallback(req: Request, res: Response) {
       auditData.errorCode = stateValidation.errorCode;
       
       await oauthSecurityService.logCallbackAttempt(auditData);
+      
+      recordFailedAttempt();
       
       const errorResponse = oauthSecurityService.generateErrorResponse(
         stateValidation.errorCode || 'INVALID_STATE'
@@ -118,6 +142,8 @@ export async function handleOAuthCallback(req: Request, res: Response) {
       
       await oauthSecurityService.logCallbackAttempt(auditData);
       
+      recordFailedAttempt();
+      
       const errorResponse = oauthSecurityService.generateErrorResponse(
         ownershipValidation.errorCode || 'VERIFICATION_ERROR'
       );
@@ -143,8 +169,39 @@ export async function handleOAuthCallback(req: Request, res: Response) {
     
     auditData.provider = provider.name;
     
-    // 7. Build the redirect URI that was used for the authorization request
+    // 7. Build and validate the redirect URI that was used for the authorization request
     const redirectUri = `${req.protocol}://${req.get('host')}/api/v1/oauth/callback`;
+    
+    // Validate redirect URI security
+    const redirectValidation = oauthSecurityService.validateRedirectUri(
+      redirectUri,
+      req.get('host')
+    );
+    
+    if (!redirectValidation.isValid) {
+      auditData.securityIssues.push(...(redirectValidation.issues || []));
+      auditData.errorCode = 'INVALID_REDIRECT_URI';
+      
+      logError('Invalid redirect URI detected', {
+        redirectUri,
+        requestHost: req.get('host'),
+        issues: redirectValidation.issues,
+        ip: requestContext.ip,
+        userAgent: requestContext.userAgent
+      });
+      
+      await oauthSecurityService.logCallbackAttempt(auditData, {
+        redirectUriIssues: redirectValidation.issues
+      });
+      
+      recordFailedAttempt();
+      
+      const errorResponse = oauthSecurityService.generateErrorResponse('INVALID_REDIRECT_URI');
+      return res.redirect(errorResponse.redirectUrl);
+    }
+    
+    // Use the normalized redirect URI for security
+    const normalizedRedirectUri = redirectValidation.normalizedUri || redirectUri;
     
     // 8. Exchange the code for tokens
     logInfo('Exchanging OAuth code for tokens', {
@@ -156,7 +213,7 @@ export async function handleOAuthCallback(req: Request, res: Response) {
     const tokenResponse = await oauthService.exchangeCodeForTokens(
       code as string,
       provider,
-      redirectUri
+      normalizedRedirectUri
     );
     
     // 9. Update the integration with the tokens
@@ -177,6 +234,18 @@ export async function handleOAuthCallback(req: Request, res: Response) {
       providerId: provider._id.toString(),
       scopesGranted: tokenResponse.scopesGranted,
       tokenExpiresIn: tokenResponse.expiresIn
+    });
+    
+    // Record successful attempt for security monitoring
+    oauthMonitoringService.recordCallbackAttempt({
+      timestamp: requestContext.timestamp,
+      ip: requestContext.ip,
+      userAgent: requestContext.userAgent,
+      success: true,
+      tenantId: stateData.tenantId,
+      integrationId: stateData.integrationId,
+      userId: stateData.userId,
+      provider: provider.name
     });
     
     logAudit('oauth.callback.success', stateData.userId, stateData.integrationId, {
@@ -208,6 +277,8 @@ export async function handleOAuthCallback(req: Request, res: Response) {
     await oauthSecurityService.logCallbackAttempt(auditData, {
       internalError: error instanceof Error ? error.message : String(error)
     });
+    
+    recordFailedAttempt();
     
     // Return generic error for security
     const errorResponse = oauthSecurityService.generateErrorResponse('VALIDATION_ERROR');
