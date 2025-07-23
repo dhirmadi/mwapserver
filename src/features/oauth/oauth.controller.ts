@@ -2,88 +2,216 @@ import { Request, Response } from 'express';
 import { CloudIntegrationsService } from '../cloud-integrations/cloudIntegrations.service.js';
 import { CloudProviderService } from '../cloud-providers/cloudProviders.service.js';
 import { OAuthService } from './oauth.service.js';
+import { OAuthCallbackSecurityService } from './oauthCallbackSecurity.service.js';
 import { jsonResponse } from '../../utils/response.js';
 import { logInfo, logError, logAudit } from '../../utils/logger.js';
 import { ApiError } from '../../utils/errors.js';
 import { getUserFromToken } from '../../utils/auth.js';
+import { logPublicRouteAccess } from '../../middleware/publicRoutes.js';
 
 const cloudIntegrationsService = new CloudIntegrationsService();
 const cloudProviderService = new CloudProviderService();
 const oauthService = new OAuthService();
+const oauthSecurityService = new OAuthCallbackSecurityService();
 
 /**
  * Handle OAuth callback from cloud providers
  * This endpoint is called by the cloud provider after the user authorizes the application
+ * 
+ * Enhanced with comprehensive security controls:
+ * - State parameter validation with timestamp and nonce verification
+ * - Integration ownership verification
+ * - Replay attack prevention
+ * - Detailed audit logging
+ * - Generic error messages for security
  */
 export async function handleOAuthCallback(req: Request, res: Response) {
+  const requestContext = {
+    ip: req.ip || 'unknown',
+    userAgent: req.get('User-Agent') || 'unknown',
+    timestamp: Date.now()
+  };
+
+  // Initialize audit data
+  const auditData: any = {
+    ip: requestContext.ip,
+    userAgent: requestContext.userAgent,
+    timestamp: requestContext.timestamp,
+    state: req.query.state as string,
+    code: req.query.code as string,
+    success: false,
+    securityIssues: [] as string[]
+  };
+
   try {
-    // 1. Extract parameters from the request
+    logInfo('OAuth callback received', {
+      ip: requestContext.ip,
+      userAgent: requestContext.userAgent,
+      hasCode: !!req.query.code,
+      hasState: !!req.query.state,
+      hasError: !!req.query.error
+    });
+
+    // 1. Extract and validate parameters
     const { code, state, error, error_description } = req.query;
     
-    // 2. Handle OAuth errors
+    // 2. Handle OAuth provider errors
     if (error) {
-      logError(`OAuth error: ${error}${error_description ? ` - ${error_description}` : ''}`);
-      return res.redirect(`/oauth/error?message=${encodeURIComponent(error as string)}`);
+      auditData.errorCode = error as string;
+      auditData.securityIssues.push(`OAuth provider error: ${error}`);
+      
+      await oauthSecurityService.logCallbackAttempt(auditData, {
+        providerError: error,
+        providerErrorDescription: error_description
+      });
+      
+      // Use generic error message for security
+      const errorResponse = oauthSecurityService.generateErrorResponse('PROVIDER_ERROR');
+      return res.redirect(errorResponse.redirectUrl);
     }
     
+    // 3. Validate required parameters
     if (!code || !state) {
-      logError('Missing code or state parameter in OAuth callback');
-      return res.redirect('/oauth/error?message=Missing+required+parameters');
+      auditData.securityIssues.push('Missing required OAuth parameters');
+      auditData.errorCode = 'MISSING_PARAMETERS';
+      
+      await oauthSecurityService.logCallbackAttempt(auditData);
+      
+      const errorResponse = oauthSecurityService.generateErrorResponse('INVALID_STATE');
+      return res.redirect(errorResponse.redirectUrl);
     }
     
-    // 3. Parse and validate state parameter
-    let stateData;
-    try {
-      stateData = JSON.parse(Buffer.from(state as string, 'base64').toString());
-    } catch (error) {
-      logError('Failed to parse state parameter', error);
-      return res.redirect('/oauth/error?message=Invalid+state+parameter');
+    // 4. Enhanced state parameter validation
+    const stateValidation = await oauthSecurityService.validateStateParameter(
+      state as string,
+      requestContext
+    );
+    
+    if (!stateValidation.isValid) {
+      auditData.securityIssues.push(...(stateValidation.securityIssues || []));
+      auditData.errorCode = stateValidation.errorCode;
+      
+      await oauthSecurityService.logCallbackAttempt(auditData);
+      
+      const errorResponse = oauthSecurityService.generateErrorResponse(
+        stateValidation.errorCode || 'INVALID_STATE'
+      );
+      return res.redirect(errorResponse.redirectUrl);
     }
     
-    const { tenantId, integrationId, userId } = stateData;
+    const stateData = stateValidation.stateData!;
     
-    if (!tenantId || !integrationId || !userId) {
-      logError('Invalid state parameter: missing required fields');
-      return res.redirect('/oauth/error?message=Invalid+state+parameter');
+    // Update audit data with state information
+    auditData.tenantId = stateData.tenantId;
+    auditData.integrationId = stateData.integrationId;
+    auditData.userId = stateData.userId;
+    
+    // 5. Verify integration ownership
+    const ownershipValidation = await oauthSecurityService.verifyIntegrationOwnership(
+      stateData,
+      requestContext
+    );
+    
+    if (!ownershipValidation.isValid) {
+      auditData.securityIssues.push(...(ownershipValidation.securityIssues || []));
+      auditData.errorCode = ownershipValidation.errorCode;
+      
+      await oauthSecurityService.logCallbackAttempt(auditData);
+      
+      const errorResponse = oauthSecurityService.generateErrorResponse(
+        ownershipValidation.errorCode || 'VERIFICATION_ERROR'
+      );
+      return res.redirect(errorResponse.redirectUrl);
     }
     
-    logInfo(`Processing OAuth callback for integration ${integrationId} in tenant ${tenantId}`);
+    logInfo('OAuth callback security validation passed', {
+      tenantId: stateData.tenantId,
+      integrationId: stateData.integrationId,
+      userId: stateData.userId,
+      stateAge: requestContext.timestamp - stateData.timestamp
+    });
     
-    // 4. Get the integration and provider
-    const integration = await cloudIntegrationsService.findById(integrationId, tenantId);
-    const provider = await cloudProviderService.findById(integration.providerId.toString(), true);
+    // 6. Get the integration and provider (already validated in ownership check)
+    const integration = await cloudIntegrationsService.findById(
+      stateData.integrationId,
+      stateData.tenantId
+    );
+    const provider = await cloudProviderService.findById(
+      integration.providerId.toString(),
+      true
+    );
     
-    // 5. Build the redirect URI that was used for the authorization request
+    auditData.provider = provider.name;
+    
+    // 7. Build the redirect URI that was used for the authorization request
     const redirectUri = `${req.protocol}://${req.get('host')}/api/v1/oauth/callback`;
     
-    // 6. Exchange the code for tokens
+    // 8. Exchange the code for tokens
+    logInfo('Exchanging OAuth code for tokens', {
+      provider: provider.name,
+      tenantId: stateData.tenantId,
+      integrationId: stateData.integrationId
+    });
+    
     const tokenResponse = await oauthService.exchangeCodeForTokens(
       code as string,
       provider,
       redirectUri
     );
     
-    // 7. Update the integration with the tokens
+    // 9. Update the integration with the tokens
     await cloudIntegrationsService.updateTokens(
-      integrationId,
-      tenantId,
+      stateData.integrationId,
+      stateData.tenantId,
       tokenResponse.accessToken,
       tokenResponse.refreshToken,
       tokenResponse.expiresIn,
-      userId,
+      stateData.userId,
       tokenResponse.scopesGranted
     );
     
-    logAudit('oauth.callback.success', userId, integrationId, {
-      tenantId,
-      providerId: provider._id.toString()
+    // 10. Success - log audit and redirect
+    auditData.success = true;
+    
+    await oauthSecurityService.logCallbackAttempt(auditData, {
+      providerId: provider._id.toString(),
+      scopesGranted: tokenResponse.scopesGranted,
+      tokenExpiresIn: tokenResponse.expiresIn
     });
     
-    // 8. Redirect to success page
-    return res.redirect(`/oauth/success?tenantId=${tenantId}&integrationId=${integrationId}`);
+    logAudit('oauth.callback.success', stateData.userId, stateData.integrationId, {
+      tenantId: stateData.tenantId,
+      providerId: provider._id.toString(),
+      provider: provider.name,
+      scopesGranted: tokenResponse.scopesGranted,
+      ip: requestContext.ip,
+      userAgent: requestContext.userAgent
+    });
+    
+    // 11. Redirect to success page
+    return res.redirect(`/oauth/success?tenantId=${stateData.tenantId}&integrationId=${stateData.integrationId}`);
+    
   } catch (error) {
-    logError('OAuth callback error', error);
-    return res.redirect('/oauth/error?message=Failed+to+process+OAuth+callback');
+    // Handle unexpected errors with comprehensive logging
+    auditData.securityIssues.push('Internal processing error');
+    auditData.errorCode = 'INTERNAL_ERROR';
+    
+    logError('OAuth callback processing error', {
+      error: error instanceof Error ? error.message : String(error),
+      stack: error instanceof Error ? error.stack : undefined,
+      ip: requestContext.ip,
+      userAgent: requestContext.userAgent,
+      tenantId: auditData.tenantId,
+      integrationId: auditData.integrationId
+    });
+    
+    await oauthSecurityService.logCallbackAttempt(auditData, {
+      internalError: error instanceof Error ? error.message : String(error)
+    });
+    
+    // Return generic error for security
+    const errorResponse = oauthSecurityService.generateErrorResponse('VALIDATION_ERROR');
+    return res.redirect(errorResponse.redirectUrl);
   }
 }
 

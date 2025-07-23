@@ -32,7 +32,41 @@ Authorization: Bearer <jwt_token>
 
 **Public Endpoints:**
 - `GET /health` - Health check endpoint
-- `GET /api/v1/oauth/callback` - OAuth callback endpoint
+- `GET /api/v1/oauth/callback` - OAuth callback endpoint (Enhanced Security)
+
+### OAuth Callback Security Architecture
+
+The OAuth callback endpoint implements multi-layered security controls to protect against common attack vectors while maintaining compatibility with external OAuth providers.
+
+#### Security Layers
+
+1. **Public Route Registry**
+   - Explicit route registration with security documentation
+   - External caller verification and monitoring
+   - Comprehensive audit logging for all access attempts
+
+2. **State Parameter Validation**
+   - Cryptographic state parameter verification
+   - Timestamp validation with 10-minute expiration window
+   - Nonce validation (16+ characters, alphanumeric)
+   - ObjectId format verification for tenant/integration references
+   - Required field structure validation
+
+3. **Integration Ownership Verification**
+   - Integration ownership verification with tenant access control
+   - Replay attack detection through existing token validation
+   - Provider availability verification
+   - Cross-tenant access prevention
+
+4. **Generic Error Handling**
+   - Security-focused error responses to prevent information disclosure
+   - Uniform error handling across all failure scenarios
+   - Comprehensive internal logging for security analysis
+
+5. **Comprehensive Monitoring**
+   - Real-time security issue tracking and classification
+   - Performance and availability monitoring
+   - Success/failure rate analysis and alerting
 
 ### Authorization Roles
 The API implements a hierarchical role-based access control system:
@@ -510,24 +544,136 @@ Get files associated with a project from connected cloud providers.
 
 ## 🔑 OAuth API
 
-### OAuth Callback
-Handle OAuth authorization callbacks from cloud providers.
+### OAuth Callback (Enhanced Security)
+Handle OAuth authorization callbacks from cloud providers with comprehensive security controls.
 
 **Endpoint:** `GET /api/v1/oauth/callback`  
-**Authentication:** Not required (public endpoint)  
-**Authorization:** None
+**Authentication:** Not required (public endpoint with enhanced security)  
+**Authorization:** State parameter validation required
+
+**Security Features:**
+- ✅ Enhanced state parameter validation with cryptographic verification
+- ✅ Integration ownership verification with tenant access control
+- ✅ Timestamp validation with 10-minute expiration window
+- ✅ Replay attack prevention through nonce validation
+- ✅ Comprehensive audit logging with security issue tracking
+- ✅ Generic error responses to prevent information disclosure
 
 **Query Parameters:**
-- `code: string` - Authorization code from provider
-- `state: string` - State parameter containing integration info
-- `error?: string` - Error code if authorization failed
+- `code: string` - Authorization code from OAuth provider
+- `state: string` - Base64-encoded state parameter containing integration context
+- `error?: string` - Error code if OAuth authorization failed
+- `error_description?: string` - Detailed error description from provider
+
+**State Parameter Structure:**
+The state parameter must be a Base64-encoded JSON object with the following structure:
+```typescript
+{
+  tenantId: string;        // MongoDB ObjectId of the tenant
+  integrationId: string;   // MongoDB ObjectId of the integration
+  userId: string;          // Auth0 user ID
+  timestamp: number;       // Unix timestamp when state was created
+  nonce: string;          // Random string (min 16 characters, alphanumeric)
+  redirectUri?: string;   // Optional custom redirect URI
+}
+```
+
+**Success Flow:**
+1. External OAuth provider redirects user to callback endpoint
+2. Enhanced security validation of state parameter structure and timing
+3. Integration ownership verification against tenant access control
+4. OAuth authorization code exchange for access/refresh tokens
+5. Token storage and integration activation in database
+6. Redirect to success page with minimal information
+
+**Error Handling:**
+All errors result in generic responses to prevent information disclosure:
+- Invalid state parameter → "Invalid request parameters"
+- Expired state → "Request has expired, please try again"
+- Integration not found → "Integration not found"
+- Replay attack detected → "Integration already configured"
+- Provider error → "Authentication failed"
+
+**Success Response:**
+Redirects to: `/oauth/success?tenantId={tenantId}&integrationId={integrationId}`
+
+**Error Response:**
+Redirects to: `/oauth/error?message={encoded_message}`
+
+**Security Monitoring:**
+All callback attempts are logged with comprehensive context:
+```typescript
+{
+  event: 'oauth.callback.attempt',
+  success: boolean,
+  ip: string,
+  userAgent: string,
+  tenantId?: string,
+  integrationId?: string,
+  userId?: string,
+  errorCode?: string,
+  securityIssues?: string[],
+  stateAge?: number,
+  provider?: string
+}
+```
 
 ### Refresh Integration Tokens
 Manually refresh OAuth tokens for a specific integration.
 
 **Endpoint:** `POST /api/v1/oauth/tenants/:tenantId/integrations/:integrationId/refresh`  
-**Authentication:** Required  
+**Authentication:** Required (JWT Bearer token)  
 **Authorization:** Tenant owner
+
+**Path Parameters:**
+- `tenantId: string` - Tenant ID (must be owned by authenticated user)
+- `integrationId: string` - Integration ID (must belong to specified tenant)
+
+**Request Body:** None
+
+**Response Schema:**
+```typescript
+{
+  success: true,
+  data: {
+    _id: string;                    // Integration ID
+    tenantId: string;               // Tenant ID  
+    providerId: string;             // Cloud provider ID
+    status: 'active' | 'expired' | 'revoked' | 'error';
+    connectedAt: string;            // ISO date when tokens were refreshed
+    scopesGranted: string[];        // OAuth scopes granted
+    accessToken: '[REDACTED]';     // Access token (redacted for security)
+    refreshToken: '[REDACTED]';    // Refresh token (redacted for security)
+    tokenExpiresAt: string;         // ISO date when access token expires
+    metadata: Record<string, any>; // Provider-specific metadata
+    createdAt: string;              // ISO date when integration was created
+    updatedAt: string;              // ISO date when integration was last updated
+    createdBy: string;              // Auth0 user ID who created integration
+  }
+}
+```
+
+**Error Responses:**
+- `401 Unauthorized` - Invalid or missing JWT token
+- `403 Forbidden` - User is not owner of specified tenant
+- `404 Not Found` - Integration not found or doesn't belong to tenant
+- `400 Bad Request` - Integration doesn't have refresh token
+- `500 Internal Server Error` - Token refresh failed with provider
+
+**Security Features:**
+- ✅ JWT authentication required
+- ✅ Tenant ownership verification  
+- ✅ Integration access control validation
+- ✅ Audit logging of all refresh attempts
+- ✅ Rate limiting protection
+- ✅ Token redaction in responses
+
+**Usage Example:**
+```bash
+curl -X POST \
+  -H "Authorization: Bearer $JWT_TOKEN" \
+  https://api.mwap.dev/api/v1/oauth/tenants/641f4411f24b4fcac1b1501b/integrations/641f4411f24b4fcac1b1501c/refresh
+```
 
 ## 🏥 Health Check
 
