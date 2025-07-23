@@ -53,7 +53,7 @@ export class OpenAPIFeatureService {
       throw new ApiError(
         'Failed to generate OpenAPI specification',
         500,
-        ERROR_CODES.INTERNAL_ERROR
+        ERROR_CODES.SERVER.INTERNAL_ERROR
       );
     }
   }
@@ -82,7 +82,7 @@ export class OpenAPIFeatureService {
       throw new ApiError(
         'Failed to generate OpenAPI information',
         500,
-        ERROR_CODES.INTERNAL_ERROR
+        ERROR_CODES.SERVER.INTERNAL_ERROR
       );
     }
   }
@@ -108,7 +108,7 @@ export class OpenAPIFeatureService {
       throw new ApiError(
         'Failed to get cache status',
         500,
-        ERROR_CODES.INTERNAL_ERROR
+        ERROR_CODES.SERVER.INTERNAL_ERROR
       );
     }
   }
@@ -129,7 +129,7 @@ export class OpenAPIFeatureService {
       throw new ApiError(
         'Failed to invalidate cache',
         500,
-        ERROR_CODES.INTERNAL_ERROR
+        ERROR_CODES.SERVER.INTERNAL_ERROR
       );
     }
   }

@@ -5,6 +5,7 @@
  */
 
 import { Request, Response } from 'express';
+import { AuthenticatedRequest } from '../../types/express.js';
 import { OpenAPIFeatureService } from './openapi.service.js';
 import { openAPIValidationService } from './validation.service.js';
 import { openAPIPerformanceService } from './performance.service.js';
@@ -28,8 +29,7 @@ export async function getOpenAPISpec(req: Request, res: Response) {
     const user = getUserFromToken(req);
     const query = validateWithSchema(openAPIQuerySchema, req.query);
     
-    logAudit('OpenAPI specification requested', {
-      userId: user.sub,
+    logAudit('OpenAPI specification requested', user.sub, 'openapi_spec', {
       userEmail: user.email,
       format: query.format,
       includeExamples: query.includeExamples,
@@ -61,10 +61,10 @@ export async function getOpenAPISpec(req: Request, res: Response) {
     });
     
     if (error instanceof ApiError) {
-      return errorResponse(res, error.statusCode, error.message, error.code);
+      return errorResponse(res, error);
     }
     
-    return errorResponse(res, 500, 'Internal server error', ERROR_CODES.INTERNAL_ERROR);
+    return errorResponse(res, new ApiError('Internal server error', 500, ERROR_CODES.SERVER.INTERNAL_ERROR));
   }
 }
 
@@ -76,8 +76,7 @@ export async function getOpenAPIInfo(req: Request, res: Response) {
   try {
     const user = getUserFromToken(req);
     
-    logAudit('OpenAPI info requested', {
-      userId: user.sub,
+    logAudit('OpenAPI info requested', user.sub, 'openapi_info', {
       userEmail: user.email,
       ip: req.ip,
       userAgent: req.get('User-Agent')
@@ -95,10 +94,10 @@ export async function getOpenAPIInfo(req: Request, res: Response) {
     });
     
     if (error instanceof ApiError) {
-      return errorResponse(res, error.statusCode, error.message, error.code);
+      return errorResponse(res, error);
     }
     
-    return errorResponse(res, 500, 'Internal server error', ERROR_CODES.INTERNAL_ERROR);
+    return errorResponse(res, new ApiError('Internal server error', 500, ERROR_CODES.SERVER.INTERNAL_ERROR));
   }
 }
 
@@ -125,10 +124,10 @@ export async function getCacheStatus(req: Request, res: Response) {
     });
     
     if (error instanceof ApiError) {
-      return errorResponse(res, error.statusCode, error.message, error.code);
+      return errorResponse(res, error);
     }
     
-    return errorResponse(res, 500, 'Internal server error', ERROR_CODES.INTERNAL_ERROR);
+    return errorResponse(res, new ApiError('Internal server error', 500, ERROR_CODES.SERVER.INTERNAL_ERROR));
   }
 }
 
@@ -140,7 +139,7 @@ export async function invalidateCache(req: Request, res: Response) {
   try {
     const user = getUserFromToken(req);
     
-    logAudit('Cache invalidation requested', {
+    logAudit('Cache invalidation requested', 'system', 'Cache invalidation requested', {
       userId: user.sub,
       userEmail: user.email,
       ip: req.ip,
@@ -160,10 +159,10 @@ export async function invalidateCache(req: Request, res: Response) {
     });
     
     if (error instanceof ApiError) {
-      return errorResponse(res, error.statusCode, error.message, error.code);
+      return errorResponse(res, error);
     }
     
-    return errorResponse(res, 500, 'Internal server error', ERROR_CODES.INTERNAL_ERROR);
+    return errorResponse(res, new ApiError('Internal server error', 500, ERROR_CODES.SERVER.INTERNAL_ERROR));
   }
 }
 
@@ -175,7 +174,7 @@ export async function validateSpecification(req: Request, res: Response) {
   try {
     const user = getUserFromToken(req);
     
-    logAudit('OpenAPI validation requested', {
+    logAudit('OpenAPI validation requested', 'system', 'OpenAPI validation requested', {
       userId: user.sub,
       userEmail: user.email,
       ip: req.ip,
@@ -201,10 +200,10 @@ export async function validateSpecification(req: Request, res: Response) {
     });
     
     if (error instanceof ApiError) {
-      return errorResponse(res, error.statusCode, error.message, error.code);
+      return errorResponse(res, error);
     }
     
-    return errorResponse(res, 500, 'Internal server error', ERROR_CODES.INTERNAL_ERROR);
+    return errorResponse(res, new ApiError('Internal server error', 500, ERROR_CODES.SERVER.INTERNAL_ERROR));
   }
 }
 
@@ -269,7 +268,7 @@ export async function getValidationHistory(req: Request, res: Response) {
     const user = getUserFromToken(req);
     const limit = parseInt(req.query.limit as string) || 10;
     
-    logAudit('OpenAPI validation history requested', {
+    logAudit('OpenAPI validation history requested', 'system', 'OpenAPI validation history requested', {
       userId: user.sub,
       userEmail: user.email,
       limit,
@@ -290,10 +289,10 @@ export async function getValidationHistory(req: Request, res: Response) {
     });
     
     if (error instanceof ApiError) {
-      return errorResponse(res, error.statusCode, error.message, error.code);
+      return errorResponse(res, error);
     }
     
-    return errorResponse(res, 500, 'Internal server error', ERROR_CODES.INTERNAL_ERROR);
+    return errorResponse(res, new ApiError('Internal server error', 500, ERROR_CODES.SERVER.INTERNAL_ERROR));
   }
 }
 
@@ -308,7 +307,7 @@ export async function generateCIReport(req: Request, res: Response) {
     const failOnErrors = req.query.failOnErrors === 'true';
     const failOnWarnings = req.query.failOnWarnings === 'true';
     
-    logAudit('OpenAPI CI report requested', {
+    logAudit('OpenAPI CI report requested', 'system', 'OpenAPI CI report requested', {
       userId: user.sub,
       userEmail: user.email,
       format,
@@ -345,10 +344,10 @@ export async function generateCIReport(req: Request, res: Response) {
     });
     
     if (error instanceof ApiError) {
-      return errorResponse(res, error.statusCode, error.message, error.code);
+      return errorResponse(res, error);
     }
     
-    return errorResponse(res, 500, 'Internal server error', ERROR_CODES.INTERNAL_ERROR);
+    return errorResponse(res, new ApiError('Internal server error', 500, ERROR_CODES.SERVER.INTERNAL_ERROR));
   }
 }
 
@@ -360,7 +359,7 @@ export async function monitorValidation(req: Request, res: Response) {
   try {
     const user = getUserFromToken(req);
     
-    logAudit('OpenAPI validation monitoring triggered', {
+    logAudit('OpenAPI validation monitoring triggered', 'system', 'OpenAPI validation monitoring triggered', {
       userId: user.sub,
       userEmail: user.email,
       ip: req.ip
@@ -384,10 +383,10 @@ export async function monitorValidation(req: Request, res: Response) {
     });
     
     if (error instanceof ApiError) {
-      return errorResponse(res, error.statusCode, error.message, error.code);
+      return errorResponse(res, error);
     }
     
-    return errorResponse(res, 500, 'Internal server error', ERROR_CODES.INTERNAL_ERROR);
+    return errorResponse(res, new ApiError('Internal server error', 500, ERROR_CODES.SERVER.INTERNAL_ERROR));
   }
 }
 /**
@@ -398,7 +397,7 @@ export async function getPerformanceMetrics(req: Request, res: Response) {
   try {
     const user = getUserFromToken(req);
     
-    logAudit('OpenAPI performance metrics requested', {
+    logAudit('OpenAPI performance metrics requested', 'system', 'OpenAPI performance metrics requested', {
       userId: user.sub,
       userEmail: user.email,
       ip: req.ip
@@ -417,10 +416,10 @@ export async function getPerformanceMetrics(req: Request, res: Response) {
     });
     
     if (error instanceof ApiError) {
-      return errorResponse(res, error.statusCode, error.message, error.code);
+      return errorResponse(res, error);
     }
     
-    return errorResponse(res, 500, 'Internal server error', ERROR_CODES.INTERNAL_ERROR);
+    return errorResponse(res, new ApiError('Internal server error', 500, ERROR_CODES.SERVER.INTERNAL_ERROR));
   }
 }
 
@@ -433,7 +432,7 @@ export async function runPerformanceBenchmarks(req: Request, res: Response) {
     const user = getUserFromToken(req);
     const iterations = parseInt(req.body.iterations) || 10;
     
-    logAudit('OpenAPI performance benchmarks requested', {
+    logAudit('OpenAPI performance benchmarks requested', 'system', 'OpenAPI performance benchmarks requested', {
       userId: user.sub,
       userEmail: user.email,
       iterations,
@@ -454,10 +453,10 @@ export async function runPerformanceBenchmarks(req: Request, res: Response) {
     });
     
     if (error instanceof ApiError) {
-      return errorResponse(res, error.statusCode, error.message, error.code);
+      return errorResponse(res, error);
     }
     
-    return errorResponse(res, 500, 'Internal server error', ERROR_CODES.INTERNAL_ERROR);
+    return errorResponse(res, new ApiError('Internal server error', 500, ERROR_CODES.SERVER.INTERNAL_ERROR));
   }
 }
 
@@ -469,7 +468,7 @@ export async function optimizeCache(req: Request, res: Response) {
   try {
     const user = getUserFromToken(req);
     
-    logAudit('OpenAPI cache optimization requested', {
+    logAudit('OpenAPI cache optimization requested', 'system', 'OpenAPI cache optimization requested', {
       userId: user.sub,
       userEmail: user.email,
       ip: req.ip
@@ -489,10 +488,10 @@ export async function optimizeCache(req: Request, res: Response) {
     });
     
     if (error instanceof ApiError) {
-      return errorResponse(res, error.statusCode, error.message, error.code);
+      return errorResponse(res, error);
     }
     
-    return errorResponse(res, 500, 'Internal server error', ERROR_CODES.INTERNAL_ERROR);
+    return errorResponse(res, new ApiError('Internal server error', 500, ERROR_CODES.SERVER.INTERNAL_ERROR));
   }
 }
 
@@ -504,7 +503,7 @@ export async function performSecurityAudit(req: Request, res: Response) {
   try {
     const user = getUserFromToken(req);
     
-    logAudit('OpenAPI security audit requested', {
+    logAudit('OpenAPI security audit requested', 'system', 'OpenAPI security audit requested', {
       userId: user.sub,
       userEmail: user.email,
       ip: req.ip
@@ -522,10 +521,10 @@ export async function performSecurityAudit(req: Request, res: Response) {
     });
     
     if (error instanceof ApiError) {
-      return errorResponse(res, error.statusCode, error.message, error.code);
+      return errorResponse(res, error);
     }
     
-    return errorResponse(res, 500, 'Internal server error', ERROR_CODES.INTERNAL_ERROR);
+    return errorResponse(res, new ApiError('Internal server error', 500, ERROR_CODES.SERVER.INTERNAL_ERROR));
   }
 }
 
@@ -580,10 +579,10 @@ export async function getSanitizedSpecification(req: Request, res: Response) {
     });
     
     if (error instanceof ApiError) {
-      return errorResponse(res, error.statusCode, error.message, error.code);
+      return errorResponse(res, error);
     }
     
-    return errorResponse(res, 500, 'Internal server error', ERROR_CODES.INTERNAL_ERROR);
+    return errorResponse(res, new ApiError('Internal server error', 500, ERROR_CODES.SERVER.INTERNAL_ERROR));
   }
 }
 
@@ -596,7 +595,7 @@ export async function getSecurityAuditLog(req: Request, res: Response) {
     const user = getUserFromToken(req);
     const limit = parseInt(req.query.limit as string) || 100;
     
-    logAudit('OpenAPI security audit log requested', {
+    logAudit('OpenAPI security audit log requested', 'system', 'OpenAPI security audit log requested', {
       userId: user.sub,
       userEmail: user.email,
       limit,
@@ -617,9 +616,9 @@ export async function getSecurityAuditLog(req: Request, res: Response) {
     });
     
     if (error instanceof ApiError) {
-      return errorResponse(res, error.statusCode, error.message, error.code);
+      return errorResponse(res, error);
     }
     
-    return errorResponse(res, 500, 'Internal server error', ERROR_CODES.INTERNAL_ERROR);
+    return errorResponse(res, new ApiError('Internal server error', 500, ERROR_CODES.SERVER.INTERNAL_ERROR));
   }
 }

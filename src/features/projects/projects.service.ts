@@ -31,7 +31,7 @@ export class ProjectsService {
       
       // Find project and verify user is a member
       const project = await this.collection.findOne({
-        _id: projectId,
+        _id: projectId.toString(),
         'members.userId': userId
       });
       
@@ -73,8 +73,8 @@ export class ProjectsService {
       
       // Verify cloud integration exists and belongs to the tenant
       const cloudIntegration = await getDB().collection('cloudProviderIntegrations').findOne({
-        _id: cloudIntegrationId,
-        tenantId: tenantId
+        _id: cloudIntegrationId.toString(),
+        tenantId: tenantId.toString()
       });
       
       if (!cloudIntegration) {
@@ -92,9 +92,9 @@ export class ProjectsService {
       const now = new Date();
       const project: Project = {
         _id: new ObjectId(),
-        tenantId,
-        projectTypeId,
-        cloudIntegrationId,
+        tenantId: tenantId.toString(),
+        projectTypeId: projectTypeId.toString(),
+        cloudIntegrationId: cloudIntegrationId.toString(),
         folderpath: data.folderpath,
         name: data.name,
         description: data.description,

@@ -152,7 +152,7 @@ export class OpenAPISecurityService {
       });
 
       // Audit log the security check
-      logAudit('OpenAPI security audit performed', {
+      logAudit('OpenAPI security audit performed', 'system', 'OpenAPI security audit performed', {
         secure: result.secure,
         vulnerabilityCount: result.vulnerabilities.length,
         criticalVulnerabilities: result.vulnerabilities.filter(v => v.severity === 'critical').length,

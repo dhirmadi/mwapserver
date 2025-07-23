@@ -371,7 +371,7 @@ export class OpenAPIPerformanceService {
       }
 
       // Audit log for monitoring
-      logAudit('Performance monitoring completed', {
+      logAudit('Performance monitoring completed', 'system', 'Performance monitoring completed', {
         generationTime: metrics.generationTime,
         cacheHitRate: metrics.cacheHitRate,
         memoryUsage: Math.round(metrics.memoryUsage / 1024) + 'KB',
