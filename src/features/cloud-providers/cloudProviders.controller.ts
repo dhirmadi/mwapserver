@@ -45,6 +45,11 @@ export async function createCloudProvider(req: Request, res: Response) {
   try {
     const user = getUserFromToken(req);
     const data = validateWithSchema(createCloudProviderSchema, req.body);
+    // Add default values for optional parameters
+    if (!data.grantType) data.grantType = 'authorization_code';
+    if (!data.tokenMethod) data.tokenMethod = 'POST';
+    if (data.recursive === undefined) data.recursive = false;
+    if (data.archived === undefined) data.archived = false;
     const cloudProvider = await cloudProviderService.create(data, user.sub);
     return jsonResponse(res, 201, cloudProvider);
   } catch (error) {
@@ -59,6 +64,11 @@ export async function updateCloudProvider(req: Request, res: Response) {
   try {
     const user = getUserFromToken(req);
     const data = validateWithSchema(updateCloudProviderSchema, req.body);
+    // Add default values for optional parameters
+    if (!data.grantType) data.grantType = 'authorization_code';
+    if (!data.tokenMethod) data.tokenMethod = 'POST';
+    if (data.recursive === undefined) data.recursive = false;
+    if (data.archived === undefined) data.archived = false;
     const cloudProvider = await cloudProviderService.update(req.params.id, data, user.sub);
     return jsonResponse(res, 200, cloudProvider);
   } catch (error) {

@@ -121,7 +121,7 @@ export class OpenAPIValidationService {
       });
 
       // Audit log for monitoring
-      logAudit('OpenAPI specification validated', {
+      logAudit('OpenAPI specification validated', 'system', 'OpenAPI specification validated', {
         valid: result.valid,
         errorCount: result.errors.length,
         warningCount: result.warnings.length,

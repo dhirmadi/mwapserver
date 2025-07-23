@@ -27,7 +27,7 @@ export class CloudIntegrationsService {
         throw new ApiError('Tenant not found', 404, CloudProviderIntegrationErrorCodes.TENANT_NOT_FOUND);
       }
       
-      return this.collection.find({ tenantId: tenantObjectId }).toArray();
+      return this.collection.find({ tenantId: tenantObjectId.toString() }).toArray();
     } catch (error) {
       if (error instanceof ApiError) {
         throw error;
@@ -43,7 +43,7 @@ export class CloudIntegrationsService {
       
       const integration = await this.collection.findOne({ 
         _id: integrationObjectId,
-        tenantId: tenantObjectId
+        tenantId: tenantObjectId.toString()
       });
       
       if (!integration) {
@@ -82,8 +82,8 @@ export class CloudIntegrationsService {
       
       // Check if integration already exists for this tenant and provider
       const existingIntegration = await this.collection.findOne({ 
-        tenantId: tenantObjectId,
-        providerId: providerObjectId
+        tenantId: tenantObjectId.toString(),
+        providerId: providerObjectId.toString()
       });
       
       if (existingIntegration) {
@@ -98,9 +98,9 @@ export class CloudIntegrationsService {
       
       // Create integration object with all required fields
       const integration: Partial<CloudProviderIntegration> = {
-        _id: new ObjectId(),
-        tenantId: tenantObjectId,
-        providerId: providerObjectId,
+        _id: new ObjectId().toString(),
+        tenantId: tenantObjectId.toString().toString(),
+        providerId: providerObjectId.toString().toString(),
         status: data.status || 'active',
         createdAt: now,
         updatedAt: now,
