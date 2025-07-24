@@ -98,9 +98,9 @@ export class CloudIntegrationsService {
       
       // Create integration object with all required fields
       const integration: Partial<CloudProviderIntegration> = {
-        _id: new ObjectId().toString(),
-        tenantId: tenantObjectId.toString().toString(),
-        providerId: providerObjectId.toString().toString(),
+        _id: new ObjectId(),
+        tenantId: tenantObjectId.toString(),
+        providerId: providerObjectId.toString(),
         status: data.status || 'active',
         createdAt: now,
         updatedAt: now,
