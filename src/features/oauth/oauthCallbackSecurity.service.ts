@@ -65,7 +65,12 @@ export class OAuthCallbackSecurityService {
   private readonly ALLOWED_REDIRECT_HOSTS = [
     'localhost',
     '127.0.0.1',
-    // Add production domains here when deployed
+    // Production domains for MWAP
+    'app.mwap.dev',
+    'api.mwap.dev',
+    // Heroku app domains (add your actual Heroku app name)
+    'mwapserver.herokuapp.com',
+    'mwap-api.herokuapp.com'
   ];
   private readonly ALLOWED_REDIRECT_SCHEMES = ['http', 'https'];
   private readonly CALLBACK_PATH = '/api/v1/oauth/callback';
@@ -358,7 +363,7 @@ export class OAuthCallbackSecurityService {
    * 
    * Ensures redirect URI is safe and matches expected patterns
    */
-  validateRedirectUri(redirectUri: string, requestHost?: string): {
+  validateRedirectUri(redirectUri: string, requestHost?: string, environment?: string): {
     isValid: boolean;
     issues?: string[];
     normalizedUri?: string;
@@ -369,9 +374,15 @@ export class OAuthCallbackSecurityService {
       // Parse the redirect URI
       const url = new URL(redirectUri);
 
-      // 1. Validate scheme
-      if (!this.ALLOWED_REDIRECT_SCHEMES.includes(url.protocol.slice(0, -1))) {
+      // 1. Validate scheme - enforce HTTPS in production
+      const scheme = url.protocol.slice(0, -1);
+      if (!this.ALLOWED_REDIRECT_SCHEMES.includes(scheme)) {
         issues.push(`Invalid redirect URI scheme: ${url.protocol}`);
+      }
+      
+      // CRITICAL: Enforce HTTPS in production for Dropbox OAuth compliance
+      if (environment === 'production' && scheme !== 'https') {
+        issues.push(`Production environment requires HTTPS redirect URI, got: ${scheme}`);
       }
 
       // 2. Validate host
@@ -404,7 +415,20 @@ export class OAuthCallbackSecurityService {
         });
       }
 
+      // Normalize the URI for consistent comparison
       const normalizedUri = `${url.protocol}//${url.hostname}${url.port ? `:${url.port}` : ''}${this.CALLBACK_PATH}`;
+
+      // Log validation results for monitoring
+      logInfo('Redirect URI validation completed', {
+        redirectUri,
+        normalizedUri,
+        scheme,
+        hostname: url.hostname,
+        environment,
+        isValid: issues.length === 0,
+        issues: issues.length > 0 ? issues : undefined,
+        component: 'oauth_callback_security'
+      });
 
       return {
         isValid: issues.length === 0,
@@ -414,6 +438,60 @@ export class OAuthCallbackSecurityService {
 
     } catch (error) {
       issues.push('Invalid redirect URI format');
+      return {
+        isValid: false,
+        issues
+      };
+    }
+  }
+
+  /**
+   * Validate that the redirect URI matches what should be registered with the OAuth provider
+   * This helps detect configuration mismatches early
+   */
+  validateProviderRedirectUriMatch(
+    constructedUri: string,
+    expectedHost: string,
+    environment: string
+  ): {
+    isValid: boolean;
+    issues?: string[];
+    expectedUri?: string;
+  } {
+    const issues: string[] = [];
+    
+    try {
+      // Construct what the redirect URI should be based on environment
+      const expectedProtocol = environment === 'production' ? 'https' : 'http';
+      const expectedUri = `${expectedProtocol}://${expectedHost}${this.CALLBACK_PATH}`;
+      
+      // Check if they match
+      if (constructedUri !== expectedUri) {
+        issues.push(`Redirect URI mismatch: constructed '${constructedUri}' vs expected '${expectedUri}'`);
+        
+        // Provide specific guidance for common issues
+        if (constructedUri.startsWith('http:') && expectedUri.startsWith('https:')) {
+          issues.push('CRITICAL: Using HTTP in production - this will cause Dropbox OAuth to fail');
+        }
+      }
+      
+      logInfo('Provider redirect URI match validation', {
+        constructedUri,
+        expectedUri,
+        environment,
+        expectedHost,
+        isMatch: constructedUri === expectedUri,
+        component: 'oauth_callback_security'
+      });
+      
+      return {
+        isValid: issues.length === 0,
+        issues: issues.length > 0 ? issues : undefined,
+        expectedUri
+      };
+      
+    } catch (error) {
+      issues.push('Failed to validate redirect URI match');
       return {
         isValid: false,
         issues

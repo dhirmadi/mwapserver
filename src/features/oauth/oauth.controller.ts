@@ -9,6 +9,7 @@ import { logInfo, logError, logAudit } from '../../utils/logger.js';
 import { ApiError } from '../../utils/errors.js';
 import { getUserFromToken } from '../../utils/auth.js';
 import { logPublicRouteAccess } from '../../middleware/publicRoutes.js';
+import { env } from '../../config/env.js';
 
 const cloudIntegrationsService = new CloudIntegrationsService();
 const cloudProviderService = new CloudProviderService();
@@ -170,12 +171,27 @@ export async function handleOAuthCallback(req: Request, res: Response) {
     auditData.provider = provider.name;
     
     // 7. Build and validate the redirect URI that was used for the authorization request
-    const redirectUri = `${req.protocol}://${req.get('host')}/api/v1/oauth/callback`;
+    // CRITICAL: Force HTTPS in production for Dropbox OAuth compliance
+    const protocol = env.NODE_ENV === 'production' ? 'https' : req.protocol;
+    const redirectUri = `${protocol}://${req.get('host')}/api/v1/oauth/callback`;
+    
+    // Log the resolved redirect URI for debugging and validation
+    logInfo('OAuth redirect URI resolved', {
+      originalProtocol: req.protocol,
+      resolvedProtocol: protocol,
+      host: req.get('host'),
+      redirectUri,
+      environment: env.NODE_ENV,
+      forwardedProto: req.get('X-Forwarded-Proto'),
+      tenantId: stateData.tenantId,
+      integrationId: stateData.integrationId
+    });
     
     // Validate redirect URI security
     const redirectValidation = oauthSecurityService.validateRedirectUri(
       redirectUri,
-      req.get('host')
+      req.get('host'),
+      env.NODE_ENV
     );
     
     if (!redirectValidation.isValid) {
@@ -192,6 +208,39 @@ export async function handleOAuthCallback(req: Request, res: Response) {
       
       await oauthSecurityService.logCallbackAttempt(auditData, {
         redirectUriIssues: redirectValidation.issues
+      });
+      
+      recordFailedAttempt();
+      
+      const errorResponse = oauthSecurityService.generateErrorResponse('INVALID_REDIRECT_URI');
+      return res.redirect(errorResponse.redirectUrl);
+    }
+    
+    // Additional validation: Check if redirect URI matches what should be registered with provider
+    const matchValidation = oauthSecurityService.validateProviderRedirectUriMatch(
+      redirectUri,
+      req.get('host') || '',
+      env.NODE_ENV
+    );
+    
+    if (!matchValidation.isValid) {
+      auditData.securityIssues.push(...(matchValidation.issues || []));
+      auditData.errorCode = 'REDIRECT_URI_MISMATCH';
+      
+      logError('Redirect URI mismatch detected - this will cause OAuth provider failures', {
+        constructedUri: redirectUri,
+        expectedUri: matchValidation.expectedUri,
+        issues: matchValidation.issues,
+        environment: env.NODE_ENV,
+        ip: requestContext.ip,
+        userAgent: requestContext.userAgent,
+        tenantId: stateData.tenantId,
+        integrationId: stateData.integrationId
+      });
+      
+      await oauthSecurityService.logCallbackAttempt(auditData, {
+        redirectUriMismatch: matchValidation.issues,
+        expectedUri: matchValidation.expectedUri
       });
       
       recordFailedAttempt();
