@@ -193,7 +193,41 @@ const errorMessages: Record<string, string> = {
 - 🔐 User-friendly messages without technical details
 - 🔐 Comprehensive internal logging for debugging
 
-### 5. Comprehensive Audit Logging
+### 5. Redirect URI Security
+
+**File**: `src/features/oauth/oauthCallbackSecurity.service.ts`
+
+Redirect URI validation ensures OAuth callbacks only accept requests from authorized domains:
+
+#### Environment-Specific Configuration
+```typescript
+const ALLOWED_REDIRECT_HOSTS = [
+  'localhost', '127.0.0.1',           // Local development
+  'mwapss.shibari.photo',             // Staging/development server
+  'mwapsp.shibari.photo'              // Production server
+];
+```
+
+#### HTTPS Enforcement
+```typescript
+// Force HTTPS in production for OAuth compliance
+const protocol = env.NODE_ENV === 'production' ? 'https' : req.protocol;
+const redirectUri = `${protocol}://${req.get('host')}/api/v1/oauth/callback`;
+```
+
+#### Required OAuth Provider Configuration
+Register these exact redirect URIs with OAuth providers:
+- **Production**: `https://mwapsp.shibari.photo/api/v1/oauth/callback`
+- **Staging**: `https://mwapss.shibari.photo/api/v1/oauth/callback`
+- **Local**: `http://localhost:3001/api/v1/oauth/callback`
+
+**Security Benefits**:
+- 🔒 Prevents OAuth hijacking through redirect URI validation
+- 🔒 Enforces HTTPS in production environments
+- 🔒 Validates host allowlist to prevent unauthorized callbacks
+- 🔒 Provides environment-specific protocol handling
+
+### 6. Comprehensive Audit Logging
 
 All OAuth callback attempts are logged with detailed context:
 
@@ -379,6 +413,7 @@ For any changes to OAuth callback security:
 | State Parameter Tampering | HIGH | MEDIUM | Cryptographic validation, structure checks |
 | Replay Attacks | HIGH | MEDIUM | Timestamp validation, existing token detection |
 | Unauthorized OAuth Completion | HIGH | LOW | Ownership verification, tenant access control |
+| Redirect URI Hijacking | HIGH | LOW | Host allowlist validation, HTTPS enforcement |
 | Information Disclosure | MEDIUM | LOW | Generic error messages, sanitized logging |
 | Reconnaissance Attacks | MEDIUM | MEDIUM | Generic responses, rate limiting |
 | Man-in-the-Middle | MEDIUM | LOW | HTTPS enforcement, redirect URI validation |
@@ -399,6 +434,11 @@ For any changes to OAuth callback security:
 **Attack**: Attacker attempts to complete OAuth for integration in different tenant
 **Detection**: Integration ownership verification fails
 **Response**: Access denied, ownership violation logged, security alert
+
+#### Scenario 4: Redirect URI Hijacking
+**Attack**: Attacker registers malicious domain to intercept OAuth callbacks
+**Detection**: Host validation fails, unauthorized domain detected
+**Response**: Request denied, redirect URI violation logged, security alert
 
 ## Best Practices
 
