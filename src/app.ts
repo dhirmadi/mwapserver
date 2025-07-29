@@ -20,8 +20,26 @@ app.use(express.urlencoded({ extended: true }));
 
 // Security middleware
 app.use(helmet());
+// CORS configuration for different environments
+const getAllowedOrigins = () => {
+  if (env.NODE_ENV === 'production') {
+    return [
+      'https://mwapsp.shibari.photo',  // Production backend
+      // Add production frontend URLs here when available
+    ];
+  } else {
+    return [
+      'http://localhost:3000',         // Local frontend dev server
+      'http://localhost:5173',         // Vite dev server
+      'https://mwapss.shibari.photo',  // Staging backend
+      // Allow all origins in development for flexibility
+      true
+    ];
+  }
+};
+
 app.use(cors({
-  origin: env.NODE_ENV === 'production' ? 'https://app.mwap.dev' : true,
+  origin: getAllowedOrigins(),
   credentials: true
 }));
 

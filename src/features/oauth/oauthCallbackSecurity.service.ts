@@ -63,14 +63,13 @@ export class OAuthCallbackSecurityService {
   
   // Redirect URI security configuration
   private readonly ALLOWED_REDIRECT_HOSTS = [
+    // Development/local servers
     'localhost',
     '127.0.0.1',
-    // Production domains for MWAP
-    'app.mwap.dev',
-    'api.mwap.dev',
-    // Heroku app domains (add your actual Heroku app name)
-    'mwapserver.herokuapp.com',
-    'mwap-api.herokuapp.com'
+    // Staging/development server
+    'mwapss.shibari.photo',
+    // Production server
+    'mwapsp.shibari.photo'
   ];
   private readonly ALLOWED_REDIRECT_SCHEMES = ['http', 'https'];
   private readonly CALLBACK_PATH = '/api/v1/oauth/callback';

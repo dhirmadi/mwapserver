@@ -17,9 +17,20 @@ describe('OAuth Redirect URI Validation', () => {
   describe('validateRedirectUri', () => {
     it('should accept HTTPS URIs in production', () => {
       const result = securityService.validateRedirectUri(
-        'https://app.mwap.dev/api/v1/oauth/callback',
-        'app.mwap.dev',
+        'https://mwapsp.shibari.photo/api/v1/oauth/callback',
+        'mwapsp.shibari.photo',
         'production'
+      );
+
+      expect(result.isValid).toBe(true);
+      expect(result.issues).toBeUndefined();
+    });
+
+    it('should accept HTTPS URIs for staging server', () => {
+      const result = securityService.validateRedirectUri(
+        'https://mwapss.shibari.photo/api/v1/oauth/callback',
+        'mwapss.shibari.photo',
+        'development'
       );
 
       expect(result.isValid).toBe(true);
@@ -28,8 +39,8 @@ describe('OAuth Redirect URI Validation', () => {
 
     it('should reject HTTP URIs in production', () => {
       const result = securityService.validateRedirectUri(
-        'http://app.mwap.dev/api/v1/oauth/callback',
-        'app.mwap.dev',
+        'http://mwapsp.shibari.photo/api/v1/oauth/callback',
+        'mwapsp.shibari.photo',
         'production'
       );
 
@@ -61,8 +72,8 @@ describe('OAuth Redirect URI Validation', () => {
 
     it('should reject invalid paths', () => {
       const result = securityService.validateRedirectUri(
-        'https://app.mwap.dev/api/v1/oauth/malicious',
-        'app.mwap.dev',
+        'https://mwapsp.shibari.photo/api/v1/oauth/malicious',
+        'mwapsp.shibari.photo',
         'production'
       );
 
@@ -74,19 +85,30 @@ describe('OAuth Redirect URI Validation', () => {
   describe('validateProviderRedirectUriMatch', () => {
     it('should validate matching URIs in production', () => {
       const result = securityService.validateProviderRedirectUriMatch(
-        'https://app.mwap.dev/api/v1/oauth/callback',
-        'app.mwap.dev',
+        'https://mwapsp.shibari.photo/api/v1/oauth/callback',
+        'mwapsp.shibari.photo',
         'production'
       );
 
       expect(result.isValid).toBe(true);
-      expect(result.expectedUri).toBe('https://app.mwap.dev/api/v1/oauth/callback');
+      expect(result.expectedUri).toBe('https://mwapsp.shibari.photo/api/v1/oauth/callback');
+    });
+
+    it('should validate matching URIs for staging', () => {
+      const result = securityService.validateProviderRedirectUriMatch(
+        'https://mwapss.shibari.photo/api/v1/oauth/callback',
+        'mwapss.shibari.photo',
+        'development'
+      );
+
+      expect(result.isValid).toBe(true);
+      expect(result.expectedUri).toBe('http://mwapss.shibari.photo/api/v1/oauth/callback');
     });
 
     it('should detect HTTP/HTTPS mismatch in production', () => {
       const result = securityService.validateProviderRedirectUriMatch(
-        'http://app.mwap.dev/api/v1/oauth/callback',
-        'app.mwap.dev',
+        'http://mwapsp.shibari.photo/api/v1/oauth/callback',
+        'mwapsp.shibari.photo',
         'production'
       );
 
