@@ -49,10 +49,14 @@ This guide provides comprehensive instructions for integrating OAuth providers w
    - Provider availability and accessibility checks
 
 3. **Redirect URI Security**
-   - Scheme whitelist (http/https only)
-   - Host whitelist with subdomain support
-   - Exact path matching (`/api/v1/oauth/callback`)
-   - Query parameter and fragment prevention
+   - **HTTPS Enforcement**: All OAuth flows use HTTPS for security compliance
+   - **Consistent Construction**: Same redirect URI logic used in authorization and callback phases
+   - **Proxy-Aware**: Proper handling of proxy headers in Heroku/cloud environments
+   - **Exact Matching**: Prevents redirect URI mismatch errors during token exchange
+   - **Scheme whitelist**: HTTPS only for production environments
+   - **Host whitelist**: Configured domains with subdomain support
+   - **Exact path matching**: `/api/v1/oauth/callback`
+   - **Query parameter and fragment prevention**: Clean redirect URIs only
 
 4. **Replay Attack Prevention**
    - State parameters expire after 10 minutes
@@ -83,10 +87,36 @@ Add your OAuth provider to the cloud providers collection:
 
 ### 2. OAuth Flow Implementation
 
-#### Step 1: Authorization Request
+#### Step 1: OAuth Flow Initiation (Recommended)
+
+**NEW**: Use the OAuth initiation endpoint to ensure consistent redirect URI construction:
 
 ```javascript
-// Generate authorization URL
+// Frontend: Request authorization URL from backend
+const response = await fetch(`/api/v1/oauth/tenants/${tenantId}/integrations/${integrationId}/initiate`, {
+  method: 'POST',
+  headers: {
+    'Authorization': `Bearer ${jwtToken}`,
+    'Content-Type': 'application/json'
+  }
+});
+
+const { authorizationUrl, provider, redirectUri } = await response.json();
+
+// Redirect user to the generated authorization URL
+window.location.href = authorizationUrl;
+```
+
+This approach ensures:
+- **Consistent redirect URI construction** between authorization and callback phases
+- **HTTPS enforcement** for all OAuth flows
+- **Provider-specific parameters** (e.g., `token_access_type: offline` for Dropbox)
+- **Secure state parameter generation** with proper CSRF protection
+
+#### Step 1 (Alternative): Direct Authorization Request
+
+```javascript
+// Generate authorization URL (legacy approach - not recommended)
 const authUrl = `${provider.authUrl}?${new URLSearchParams({
   client_id: provider.clientId,
   response_type: 'code',
@@ -98,6 +128,8 @@ const authUrl = `${provider.authUrl}?${new URLSearchParams({
 // Redirect user to authorization URL
 res.redirect(authUrl);
 ```
+
+⚠️ **Warning**: Direct authorization URL construction can lead to redirect URI mismatch errors. Use the OAuth initiation endpoint instead.
 
 #### Step 2: Callback Handling
 
@@ -143,6 +175,24 @@ function generateStateParameter(integrationId, tenantId, userId) {
 - **Security**: State parameter validation, comprehensive audit logging
 
 ### Protected Endpoints
+
+#### OAuth Flow Initiation
+- **Endpoint**: `POST /api/v1/oauth/tenants/:tenantId/integrations/:integrationId/initiate`
+- **Authentication**: JWT required
+- **Authorization**: Tenant owner only
+- **Purpose**: Generate OAuth authorization URL with consistent redirect URI
+- **Response**: 
+  ```json
+  {
+    "authorizationUrl": "https://provider.com/oauth/authorize?...",
+    "provider": {
+      "name": "dropbox",
+      "displayName": "Dropbox"
+    },
+    "redirectUri": "https://yourdomain.com/api/v1/oauth/callback",
+    "state": "base64-encoded-state-parameter"
+  }
+  ```
 
 #### Token Refresh
 - **Endpoint**: `POST /api/v1/oauth/tenants/:tenantId/integrations/:integrationId/refresh`
@@ -315,6 +365,13 @@ All OAuth errors return generic messages to prevent information disclosure:
    - Verify provider configuration
    - Check client credentials
    - Validate redirect URI matching
+
+4. **Redirect URI Mismatch Errors**
+   - **Symptom**: OAuth provider returns "redirect_uri mismatch" error
+   - **Cause**: Different redirect URIs used in authorization vs token exchange
+   - **Solution**: Use OAuth initiation endpoint (`/api/v1/oauth/.../initiate`)
+   - **Verification**: Check logs for redirect URI values in both phases
+   - **Express Proxy**: Ensure `app.set('trust proxy', 1)` for Heroku environments
 
 ### Debug Tools
 

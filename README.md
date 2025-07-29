@@ -51,10 +51,13 @@ The server is organized around core domain entities:
 
 - Multi-tenant architecture
 - Dynamic project type configuration
-- Secure OAuth-based cloud provider integrations
-  - Dedicated OAuth callback endpoint
-  - Secure token exchange and storage
-  - Standardized OAuth 2.0 flow
+- **Enhanced OAuth-based cloud provider integrations**
+  - **NEW**: OAuth flow initiation endpoint for consistent redirect URI construction
+  - **FIXED**: Dropbox OAuth redirect URI mismatch errors
+  - **IMPROVED**: Express proxy configuration for Heroku environments
+  - Dedicated OAuth callback endpoint with enhanced security
+  - Secure token exchange and storage with HTTP Basic Auth
+  - Standardized OAuth 2.0 flow with provider-specific parameters
 - Field-level encryption for sensitive data
 - Microservice-friendly design
 - Comprehensive audit logging
