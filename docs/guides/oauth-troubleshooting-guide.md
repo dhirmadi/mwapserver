@@ -17,7 +17,114 @@ Before diving into specific issues, run through this quick checklist:
 
 ## Common Issues and Solutions
 
-### 1. OAuth Callback 401 Unauthorized Errors
+### 1. OAuth Redirect URI Mismatch Errors
+
+**Symptoms**:
+- OAuth provider returns "redirect_uri mismatch" error during token exchange
+- Dropbox returns "Invalid redirect_uri parameter" error
+- OAuth flow fails after user authorization with provider-specific error messages
+- Token exchange requests fail with 400 Bad Request
+
+**Root Causes**:
+1. Different redirect URI construction logic between authorization and callback phases
+2. Frontend constructing authorization URLs with different redirect URI than backend callback handler
+3. HTTP vs HTTPS protocol mismatch in different environments
+4. Express proxy configuration issues in Heroku/cloud environments
+5. Missing or incorrect `trust proxy` configuration
+
+**Diagnostic Steps**:
+
+1. **Check Redirect URI Consistency**:
+   ```bash
+   # Check application logs for redirect URI values
+   grep "OAuth redirect URI" logs/application.log
+   grep "redirectUri" logs/application.log
+   
+   # Look for both authorization and callback redirect URIs
+   grep -A 5 -B 5 "authorization.*redirectUri\|callback.*redirectUri" logs/application.log
+   ```
+
+2. **Verify Express Proxy Configuration**:
+   ```bash
+   # Check app.ts for proper proxy configuration
+   grep -n "trust proxy" src/app.ts
+   # Should show: app.set('trust proxy', 1)
+   # NOT: app.enable('trust proxy')
+   ```
+
+3. **Test OAuth Initiation Endpoint**:
+   ```bash
+   # Test the OAuth initiation endpoint
+   curl -X POST \
+     -H "Authorization: Bearer $JWT_TOKEN" \
+     -H "Content-Type: application/json" \
+     "http://localhost:3000/api/v1/oauth/tenants/$TENANT_ID/integrations/$INTEGRATION_ID/initiate"
+   
+   # Verify the redirectUri in the response matches callback expectations
+   ```
+
+4. **Check Protocol Consistency**:
+   ```bash
+   # Verify HTTPS enforcement in logs
+   grep "protocol.*https\|HTTPS" logs/application.log
+   
+   # Check for protocol resolution logs
+   grep "originalProtocol\|resolvedProtocol" logs/application.log
+   ```
+
+**Resolution Steps**:
+
+1. **Use OAuth Initiation Endpoint** (Recommended):
+   ```javascript
+   // Frontend: Replace direct authorization URL construction
+   const response = await fetch(`/api/v1/oauth/tenants/${tenantId}/integrations/${integrationId}/initiate`, {
+     method: 'POST',
+     headers: {
+       'Authorization': `Bearer ${jwtToken}`,
+       'Content-Type': 'application/json'
+     }
+   });
+   
+   const { authorizationUrl } = await response.json();
+   window.location.href = authorizationUrl;
+   ```
+
+2. **Fix Express Proxy Configuration**:
+   ```javascript
+   // In src/app.ts - CORRECT configuration
+   app.set('trust proxy', 1);
+   
+   // NOT this (insecure):
+   // app.enable('trust proxy');
+   ```
+
+3. **Verify Redirect URI Construction**:
+   ```javascript
+   // Both authorization and callback should use identical logic:
+   const protocol = 'https'; // Force HTTPS for all OAuth flows
+   const redirectUri = `${protocol}://${req.get('host')}/api/v1/oauth/callback`;
+   ```
+
+4. **Enable Enhanced Logging**:
+   ```javascript
+   // Add to OAuth controller for debugging
+   logInfo('OAuth redirect URI resolved', {
+     originalProtocol: req.protocol,
+     resolvedProtocol: protocol,
+     host: req.get('host'),
+     redirectUri,
+     environment: process.env.NODE_ENV,
+     forwardedProto: req.get('X-Forwarded-Proto')
+   });
+   ```
+
+**Prevention**:
+- Always use the OAuth initiation endpoint for new integrations
+- Implement redirect URI consistency tests in CI/CD pipeline
+- Monitor OAuth success rates and alert on redirect URI mismatch patterns
+- Use centralized redirect URI construction logic
+
+### 2. OAuth Callback 401 Unauthorized Errors
 
 **Symptoms**:
 - OAuth providers receive 401 Unauthorized when calling callback endpoint

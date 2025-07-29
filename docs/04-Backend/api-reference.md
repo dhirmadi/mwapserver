@@ -544,6 +544,59 @@ Get files associated with a project from connected cloud providers.
 
 ## 🔑 OAuth API
 
+### OAuth Flow Initiation
+Generate OAuth authorization URL with consistent redirect URI construction to prevent redirect URI mismatch errors.
+
+**Endpoint:** `POST /api/v1/oauth/tenants/:tenantId/integrations/:integrationId/initiate`
+**Authentication:** Required (JWT Bearer token)
+**Authorization:** Tenant owner
+
+**Path Parameters:**
+- `tenantId: string` - Tenant ID (must be owned by authenticated user)
+- `integrationId: string` - Cloud integration ID
+
+**Features:**
+- ✅ Consistent redirect URI construction between authorization and callback phases
+- ✅ HTTPS enforcement for all OAuth flows
+- ✅ Provider-specific parameters (e.g., `token_access_type: offline` for Dropbox)
+- ✅ Cryptographically secure state parameter generation
+- ✅ Comprehensive audit logging and security monitoring
+
+**Response Schema:**
+```typescript
+{
+  authorizationUrl: string;     // Complete OAuth authorization URL
+  provider: {
+    name: string;               // Provider name (e.g., "dropbox")
+    displayName: string;        // Human-readable name (e.g., "Dropbox")
+  };
+  redirectUri: string;          // Redirect URI used in authorization URL
+  state: string;                // Base64-encoded state parameter
+}
+```
+
+**Usage Example:**
+```javascript
+// Frontend: Request authorization URL from backend
+const response = await fetch(`/api/v1/oauth/tenants/${tenantId}/integrations/${integrationId}/initiate`, {
+  method: 'POST',
+  headers: {
+    'Authorization': `Bearer ${jwtToken}`,
+    'Content-Type': 'application/json'
+  }
+});
+
+const { authorizationUrl } = await response.json();
+
+// Redirect user to the generated authorization URL
+window.location.href = authorizationUrl;
+```
+
+**Error Responses:**
+- `404 Not Found` - Integration or tenant not found
+- `403 Forbidden` - User not authorized for tenant
+- `500 Internal Server Error` - Authorization URL generation failed
+
 ### OAuth Callback (Enhanced Security)
 Handle OAuth authorization callbacks from cloud providers with comprehensive security controls.
 

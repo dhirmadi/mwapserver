@@ -1,6 +1,6 @@
 import { Router, Request, Response, NextFunction } from 'express';
 import { wrapAsyncHandler } from '../../utils/response.js';
-import { handleOAuthCallback, refreshIntegrationTokens } from './oauth.controller.js';
+import { handleOAuthCallback, refreshIntegrationTokens, initiateOAuthFlow } from './oauth.controller.js';
 import { 
   getSecurityMetrics, 
   getSecurityAlerts, 
@@ -77,6 +77,54 @@ export function getOAuthRouter(): Router {
     // Call the actual handler
     return handleOAuthCallback(req, res);
   }));
+
+  // =================================================================
+  // PROTECTED ENDPOINT: OAuth Flow Initiation
+  // =================================================================
+  /**
+   * OAuth Flow Initiation Endpoint
+   * 
+   * Route: POST /api/v1/oauth/tenants/:tenantId/integrations/:integrationId/initiate
+   * Access: PROTECTED (JWT required + tenant owner authorization)
+   * Called by: Frontend application to start OAuth flow
+   * 
+   * SECURITY CONTROLS:
+   * ✅ JWT authentication required
+   * ✅ Tenant ownership verification
+   * ✅ Integration access control
+   * ✅ Consistent redirect URI construction
+   * ✅ Cryptographically secure state parameter generation
+   * ✅ Comprehensive audit logging
+   * 
+   * AUTHORIZATION:
+   * - User must be authenticated with valid JWT token
+   * - User must be owner of the specified tenant
+   * - Integration must belong to the tenant
+   * 
+   * FLOW:
+   * 1. Validate JWT and tenant ownership
+   * 2. Verify integration access
+   * 3. Generate secure state parameter
+   * 4. Construct consistent redirect URI
+   * 5. Generate authorization URL
+   * 6. Return URL for frontend redirect
+   */
+  router.post(
+    '/tenants/:tenantId/integrations/:integrationId/initiate',
+    requireTenantOwner('tenantId'),
+    wrapAsyncHandler(async (req: Request, res: Response, next: NextFunction) => {
+      // Log protected endpoint access
+      logAudit('oauth.initiate.attempt', (req as any).user?.sub || 'unknown', req.params.integrationId || 'unknown', {
+        tenantId: req.params.tenantId,
+        ip: req.ip,
+        userAgent: req.get('User-Agent'),
+        timestamp: new Date().toISOString(),
+        component: 'oauth_routes'
+      });
+
+      return initiateOAuthFlow(req, res);
+    })
+  );
 
   // =================================================================
   // PROTECTED ENDPOINT: Token Refresh  
@@ -188,9 +236,12 @@ export function getOAuthRouter(): Router {
   
   // Log router configuration for security audit
   logAudit('oauth.router.configured', 'system', 'oauth_routes', {
-    routesConfigured: 2,
+    routesConfigured: 3,
     publicRoutes: ['/callback'],
-    protectedRoutes: ['/tenants/:tenantId/integrations/:integrationId/refresh'],
+    protectedRoutes: [
+      '/tenants/:tenantId/integrations/:integrationId/initiate',
+      '/tenants/:tenantId/integrations/:integrationId/refresh'
+    ],
     securityControls: [
       'JWT authentication for protected routes',
       'Tenant ownership verification',

@@ -11,8 +11,9 @@ import { db } from './config/db.js';
 const app = express();
 
 // Trust proxy for Heroku deployment - CRITICAL for OAuth redirect URI
+// Use specific trust proxy setting for production safety (trusts only first proxy)
 // This allows Express to detect X-Forwarded-Proto header and resolve req.protocol as 'https'
-app.enable('trust proxy');
+app.set('trust proxy', 1);
 
 // Basic middleware
 app.use(express.json());
