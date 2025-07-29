@@ -208,10 +208,10 @@ const ALLOWED_REDIRECT_HOSTS = [
 ];
 ```
 
-#### HTTPS Enforcement
+#### HTTPS Enforcement (All Environments)
 ```typescript
-// Force HTTPS in production for OAuth compliance
-const protocol = env.NODE_ENV === 'production' ? 'https' : req.protocol;
+// SECURITY: Always use HTTPS for OAuth flows across all environments
+const protocol = 'https'; // Force HTTPS for all OAuth flows for security
 const redirectUri = `${protocol}://${req.get('host')}/api/v1/oauth/callback`;
 ```
 
@@ -219,13 +219,35 @@ const redirectUri = `${protocol}://${req.get('host')}/api/v1/oauth/callback`;
 Register these exact redirect URIs with OAuth providers:
 - **Production**: `https://mwapsp.shibari.photo/api/v1/oauth/callback`
 - **Staging**: `https://mwapss.shibari.photo/api/v1/oauth/callback`
-- **Local**: `http://localhost:3001/api/v1/oauth/callback`
+- **Local**: `https://localhost:3001/api/v1/oauth/callback`
+
+> **⚠️ HTTPS-Only Policy**: All OAuth redirect URIs must use HTTPS for security compliance, including local development. Use tools like `mkcert` for local HTTPS certificates.
+
+#### Local Development HTTPS Setup
+For local development with HTTPS, install and configure `mkcert`:
+
+```bash
+# Install mkcert (macOS)
+brew install mkcert
+
+# Install mkcert (Linux)
+curl -JLO "https://dl.filippo.io/mkcert/latest?for=linux/amd64"
+chmod +x mkcert-v*-linux-amd64
+sudo mv mkcert-v*-linux-amd64 /usr/local/bin/mkcert
+
+# Create local CA and certificates
+mkcert -install
+mkcert localhost 127.0.0.1 ::1
+
+# Configure your local server to use the generated certificates
+# Update your OAuth provider settings to use https://localhost:3001/api/v1/oauth/callback
+```
 
 **Security Benefits**:
 - 🔒 Prevents OAuth hijacking through redirect URI validation
-- 🔒 Enforces HTTPS in production environments
+- 🔒 Enforces HTTPS across all environments for maximum security
 - 🔒 Validates host allowlist to prevent unauthorized callbacks
-- 🔒 Provides environment-specific protocol handling
+- 🔒 Eliminates protocol-based attack vectors by using HTTPS-only
 
 ### 6. Comprehensive Audit Logging
 
