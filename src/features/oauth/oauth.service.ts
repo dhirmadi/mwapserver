@@ -355,4 +355,77 @@ export class OAuthService {
       throw new ApiError('Internal error during token refresh', 500);
     }
   }
+
+  /**
+   * Generate OAuth authorization URL for initiating the OAuth flow
+   * 
+   * This method creates the authorization URL that users visit to grant permissions
+   * to the application. It ensures the redirect_uri is constructed consistently
+   * with the callback handler to prevent redirect URI mismatch errors.
+   * 
+   * @param provider - Cloud provider configuration
+   * @param state - Cryptographically secure state parameter for CSRF protection
+   * @param redirectUri - Redirect URI that must exactly match the callback endpoint
+   * @returns string - Complete authorization URL for the OAuth provider
+   */
+  generateAuthorizationUrl(
+    provider: CloudProvider,
+    state: string,
+    redirectUri: string
+  ): string {
+    try {
+      logInfo(`Generating OAuth authorization URL for provider ${provider.name}`, {
+        provider: provider.name,
+        providerId: provider._id.toString(),
+        authUrl: provider.authUrl,
+        redirectUri,
+        scopes: provider.scopes?.join(' ') || 'default'
+      });
+
+      // Build authorization URL parameters
+      const params = new URLSearchParams({
+        client_id: provider.clientId,
+        response_type: 'code',
+        redirect_uri: redirectUri,
+        state: state
+      });
+
+      // Add scopes if available
+      if (provider.scopes && provider.scopes.length > 0) {
+        params.set('scope', provider.scopes.join(' '));
+      }
+
+      // Add any provider-specific parameters
+      if (provider.name.toLowerCase() === 'dropbox') {
+        // Dropbox-specific parameters
+        params.set('token_access_type', 'offline'); // Request refresh token
+      } else if (provider.name.toLowerCase() === 'google') {
+        // Google-specific parameters
+        params.set('access_type', 'offline'); // Request refresh token
+        params.set('prompt', 'consent'); // Force consent screen to get refresh token
+      }
+
+      const authorizationUrl = `${provider.authUrl}?${params.toString()}`;
+
+      logInfo('OAuth authorization URL generated successfully', {
+        provider: provider.name,
+        redirectUri,
+        urlLength: authorizationUrl.length,
+        hasScopes: !!(provider.scopes && provider.scopes.length > 0)
+      });
+
+      return authorizationUrl;
+    } catch (error) {
+      logError('Failed to generate OAuth authorization URL', {
+        error: error instanceof Error ? {
+          message: error.message,
+          stack: error.stack
+        } : error,
+        provider: provider.name,
+        redirectUri
+      });
+      
+      throw new ApiError('Failed to generate authorization URL', 500);
+    }
+  }
 }

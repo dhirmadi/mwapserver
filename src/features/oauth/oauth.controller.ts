@@ -256,7 +256,9 @@ export async function handleOAuthCallback(req: Request, res: Response) {
     logInfo('Exchanging OAuth code for tokens', {
       provider: provider.name,
       tenantId: stateData.tenantId,
-      integrationId: stateData.integrationId
+      integrationId: stateData.integrationId,
+      redirectUri: normalizedRedirectUri,
+      callbackRedirectUri: normalizedRedirectUri
     });
     
     const tokenResponse = await oauthService.exchangeCodeForTokens(
@@ -332,6 +334,87 @@ export async function handleOAuthCallback(req: Request, res: Response) {
     // Return generic error for security
     const errorResponse = oauthSecurityService.generateErrorResponse('VALIDATION_ERROR');
     return res.redirect(errorResponse.redirectUrl);
+  }
+}
+
+/**
+ * Initiate OAuth flow by generating authorization URL
+ * This endpoint generates the OAuth authorization URL that users visit to grant permissions
+ */
+export async function initiateOAuthFlow(req: Request, res: Response) {
+  try {
+    const user = getUserFromToken(req);
+    const { tenantId, integrationId } = req.params;
+    
+    logInfo(`Initiating OAuth flow for integration ${integrationId} in tenant ${tenantId} by user ${user.sub}`);
+    
+    // 1. Get the integration and provider
+    const integration = await cloudIntegrationsService.findById(integrationId, tenantId);
+    const provider = await cloudProviderService.findById(integration.providerId.toString(), true);
+    
+    // 2. Build the redirect URI using the same logic as the callback handler
+    // CRITICAL: Always use HTTPS for OAuth security compliance across all environments
+    const protocol = 'https'; // Force HTTPS for all OAuth flows for security
+    const redirectUri = `${protocol}://${req.get('host')}/api/v1/oauth/callback`;
+    
+    // Log the resolved redirect URI for debugging and validation
+    logInfo('OAuth redirect URI resolved for authorization', {
+      originalProtocol: req.protocol,
+      resolvedProtocol: protocol,
+      host: req.get('host'),
+      redirectUri,
+      environment: env.NODE_ENV,
+      forwardedProto: req.get('X-Forwarded-Proto'),
+      tenantId,
+      integrationId
+    });
+    
+    // 3. Generate state parameter using the security service
+    const stateData = {
+      tenantId,
+      integrationId,
+      userId: user.sub,
+      timestamp: Date.now(),
+      nonce: Math.random().toString(36).substring(2, 15)
+    };
+    
+    const state = await oauthSecurityService.generateStateParameter(stateData);
+    
+    // 4. Generate the authorization URL
+    const authorizationUrl = oauthService.generateAuthorizationUrl(
+      provider,
+      state,
+      redirectUri
+    );
+    
+    logInfo('OAuth authorization URL generated', {
+      provider: provider.name,
+      tenantId,
+      integrationId,
+      redirectUri,
+      urlGenerated: true
+    });
+    
+    logAudit('oauth.flow.initiated', user.sub, integrationId, {
+      tenantId,
+      providerId: provider._id.toString(),
+      provider: provider.name,
+      redirectUri
+    });
+    
+    // 5. Return the authorization URL
+    return jsonResponse(res, 200, {
+      authorizationUrl,
+      provider: {
+        name: provider.name,
+        displayName: provider.displayName
+      },
+      redirectUri,
+      state
+    });
+  } catch (error) {
+    logError('OAuth flow initiation error', error);
+    throw error;
   }
 }
 

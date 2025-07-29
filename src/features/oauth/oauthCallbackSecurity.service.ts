@@ -589,4 +589,68 @@ export class OAuthCallbackSecurityService {
       issues: issues.length > 0 ? issues : undefined
     };
   }
+
+  /**
+   * Generate cryptographically secure state parameter for OAuth flow initiation
+   * 
+   * Creates a base64-encoded state parameter containing all necessary data
+   * for secure OAuth callback validation including CSRF protection.
+   * 
+   * @param stateData - State data to encode in the parameter
+   * @returns Promise<string> - Base64-encoded state parameter
+   */
+  async generateStateParameter(stateData: StateParameter): Promise<string> {
+    try {
+      logInfo('Generating OAuth state parameter', {
+        tenantId: stateData.tenantId,
+        integrationId: stateData.integrationId,
+        userId: stateData.userId,
+        timestamp: stateData.timestamp,
+        hasNonce: !!stateData.nonce
+      });
+
+      // Validate required fields
+      if (!stateData.tenantId || !stateData.integrationId || !stateData.userId) {
+        throw new Error('Missing required state data fields');
+      }
+
+      // Ensure timestamp is current
+      if (!stateData.timestamp) {
+        stateData.timestamp = Date.now();
+      }
+
+      // Generate nonce if not provided
+      if (!stateData.nonce) {
+        stateData.nonce = Math.random().toString(36).substring(2, 15) + 
+                          Math.random().toString(36).substring(2, 15);
+      }
+
+      // Encode state data as base64
+      const stateJson = JSON.stringify(stateData);
+      const stateParam = Buffer.from(stateJson).toString('base64');
+
+      logInfo('OAuth state parameter generated successfully', {
+        tenantId: stateData.tenantId,
+        integrationId: stateData.integrationId,
+        stateLength: stateParam.length,
+        timestamp: stateData.timestamp
+      });
+
+      return stateParam;
+    } catch (error) {
+      logError('Failed to generate OAuth state parameter', {
+        error: error instanceof Error ? {
+          message: error.message,
+          stack: error.stack
+        } : error,
+        stateData: {
+          tenantId: stateData.tenantId,
+          integrationId: stateData.integrationId,
+          userId: stateData.userId
+        }
+      });
+      
+      throw new ApiError('Failed to generate state parameter', 500);
+    }
+  }
 } 
