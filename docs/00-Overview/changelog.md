@@ -17,6 +17,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Improved OAuth integration guide consolidation
 
 ### Fixed
+- **OAuth Token Exchange for Dropbox Compatibility**
+  - Implemented HTTP Basic Authentication for client credentials per RFC 6749 Section 2.3.1
+  - Fixed 400 Bad Request errors during Dropbox OAuth token exchange
+  - Added comprehensive error handling for all OAuth error codes (invalid_grant, invalid_client, etc.)
+  - Implemented secure debug logging that omits sensitive data (codes, tokens, credentials)
+  - Added request timeouts and proper network error handling
+  - Ensured redirect_uri exactly matches between authorization and token exchange steps
+  - Updated both token exchange and refresh token flows with consistent authentication
 - Documentation link validation issues
 - Testing documentation references and structure
 

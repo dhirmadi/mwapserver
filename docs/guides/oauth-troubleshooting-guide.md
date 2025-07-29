@@ -159,32 +159,53 @@ Before diving into specific issues, run through this quick checklist:
 **Symptoms**:
 - OAuth flow completes but integration remains unconfigured
 - "Service temporarily unavailable" error messages
-- Provider-specific error responses
+- Provider-specific error responses (400 Bad Request, 401 Unauthorized)
+- "Failed to exchange code for tokens" error messages
+- Dropbox OAuth specifically returning 400 Bad Request errors
 
 **Root Causes**:
-1. Invalid OAuth provider configuration
-2. Incorrect client credentials
-3. Redirect URI mismatch
-4. Network connectivity issues
-5. Provider API changes
+1. **Incorrect client authentication method** (most common with Dropbox)
+2. Invalid OAuth provider configuration
+3. Incorrect client credentials
+4. Redirect URI mismatch between authorization and token exchange
+5. Network connectivity issues
+6. Provider API changes
+7. Expired or invalid authorization codes
 
 **Diagnostic Steps**:
 
-1. **Verify Provider Configuration**:
+1. **Check Token Exchange Logs**:
+   ```bash
+   # Look for detailed token exchange errors
+   grep "Token exchange" logs/application.log
+   grep "exchangeCodeForTokens" logs/application.log
+   grep "invalid_client\|invalid_grant\|invalid_request" logs/application.log
+   ```
+
+2. **Verify Provider Configuration**:
    ```bash
    # Check provider configuration in database
    db.cloudProviders.findOne({name: "dropbox"})
    ```
 
-2. **Test Token Exchange Manually**:
+3. **Test Token Exchange with HTTP Basic Auth**:
    ```bash
-   # Manual token exchange test
+   # Manual token exchange test using HTTP Basic Authentication (RFC 6749 compliant)
+   curl -X POST https://api.dropboxapi.com/oauth2/token \
+     -H "Content-Type: application/x-www-form-urlencoded" \
+     -H "Authorization: Basic $(echo -n 'CLIENT_ID:CLIENT_SECRET' | base64)" \
+     -d "code=AUTH_CODE&grant_type=authorization_code&redirect_uri=REDIRECT_URI"
+   ```
+
+4. **Compare with Legacy Method** (for debugging):
+   ```bash
+   # Test with credentials in body (deprecated method)
    curl -X POST https://api.dropboxapi.com/oauth2/token \
      -H "Content-Type: application/x-www-form-urlencoded" \
      -d "code=AUTH_CODE&grant_type=authorization_code&client_id=CLIENT_ID&client_secret=CLIENT_SECRET&redirect_uri=REDIRECT_URI"
    ```
 
-3. **Check Network Connectivity**:
+5. **Check Network Connectivity**:
    ```bash
    # Test connectivity to provider
    curl -v https://api.dropboxapi.com/oauth2/token
@@ -192,7 +213,28 @@ Before diving into specific issues, run through this quick checklist:
 
 **Resolution Steps**:
 
-1. **Validate Provider Configuration**:
+1. **Verify HTTP Basic Authentication Implementation** (Critical for Dropbox):
+   ```typescript
+   // CORRECT: Use HTTP Basic Authentication per RFC 6749 Section 2.3.1
+   const clientCredentials = Buffer.from(`${provider.clientId}:${provider.clientSecret}`).toString('base64');
+   
+   const tokenRequest = {
+     method: 'POST',
+     url: provider.tokenUrl,
+     headers: {
+       'Content-Type': 'application/x-www-form-urlencoded',
+       'Authorization': `Basic ${clientCredentials}`,
+       'User-Agent': 'MWAP-OAuth-Client/1.0'
+     },
+     data: new URLSearchParams({
+       grant_type: 'authorization_code',
+       code,
+       redirect_uri: redirectUri
+     }).toString()
+   };
+   ```
+
+2. **Validate Provider Configuration**:
    ```typescript
    // Ensure all required fields are present
    const provider = {
@@ -201,22 +243,68 @@ Before diving into specific issues, run through this quick checklist:
      tokenUrl: 'https://api.dropboxapi.com/oauth2/token',
      clientId: 'your_client_id',
      clientSecret: 'your_client_secret', // Encrypted
+     grantType: 'authorization_code',
+     tokenMethod: 'POST',
      scopes: ['files.content.read', 'files.content.write']
    };
    ```
 
-2. **Verify Redirect URI Matching**:
+3. **Ensure Exact Redirect URI Matching**:
    ```typescript
-   // Ensure redirect URI matches exactly
-   const redirectUri = `${req.protocol}://${req.get('host')}/api/v1/oauth/callback`;
-   // Must match the URI registered with OAuth provider
+   // CRITICAL: redirect_uri must exactly match between authorization and token exchange
+   const redirectUri = `https://${req.get('host')}/api/v1/oauth/callback`;
+   // Must match the URI used in the authorization request AND registered with OAuth provider
    ```
 
-3. **Check Client Credentials**:
+4. **Implement Comprehensive Error Handling**:
+   ```typescript
+   // Handle specific OAuth error codes
+   if (response.status >= 400) {
+     const errorData = response.data || {};
+     let errorMessage = 'Failed to exchange code for tokens';
+     
+     switch (errorData.error) {
+       case 'invalid_grant':
+         errorMessage = 'Authorization code is invalid or expired';
+         break;
+       case 'invalid_client':
+         errorMessage = 'Client authentication failed';
+         break;
+       case 'invalid_request':
+         errorMessage = 'Token request is malformed';
+         break;
+       case 'unsupported_grant_type':
+         errorMessage = 'Grant type not supported by provider';
+         break;
+     }
+     
+     throw new ApiError(errorMessage, response.status);
+   }
+   ```
+
+5. **Check Client Credentials and Registration**:
    ```bash
    # Verify credentials are correct and not expired
    # Check OAuth provider dashboard for credential status
+   # Ensure redirect URI is registered exactly as: https://yourdomain.com/api/v1/oauth/callback
    ```
+
+6. **Monitor Token Exchange Performance**:
+   ```typescript
+   // Add timeout and performance monitoring
+   const tokenRequest = {
+     // ... other config
+     timeout: 30000, // 30 second timeout
+     validateStatus: (status: number) => status < 500 // Handle 4xx errors gracefully
+   };
+   ```
+
+**Common Dropbox-Specific Issues**:
+
+- **400 Bad Request**: Usually indicates incorrect client authentication method. Ensure using HTTP Basic Auth.
+- **401 Unauthorized**: Client credentials are invalid or client_id/client_secret mismatch.
+- **Invalid Grant**: Authorization code expired (10-minute limit) or already used.
+- **Redirect URI Mismatch**: The redirect_uri in token exchange doesn't match authorization request.
 
 ### 4. Integration Ownership Verification Failures
 
