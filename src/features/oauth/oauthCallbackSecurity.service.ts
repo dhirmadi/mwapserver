@@ -379,9 +379,9 @@ export class OAuthCallbackSecurityService {
         issues.push(`Invalid redirect URI scheme: ${url.protocol}`);
       }
       
-      // CRITICAL: Enforce HTTPS in production for Dropbox OAuth compliance
-      if (environment === 'production' && scheme !== 'https') {
-        issues.push(`Production environment requires HTTPS redirect URI, got: ${scheme}`);
+      // CRITICAL: Enforce HTTPS for all environments for OAuth security compliance
+      if (scheme !== 'https') {
+        issues.push(`OAuth security requires HTTPS redirect URI in all environments, got: ${scheme}`);
       }
 
       // 2. Validate host
@@ -461,7 +461,8 @@ export class OAuthCallbackSecurityService {
     
     try {
       // Construct what the redirect URI should be based on environment
-      const expectedProtocol = environment === 'production' ? 'https' : 'http';
+      // SECURITY: Always expect HTTPS for OAuth flows across all environments
+      const expectedProtocol = 'https'; // Force HTTPS for all OAuth security
       const expectedUri = `${expectedProtocol}://${expectedHost}${this.CALLBACK_PATH}`;
       
       // Check if they match
@@ -469,8 +470,8 @@ export class OAuthCallbackSecurityService {
         issues.push(`Redirect URI mismatch: constructed '${constructedUri}' vs expected '${expectedUri}'`);
         
         // Provide specific guidance for common issues
-        if (constructedUri.startsWith('http:') && expectedUri.startsWith('https:')) {
-          issues.push('CRITICAL: Using HTTP in production - this will cause Dropbox OAuth to fail');
+        if (constructedUri.startsWith('http:')) {
+          issues.push('CRITICAL: Using HTTP for OAuth - this violates security requirements and will cause OAuth failures');
         }
       }
       

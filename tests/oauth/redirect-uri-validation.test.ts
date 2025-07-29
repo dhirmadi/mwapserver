@@ -37,7 +37,7 @@ describe('OAuth Redirect URI Validation', () => {
       expect(result.issues).toBeUndefined();
     });
 
-    it('should reject HTTP URIs in production', () => {
+    it('should reject HTTP URIs in all environments', () => {
       const result = securityService.validateRedirectUri(
         'http://mwapsp.shibari.photo/api/v1/oauth/callback',
         'mwapsp.shibari.photo',
@@ -45,18 +45,18 @@ describe('OAuth Redirect URI Validation', () => {
       );
 
       expect(result.isValid).toBe(false);
-      expect(result.issues).toContain('Production environment requires HTTPS redirect URI, got: http');
+      expect(result.issues).toContain('OAuth security requires HTTPS redirect URI in all environments, got: http');
     });
 
-    it('should accept HTTP URIs in development', () => {
+    it('should reject HTTP URIs in development (HTTPS-only policy)', () => {
       const result = securityService.validateRedirectUri(
         'http://localhost:3001/api/v1/oauth/callback',
         'localhost:3001',
         'development'
       );
 
-      expect(result.isValid).toBe(true);
-      expect(result.issues).toBeUndefined();
+      expect(result.isValid).toBe(false);
+      expect(result.issues).toContain('OAuth security requires HTTPS redirect URI in all environments, got: http');
     });
 
     it('should reject unauthorized hosts', () => {
@@ -102,10 +102,10 @@ describe('OAuth Redirect URI Validation', () => {
       );
 
       expect(result.isValid).toBe(true);
-      expect(result.expectedUri).toBe('http://mwapss.shibari.photo/api/v1/oauth/callback');
+      expect(result.expectedUri).toBe('https://mwapss.shibari.photo/api/v1/oauth/callback');
     });
 
-    it('should detect HTTP/HTTPS mismatch in production', () => {
+    it('should detect HTTP usage (HTTPS-only policy)', () => {
       const result = securityService.validateProviderRedirectUriMatch(
         'http://mwapsp.shibari.photo/api/v1/oauth/callback',
         'mwapsp.shibari.photo',
@@ -113,18 +113,29 @@ describe('OAuth Redirect URI Validation', () => {
       );
 
       expect(result.isValid).toBe(false);
-      expect(result.issues).toContain('CRITICAL: Using HTTP in production - this will cause Dropbox OAuth to fail');
+      expect(result.issues).toContain('CRITICAL: Using HTTP for OAuth - this violates security requirements and will cause OAuth failures');
     });
 
-    it('should validate matching URIs in development', () => {
+    it('should validate matching HTTPS URIs in development', () => {
+      const result = securityService.validateProviderRedirectUriMatch(
+        'https://localhost:3001/api/v1/oauth/callback',
+        'localhost:3001',
+        'development'
+      );
+
+      expect(result.isValid).toBe(true);
+      expect(result.expectedUri).toBe('https://localhost:3001/api/v1/oauth/callback');
+    });
+
+    it('should reject HTTP URIs in development (HTTPS-only policy)', () => {
       const result = securityService.validateProviderRedirectUriMatch(
         'http://localhost:3001/api/v1/oauth/callback',
         'localhost:3001',
         'development'
       );
 
-      expect(result.isValid).toBe(true);
-      expect(result.expectedUri).toBe('http://localhost:3001/api/v1/oauth/callback');
+      expect(result.isValid).toBe(false);
+      expect(result.issues).toContain('CRITICAL: Using HTTP for OAuth - this violates security requirements and will cause OAuth failures');
     });
   });
 });

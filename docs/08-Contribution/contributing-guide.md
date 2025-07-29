@@ -33,6 +33,7 @@ Before contributing, ensure you have:
 - **Git** configured with your GitHub account
 - **MongoDB Atlas** account (for testing)
 - **Auth0** account (for authentication testing)
+- **HTTPS certificates** for local development (use `mkcert` - see OAuth Security Guide)
 - **Code Editor** (VS Code recommended)
 - **Familiarity** with TypeScript, React, and Node.js
 

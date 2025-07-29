@@ -171,8 +171,8 @@ export async function handleOAuthCallback(req: Request, res: Response) {
     auditData.provider = provider.name;
     
     // 7. Build and validate the redirect URI that was used for the authorization request
-    // CRITICAL: Force HTTPS in production for Dropbox OAuth compliance
-    const protocol = env.NODE_ENV === 'production' ? 'https' : req.protocol;
+    // CRITICAL: Always use HTTPS for OAuth security compliance across all environments
+    const protocol = 'https'; // Force HTTPS for all OAuth flows for security
     const redirectUri = `${protocol}://${req.get('host')}/api/v1/oauth/callback`;
     
     // Log the resolved redirect URI for debugging and validation
