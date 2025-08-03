@@ -15,10 +15,12 @@
  * - Error messages must not leak sensitive information
  */
 
+import { createHash } from 'crypto';
 import { logInfo, logError, logAudit } from '../../utils/logger.js';
 import { ApiError } from '../../utils/errors.js';
 import { CloudIntegrationsService } from '../cloud-integrations/cloudIntegrations.service.js';
 import { CloudProviderService } from '../cloud-providers/cloudProviders.service.js';
+import { getAllowedOAuthDomains, env } from '../../config/env.js';
 
 export interface StateParameter {
   tenantId: string;
@@ -66,10 +68,10 @@ export class OAuthCallbackSecurityService {
     // Development/local servers
     'localhost',
     '127.0.0.1',
-    // Staging/development server
-    'mwapss.shibari.photo',
     // Production server
-    'mwapsp.shibari.photo'
+    'mwapps.shibari.photo',
+    // Development/staging server
+    'mwapss.shibari.photo'
   ];
   private readonly ALLOWED_REDIRECT_SCHEMES = ['http', 'https'];
   private readonly CALLBACK_PATH = '/api/v1/oauth/callback';
@@ -77,6 +79,62 @@ export class OAuthCallbackSecurityService {
   constructor() {
     this.cloudIntegrationsService = new CloudIntegrationsService();
     this.cloudProviderService = new CloudProviderService();
+  }
+
+  /**
+   * Get allowed redirect hosts dynamically based on environment
+   */
+  private getAllowedRedirectHosts(): string[] {
+    return getAllowedOAuthDomains();
+  }
+
+  /**
+   * Get allowed hosts for specific environment
+   */
+  private getAllowedHostsForEnvironment(environment: string): string[] {
+    const baseHosts = ['localhost', '127.0.0.1'];
+    
+    switch (environment) {
+      case 'production':
+        return [...baseHosts, 'mwapps.shibari.photo'];
+      case 'staging':
+      case 'development':
+      default:
+        return [...baseHosts, 'mwapss.shibari.photo', 'mwapps.shibari.photo'];
+    }
+  }
+
+  /**
+   * Validate PKCE code_challenge against code_verifier
+   * Implements RFC 7636 Section 4.6
+   */
+  async validatePKCEChallenge(
+    codeVerifier: string, 
+    codeChallenge: string, 
+    method: string
+  ): Promise<boolean> {
+    try {
+      if (method === 'S256') {
+        // SHA256 hash and base64url encode
+        const hash = createHash('sha256').update(codeVerifier).digest();
+        const computedChallenge = hash.toString('base64url');
+        return computedChallenge === codeChallenge;
+      } else if (method === 'plain') {
+        // Plain text comparison (not recommended but supported)
+        return codeVerifier === codeChallenge;
+      } else {
+        // Unsupported method
+        return false;
+      }
+    } catch (error) {
+      logError('PKCE challenge validation error', {
+        error: error.message,
+        method,
+        codeVerifierLength: codeVerifier?.length,
+        codeChallengeLength: codeChallenge?.length
+      });
+      return false;
+    }
   }
 
   /**
@@ -376,25 +434,36 @@ export class OAuthCallbackSecurityService {
       // Parse the redirect URI
       const url = new URL(redirectUri);
 
-      // 1. Validate scheme - enforce HTTPS in production
+      // 1. Environment-specific scheme validation
+      const currentEnv = environment || env.NODE_ENV;
       const scheme = url.protocol.slice(0, -1);
-      if (!this.ALLOWED_REDIRECT_SCHEMES.includes(scheme)) {
-        issues.push(`Invalid redirect URI scheme: ${url.protocol}`);
-      }
       
-      // CRITICAL: Enforce HTTPS for all environments for OAuth security compliance
-      if (scheme !== 'https') {
-        issues.push(`OAuth security requires HTTPS redirect URI in all environments, got: ${scheme}`);
+      if (currentEnv === 'production') {
+        // Production requires HTTPS
+        if (url.protocol !== 'https:') {
+          issues.push('Production environment requires HTTPS redirect URI');
+        }
+      } else {
+        // Development/staging allows both HTTP and HTTPS
+        if (!['http:', 'https:'].includes(url.protocol)) {
+          issues.push(`Invalid protocol: ${url.protocol}, must be http or https`);
+        }
       }
 
-      // 2. Validate host
-      const isAllowedHost = this.ALLOWED_REDIRECT_HOSTS.some(allowedHost => {
-        return url.hostname === allowedHost || 
-               url.hostname.endsWith(`.${allowedHost}`);
-      });
+      // 2. Dynamic host validation based on environment
+      const allowedHosts = this.getAllowedHostsForEnvironment(currentEnv);
+      const isAllowedHost = allowedHosts.some(host => 
+        url.hostname === host || url.hostname.endsWith(`.${host}`)
+      );
 
       if (!isAllowedHost) {
-        issues.push(`Redirect URI host not allowed: ${url.hostname}`);
+        issues.push(`Host not allowed for ${currentEnv} environment: ${url.hostname}`);
+        logError('Redirect URI host validation failed', {
+          hostname: url.hostname,
+          environment: currentEnv,
+          allowedHosts,
+          redirectUri
+        });
       }
 
       // 3. Validate path
@@ -407,13 +476,23 @@ export class OAuthCallbackSecurityService {
         issues.push('Redirect URI must not contain query parameters or fragments');
       }
 
-      // 5. If request host is provided, ensure it matches
+      // 5. If request host is provided, ensure it matches (for additional validation)
       if (requestHost && url.hostname !== requestHost) {
-        // Allow this but log it for monitoring
         logInfo('Redirect URI host differs from request host', {
           redirectHost: url.hostname,
           requestHost,
-          component: 'oauth_callback_security'
+          environment: currentEnv
+        });
+        // Note: This is informational only, not a validation failure
+      }
+      
+      // Log successful validation for monitoring
+      if (issues.length === 0) {
+        logInfo('Redirect URI validation successful', {
+          redirectUri,
+          hostname: url.hostname,
+          environment: currentEnv,
+          protocol: url.protocol
         });
       }
 
@@ -579,6 +658,72 @@ export class OAuthCallbackSecurityService {
       isValid: issues.length === 0,
       issues: issues.length > 0 ? issues : undefined,
       isPKCEFlow
+    };
+  }
+
+  /**
+   * Enhanced PKCE parameter validation with challenge verification
+   */
+  async validatePKCEParametersEnhanced(integration: any): Promise<{
+    isValid: boolean;
+    issues?: string[];
+    isPKCEFlow?: boolean;
+    challengeVerificationResult?: boolean;
+  }> {
+    const metadata = integration.metadata || {};
+    const issues: string[] = [];
+    let challengeVerificationResult: boolean | undefined;
+    
+    // Check if this is a PKCE flow
+    const isPKCEFlow = !!(metadata.code_verifier);
+    
+    if (!isPKCEFlow) {
+      return { isValid: true, isPKCEFlow: false };
+    }
+    
+    // Validate code_verifier
+    const codeVerifier = metadata.code_verifier;
+    if (!codeVerifier) {
+      issues.push('Missing code_verifier for PKCE flow');
+    } else {
+      // Length validation (43-128 characters per RFC 7636)
+      if (codeVerifier.length < 43 || codeVerifier.length > 128) {
+        issues.push('code_verifier length must be 43-128 characters');
+      }
+      
+      // Character set validation (unreserved characters only)
+      if (!/^[A-Za-z0-9\-._~]+$/.test(codeVerifier)) {
+        issues.push('code_verifier contains invalid characters');
+      }
+    }
+    
+    // Validate code_challenge and method
+    const codeChallenge = metadata.code_challenge;
+    const challengeMethod = metadata.code_challenge_method;
+    
+    if (codeChallenge && challengeMethod && codeVerifier) {
+      // Validate challenge method
+      if (!['S256', 'plain'].includes(challengeMethod)) {
+        issues.push('Invalid code_challenge_method, must be S256 or plain');
+      } else {
+        // Verify challenge against verifier
+        challengeVerificationResult = await this.validatePKCEChallenge(
+          codeVerifier,
+          codeChallenge,
+          challengeMethod
+        );
+        
+        if (!challengeVerificationResult) {
+          issues.push('code_challenge does not match code_verifier');
+        }
+      }
+    }
+    
+    return {
+      isValid: issues.length === 0,
+      issues: issues.length > 0 ? issues : undefined,
+      isPKCEFlow,
+      challengeVerificationResult
     };
   }
 

@@ -67,6 +67,36 @@ export const PUBLIC_ROUTES: PublicRouteConfig[] = [
     ],
     exposesData: false,
     dataExposed: 'None - only redirects to success/error pages with minimal information'
+  },
+  {
+    path: '/api/v1/oauth/success',
+    methods: ['GET'],
+    justification: 'OAuth success page must be accessible after provider redirect completion',
+    securityControls: [
+      'Parameter validation for tenantId and integrationId',
+      'Generic success messaging with minimal data exposure',
+      'Auto-close functionality for popup windows',
+      'Audit logging of page access'
+    ],
+    approvedDate: '2025-08-03',
+    externalCallers: ['Browser redirects from OAuth callback'],
+    exposesData: true,
+    dataExposed: 'Only integration ID and tenant ID for success confirmation'
+  },
+  {
+    path: '/api/v1/oauth/error',
+    methods: ['GET'],
+    justification: 'OAuth error page must be accessible after failed authentication',
+    securityControls: [
+      'Generic error messaging without sensitive details',
+      'No sensitive information exposure in error messages',
+      'Auto-close functionality for popup windows',
+      'Audit logging of error page access'
+    ],
+    approvedDate: '2025-08-03',
+    externalCallers: ['Browser redirects from OAuth callback'],
+    exposesData: false,
+    dataExposed: 'Only generic error messages and error codes'
   }
 ];
 

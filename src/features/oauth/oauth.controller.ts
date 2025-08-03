@@ -29,10 +29,11 @@ const oauthMonitoringService = new OAuthSecurityMonitoringService();
  * - Generic error messages for security
  */
 export async function handleOAuthCallback(req: Request, res: Response) {
+  const startTime = Date.now();
   const requestContext = {
     ip: req.ip || 'unknown',
     userAgent: req.get('User-Agent') || 'unknown',
-    timestamp: Date.now()
+    timestamp: startTime
   };
 
   // Initialize audit data
@@ -170,30 +171,58 @@ export async function handleOAuthCallback(req: Request, res: Response) {
     
     auditData.provider = provider.name;
     
-    // 6.5. Validate PKCE parameters if this is a PKCE flow
-    const pkceValidation = oauthSecurityService.validatePKCEParameters(integration);
+    // 6.5. Enhanced PKCE parameter validation with challenge verification
+    const pkceValidation = await oauthSecurityService.validatePKCEParametersEnhanced(integration);
     const isPKCEFlow = pkceValidation.isPKCEFlow || false;
     
     if (!pkceValidation.isValid) {
       auditData.securityIssues.push(...(pkceValidation.issues || []));
       auditData.errorCode = 'INVALID_PKCE_PARAMETERS';
       
-      logError('PKCE parameter validation failed', {
+      logError('Enhanced PKCE parameter validation failed', {
         integrationId: stateData.integrationId,
         tenantId: stateData.tenantId,
         issues: pkceValidation.issues,
+        challengeVerificationResult: pkceValidation.challengeVerificationResult,
         ip: requestContext.ip,
         userAgent: requestContext.userAgent
       });
       
       await oauthSecurityService.logCallbackAttempt(auditData, {
-        pkceValidationIssues: pkceValidation.issues
+        pkceValidationIssues: pkceValidation.issues,
+        challengeVerificationFailed: pkceValidation.challengeVerificationResult === false
       });
       
       recordFailedAttempt();
       
       const errorResponse = oauthSecurityService.generateErrorResponse('INVALID_PKCE_PARAMETERS');
       return res.redirect(errorResponse.redirectUrl);
+    }
+    
+    // Enhanced logging for PKCE flows
+    if (isPKCEFlow) {
+      logInfo('Enhanced PKCE OAuth flow detected', {
+        tenantId: stateData.tenantId,
+        integrationId: stateData.integrationId,
+        hasCodeVerifier: !!integration.metadata?.code_verifier,
+        codeVerifierLength: integration.metadata?.code_verifier?.length,
+        challengeMethod: integration.metadata?.code_challenge_method,
+        challengeVerificationPassed: pkceValidation.challengeVerificationResult,
+        component: 'oauth_controller'
+      });
+      
+      // Record PKCE flow attempt for monitoring
+      oauthMonitoringService.recordPKCEFlowAttempt({
+        timestamp: requestContext.timestamp,
+        tenantId: stateData.tenantId,
+        integrationId: stateData.integrationId,
+        flowType: 'PKCE',
+        success: pkceValidation.isValid,
+        validationIssues: pkceValidation.issues,
+        challengeVerificationResult: pkceValidation.challengeVerificationResult,
+        provider: provider.name,
+        ip: requestContext.ip
+      });
     }
     
     // Extract code_verifier for PKCE flows
@@ -357,7 +386,16 @@ export async function handleOAuthCallback(req: Request, res: Response) {
       userAgent: requestContext.userAgent
     });
     
-    // 11. Redirect to success page
+    // 11. Record performance metrics and redirect to success page
+    const duration = Date.now() - startTime;
+    oauthMonitoringService.recordCallbackPerformance({
+      duration,
+      flowType: isPKCEFlow ? 'PKCE' : 'traditional',
+      provider: provider.name,
+      success: true,
+      tenantId: stateData.tenantId
+    });
+    
     return res.redirect(`/oauth/success?tenantId=${stateData.tenantId}&integrationId=${stateData.integrationId}`);
     
   } catch (error) {
@@ -379,6 +417,16 @@ export async function handleOAuthCallback(req: Request, res: Response) {
     });
     
     recordFailedAttempt();
+    
+    // Record performance metrics for error case
+    const duration = Date.now() - startTime;
+    oauthMonitoringService.recordCallbackPerformance({
+      duration,
+      flowType: 'unknown', // Error occurred before flow type determination
+      provider: auditData.provider || 'unknown',
+      success: false,
+      tenantId: auditData.tenantId || 'unknown'
+    });
     
     // Return generic error for security
     const errorResponse = oauthSecurityService.generateErrorResponse('VALIDATION_ERROR');
@@ -518,4 +566,168 @@ export async function refreshIntegrationTokens(req: Request, res: Response) {
     logError('Token refresh error', error);
     throw error;
   }
+}
+
+/**
+ * Handle OAuth success page display
+ */
+export async function handleOAuthSuccess(req: Request, res: Response) {
+  const { tenantId, integrationId } = req.query;
+  
+  // Validate required parameters
+  if (!tenantId || !integrationId) {
+    logError('OAuth success page accessed with missing parameters', {
+      tenantId,
+      integrationId,
+      ip: req.ip,
+      userAgent: req.get('User-Agent')
+    });
+    
+    return res.status(400).send(`
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <title>OAuth Error</title>
+          <meta charset="utf-8">
+          <meta name="viewport" content="width=device-width, initial-scale=1">
+          <style>
+            body { font-family: Arial, sans-serif; text-align: center; padding: 50px; }
+            .error { color: #d32f2f; }
+            .container { max-width: 500px; margin: 0 auto; }
+          </style>
+        </head>
+        <body>
+          <div class="container">
+            <h1 class="error">OAuth Integration Error</h1>
+            <p>Invalid success parameters. Please try the integration process again.</p>
+            <p>If this problem persists, please contact support.</p>
+          </div>
+          <script>
+            // Auto-close after 5 seconds
+            setTimeout(() => {
+              if (window.opener) {
+                window.close();
+              }
+            }, 5000);
+          </script>
+        </body>
+      </html>
+    `);
+  }
+  
+  // Log successful access
+  logInfo('OAuth success page accessed', {
+    tenantId,
+    integrationId,
+    ip: req.ip,
+    userAgent: req.get('User-Agent')
+  });
+  
+  res.send(`
+    <!DOCTYPE html>
+    <html>
+      <head>
+        <title>OAuth Success</title>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <style>
+          body { font-family: Arial, sans-serif; text-align: center; padding: 50px; }
+          .success { color: #2e7d32; }
+          .container { max-width: 500px; margin: 0 auto; }
+          .integration-id { font-family: monospace; background: #f5f5f5; padding: 5px; }
+        </style>
+      </head>
+      <body>
+        <div class="container">
+          <h1 class="success">✓ OAuth Integration Successful!</h1>
+          <p>Your cloud provider has been successfully connected to your account.</p>
+          <p>Integration ID: <span class="integration-id">${integrationId}</span></p>
+          <p>This window will close automatically in 3 seconds.</p>
+        </div>
+        <script>
+          // Notify parent window if in popup
+          if (window.opener) {
+            window.opener.postMessage({
+              type: 'oauth_success',
+              tenantId: '${tenantId}',
+              integrationId: '${integrationId}'
+            }, '*');
+          }
+          
+          // Auto-close after 3 seconds
+          setTimeout(() => {
+            if (window.opener) {
+              window.close();
+            } else {
+              // If not in popup, redirect to a default page
+              window.location.href = '/';
+            }
+          }, 3000);
+        </script>
+      </body>
+    </html>
+  `);
+}
+
+/**
+ * Handle OAuth error page display
+ */
+export async function handleOAuthError(req: Request, res: Response) {
+  const { message, code } = req.query;
+  const errorMessage = (message as string) || 'OAuth authentication failed';
+  const errorCode = (code as string) || 'UNKNOWN_ERROR';
+  
+  // Log error page access
+  logError('OAuth error page accessed', {
+    errorMessage,
+    errorCode,
+    ip: req.ip,
+    userAgent: req.get('User-Agent')
+  });
+  
+  res.send(`
+    <!DOCTYPE html>
+    <html>
+      <head>
+        <title>OAuth Error</title>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <style>
+          body { font-family: Arial, sans-serif; text-align: center; padding: 50px; }
+          .error { color: #d32f2f; }
+          .container { max-width: 500px; margin: 0 auto; }
+          .error-code { font-family: monospace; background: #ffebee; padding: 5px; }
+        </style>
+      </head>
+      <body>
+        <div class="container">
+          <h1 class="error">OAuth Integration Failed</h1>
+          <p>${errorMessage}</p>
+          <p>Error Code: <span class="error-code">${errorCode}</span></p>
+          <p>Please try again or contact support if the problem persists.</p>
+          <p>This window will close automatically in 5 seconds.</p>
+        </div>
+        <script>
+          // Notify parent window if in popup
+          if (window.opener) {
+            window.opener.postMessage({
+              type: 'oauth_error',
+              message: '${errorMessage}',
+              code: '${errorCode}'
+            }, '*');
+          }
+          
+          // Auto-close after 5 seconds
+          setTimeout(() => {
+            if (window.opener) {
+              window.close();
+            } else {
+              // If not in popup, redirect to a default page
+              window.location.href = '/';
+            }
+          }, 5000);
+        </script>
+      </body>
+    </html>
+  `);
 }

@@ -547,6 +547,128 @@ export class OAuthSecurityMonitoringService {
     return { vulnerabilities, mitigations };
   }
 
+  /**
+   * Record PKCE flow attempt with detailed metrics
+   */
+  recordPKCEFlowAttempt(data: {
+    timestamp: number;
+    tenantId: string;
+    integrationId: string;
+    flowType: 'PKCE' | 'traditional';
+    success: boolean;
+    validationIssues?: string[];
+    challengeVerificationResult?: boolean;
+    provider?: string;
+    ip?: string;
+  }) {
+    // Record basic PKCE flow metrics
+    logInfo('PKCE flow attempt recorded', {
+      flowType: data.flowType,
+      success: data.success,
+      tenantId: data.tenantId,
+      integrationId: data.integrationId,
+      provider: data.provider,
+      challengeVerificationPassed: data.challengeVerificationResult,
+      validationIssueCount: data.validationIssues?.length || 0,
+      component: 'oauth_monitoring'
+    });
+    
+    // Record validation failures for alerting
+    if (data.validationIssues?.length) {
+      data.validationIssues.forEach(issue => {
+        logError('PKCE validation issue detected', {
+          issue,
+          tenantId: data.tenantId,
+          integrationId: data.integrationId,
+          flowType: data.flowType,
+          ip: data.ip,
+          component: 'oauth_monitoring'
+        });
+      });
+    }
+    
+    // Record challenge verification failures
+    if (data.challengeVerificationResult === false) {
+      logError('PKCE challenge verification failed', {
+        tenantId: data.tenantId,
+        integrationId: data.integrationId,
+        provider: data.provider,
+        ip: data.ip,
+        component: 'oauth_monitoring'
+      });
+    }
+  }
+  
+  /**
+   * Record OAuth callback performance metrics
+   */
+  recordCallbackPerformance(data: {
+    duration: number;
+    flowType: 'PKCE' | 'traditional';
+    provider: string;
+    success: boolean;
+    tenantId: string;
+  }) {
+    logInfo('OAuth callback performance recorded', {
+      duration: data.duration,
+      flowType: data.flowType,
+      provider: data.provider,
+      success: data.success,
+      tenantId: data.tenantId,
+      component: 'oauth_monitoring'
+    });
+    
+    // Alert on slow callbacks
+    if (data.duration > 5000) { // 5 seconds
+      logError('Slow OAuth callback detected', {
+        duration: data.duration,
+        flowType: data.flowType,
+        provider: data.provider,
+        tenantId: data.tenantId,
+        component: 'oauth_monitoring'
+      });
+    }
+  }
+  
+  /**
+   * Generate OAuth health metrics summary
+   */
+  generateHealthMetrics(): {
+    pkceFlowSuccessRate: number;
+    traditionalFlowSuccessRate: number;
+    averageCallbackDuration: number;
+    recentErrorCount: number;
+  } {
+    // This would typically integrate with a metrics collection system
+    // For now, return placeholder values based on recent data
+    const cutoff = Date.now() - this.TIME_WINDOW_MS;
+    let pkceSuccesses = 0;
+    let pkceTotal = 0;
+    let traditionalSuccesses = 0;
+    let traditionalTotal = 0;
+    
+    // Analyze recent attempts for flow type metrics
+    for (const attempts of this.callbackAttempts.values()) {
+      const recentAttempts = attempts.filter(a => a.timestamp >= cutoff);
+      for (const attempt of recentAttempts) {
+        // This is a simplified analysis - in production would need more detailed tracking
+        if (attempt.success) {
+          pkceSuccesses++;
+          traditionalSuccesses++;
+        }
+        pkceTotal++;
+        traditionalTotal++;
+      }
+    }
+    
+    return {
+      pkceFlowSuccessRate: pkceTotal > 0 ? pkceSuccesses / pkceTotal : 1.0,
+      traditionalFlowSuccessRate: traditionalTotal > 0 ? traditionalSuccesses / traditionalTotal : 1.0,
+      averageCallbackDuration: 1500, // Placeholder - would calculate from actual data
+      recentErrorCount: this.suspiciousPatterns.filter(p => p.detectedAt >= cutoff).length
+    };
+  }
+
   private cleanupOldData(): void {
     const cutoff = Date.now() - (24 * 60 * 60 * 1000); // 24 hours
     

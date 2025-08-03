@@ -14,7 +14,10 @@ export const envSchema = z.object({
   PORT: z.coerce.number().min(1).max(65535).default(3001),
   MONGODB_URI: z.string(),
   AUTH0_DOMAIN: z.string(),
-  AUTH0_AUDIENCE: z.string()
+  AUTH0_AUDIENCE: z.string(),
+  // OAuth domain configuration
+  BACKEND_DOMAIN: z.string().optional(),
+  ALLOWED_OAUTH_DOMAINS: z.string().optional()
 });
 
 // Validate and export environment
@@ -28,3 +31,42 @@ export const env = new Proxy({} as Env, {
     return validatedEnv[prop];
   }
 });
+
+/**
+ * Get backend domain based on environment
+ */
+export function getBackendDomain(): string {
+  const envDomain = env.BACKEND_DOMAIN;
+  if (envDomain) return envDomain;
+  
+  // Fallback based on environment
+  switch (env.NODE_ENV) {
+    case 'production':
+      return 'https://mwapps.shibari.photo';
+    case 'staging':
+    case 'development':
+    default:
+      return 'https://mwapss.shibari.photo';
+  }
+}
+
+/**
+ * Get allowed OAuth domains for redirect URI validation
+ */
+export function getAllowedOAuthDomains(): string[] {
+  const envDomains = env.ALLOWED_OAUTH_DOMAINS;
+  if (envDomains) {
+    return envDomains.split(',').map(d => d.trim());
+  }
+  
+  // Fallback configuration
+  const baseDomains = ['localhost', '127.0.0.1'];
+  switch (env.NODE_ENV) {
+    case 'production':
+      return [...baseDomains, 'mwapps.shibari.photo'];
+    case 'staging':
+    case 'development':
+    default:
+      return [...baseDomains, 'mwapss.shibari.photo', 'mwapps.shibari.photo'];
+  }
+}
