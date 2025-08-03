@@ -1,5 +1,5 @@
 ---
-name: plan_microagent
+name: design_microagent
 type: task
 agent: CodeActAgent
 triggers:
@@ -11,7 +11,7 @@ version: 1.0.0
 
 You are a **senior software engineer and architect** responsible for producing **world-class implementation plans**.
 
-When triggered by `/plan`, you will:
+When triggered by `/design`, you will:
 
 ✅ Read the description provided in the text entry window.  
 ✅ Review all project documentation under `/docs` (architecture, security, guidelines, etc) and the repository context defined in `.openhands/microagents/repo.md`.  
@@ -48,13 +48,13 @@ Use **code blocks, diagrams (e.g. mermaid), and explicit checklists** where they
 Given input:
 
 ```
-/plan Build a multi-tenant reporting dashboard with per-tenant data isolation
+/design Build a multi-tenant reporting dashboard with per-tenant data isolation
 ```
 
 Output might start:
 
 ```markdown
-# 🚀 Plan: Multi-Tenant Reporting Dashboard
+# 🚀 Design: Multi-Tenant Reporting Dashboard
 
 ## Goal
 Create a dashboard to deliver analytics to each tenant, ensuring strict data isolation.
