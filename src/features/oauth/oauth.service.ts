@@ -25,60 +25,103 @@ export class OAuthService {
   /**
    * Exchange authorization code for access and refresh tokens
    * 
-   * This method implements the OAuth 2.0 authorization code flow token exchange
-   * as specified in RFC 6749 Section 4.1.3. It uses HTTP Basic Authentication
-   * for client credentials as required by Dropbox and other OAuth providers.
+   * This method implements both traditional OAuth 2.0 authorization code flow (RFC 6749 Section 4.1.3)
+   * and PKCE (Proof Key for Code Exchange) flow (RFC 7636). It automatically detects the flow type
+   * based on the presence of codeVerifier parameter.
+   * 
+   * Traditional flow: Uses HTTP Basic Authentication with client credentials
+   * PKCE flow: Uses code_verifier parameter instead of client secret
    * 
    * @param code - Authorization code received from OAuth provider
    * @param provider - Cloud provider configuration with client credentials
    * @param redirectUri - Redirect URI that must exactly match the authorization request
+   * @param codeVerifier - Optional PKCE code verifier for public clients (RFC 7636)
    * @returns Promise<TokenResponse> - Access token, refresh token, and metadata
    * @throws ApiError - On authentication failures, network errors, or invalid responses
    */
   async exchangeCodeForTokens(
     code: string,
     provider: CloudProvider,
-    redirectUri: string
+    redirectUri: string,
+    codeVerifier?: string
   ): Promise<TokenResponse> {
     const startTime = Date.now();
     
     try {
+      const isPKCEFlow = !!codeVerifier;
+      
       logInfo(`Exchanging OAuth code for tokens with provider ${provider.name}`, {
         provider: provider.name,
         providerId: provider._id.toString(),
         redirectUri,
         tokenUrl: provider.tokenUrl,
         grantType: provider.grantType,
-        tokenMethod: provider.tokenMethod
+        tokenMethod: provider.tokenMethod,
+        flowType: isPKCEFlow ? 'PKCE' : 'traditional',
+        hasCodeVerifier: isPKCEFlow,
+        codeVerifierLength: codeVerifier?.length
       });
       
-      // Prepare client credentials for HTTP Basic Authentication
-      // This follows OAuth 2.0 RFC 6749 Section 2.3.1 and is required by many providers including Dropbox
-      const clientCredentials = Buffer.from(`${provider.clientId}:${provider.clientSecret}`).toString('base64');
+      // Prepare token request based on flow type
+      let tokenRequest: any;
       
-      // Prepare token request with proper authentication
-      const tokenRequest = {
-        method: provider.tokenMethod,
-        url: provider.tokenUrl,
-        headers: {
-          'Content-Type': 'application/x-www-form-urlencoded',
-          'Authorization': `Basic ${clientCredentials}`,
-          'User-Agent': 'MWAP-OAuth-Client/1.0'
-        },
-        data: new URLSearchParams({
-          grant_type: provider.grantType,
-          code,
-          redirect_uri: redirectUri
-        }).toString(),
-        timeout: 30000, // 30 second timeout
-        validateStatus: (status: number) => status < 500 // Don't throw on 4xx errors, we'll handle them
-      };
+      if (isPKCEFlow) {
+        // PKCE flow (RFC 7636) - use code_verifier instead of client secret
+        logInfo('Using PKCE flow for token exchange', {
+          provider: provider.name,
+          codeVerifierLength: codeVerifier!.length
+        });
+        
+        tokenRequest = {
+          method: provider.tokenMethod,
+          url: provider.tokenUrl,
+          headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+            'User-Agent': 'MWAP-OAuth-Client/1.0'
+          },
+          data: new URLSearchParams({
+            grant_type: provider.grantType,
+            code,
+            redirect_uri: redirectUri,
+            client_id: provider.clientId,
+            code_verifier: codeVerifier!
+          }).toString(),
+          timeout: 30000, // 30 second timeout
+          validateStatus: (status: number) => status < 500 // Don't throw on 4xx errors, we'll handle them
+        };
+      } else {
+        // Traditional flow (RFC 6749) - use HTTP Basic Authentication with client credentials
+        logInfo('Using traditional OAuth flow for token exchange', {
+          provider: provider.name
+        });
+        
+        const clientCredentials = Buffer.from(`${provider.clientId}:${provider.clientSecret}`).toString('base64');
+        
+        tokenRequest = {
+          method: provider.tokenMethod,
+          url: provider.tokenUrl,
+          headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+            'Authorization': `Basic ${clientCredentials}`,
+            'User-Agent': 'MWAP-OAuth-Client/1.0'
+          },
+          data: new URLSearchParams({
+            grant_type: provider.grantType,
+            code,
+            redirect_uri: redirectUri
+          }).toString(),
+          timeout: 30000, // 30 second timeout
+          validateStatus: (status: number) => status < 500 // Don't throw on 4xx errors, we'll handle them
+        };
+      }
       
       logInfo('Making token exchange request', {
         provider: provider.name,
         url: provider.tokenUrl,
         method: provider.tokenMethod,
-        hasBasicAuth: true,
+        flowType: isPKCEFlow ? 'PKCE' : 'traditional',
+        hasBasicAuth: !isPKCEFlow,
+        hasPKCE: isPKCEFlow,
         redirectUri,
         requestSize: tokenRequest.data.length
       });
@@ -133,6 +176,7 @@ export class OAuthService {
       
       logInfo(`Successfully exchanged code for tokens with provider ${provider.name}`, {
         provider: provider.name,
+        flowType: isPKCEFlow ? 'PKCE' : 'traditional',
         duration,
         hasRefreshToken: !!response.data.refresh_token,
         expiresIn: response.data.expires_in,

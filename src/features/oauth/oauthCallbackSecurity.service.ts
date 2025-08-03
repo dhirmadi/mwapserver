@@ -348,7 +348,10 @@ export class OAuthCallbackSecurityService {
       'PROVIDER_ERROR': 'Authentication failed',
       'MISSING_PARAMETERS': 'Invalid request',
       'INVALID_REDIRECT_URI': 'Invalid redirect configuration',
-      'INTERNAL_ERROR': 'An error occurred'
+      'INTERNAL_ERROR': 'An error occurred',
+      'INVALID_PKCE_PARAMETERS': 'Invalid authentication parameters',
+      'PKCE_VERIFICATION_FAILED': 'Authentication verification failed',
+      'MISSING_CODE_VERIFIER': 'Missing authentication verifier'
     };
 
     const message = errorMessages[errorCode] || 'An error occurred during authentication';
@@ -497,6 +500,86 @@ export class OAuthCallbackSecurityService {
         issues
       };
     }
+  }
+
+  /**
+   * Validate PKCE parameters for OAuth 2.0 with PKCE flows
+   * 
+   * Validates code_verifier and related PKCE parameters according to RFC 7636
+   * to ensure secure PKCE flow completion.
+   * 
+   * @param integration - Cloud provider integration with potential PKCE metadata
+   * @returns Validation result with any security issues identified
+   */
+  validatePKCEParameters(integration: any): {
+    isValid: boolean;
+    issues?: string[];
+    isPKCEFlow?: boolean;
+  } {
+    const metadata = integration.metadata || {};
+    const issues: string[] = [];
+    
+    // Check if this is a PKCE flow
+    const isPKCEFlow = !!(metadata.code_verifier || metadata.pkce_flow);
+    
+    if (!isPKCEFlow) {
+      // Not a PKCE flow, validation passes
+      return {
+        isValid: true,
+        isPKCEFlow: false
+      };
+    }
+    
+    logInfo('Validating PKCE parameters', {
+      integrationId: integration._id?.toString(),
+      hasCodeVerifier: !!metadata.code_verifier,
+      hasCodeChallenge: !!metadata.code_challenge,
+      challengeMethod: metadata.code_challenge_method,
+      component: 'oauth_callback_security'
+    });
+    
+    // Validate code_verifier (required for PKCE)
+    if (!metadata.code_verifier) {
+      issues.push('Missing code_verifier for PKCE flow');
+    } else {
+      const codeVerifier = metadata.code_verifier as string;
+      
+      // RFC 7636 Section 4.1: code_verifier length must be 43-128 characters
+      if (codeVerifier.length < 43 || codeVerifier.length > 128) {
+        issues.push(`code_verifier length must be 43-128 characters (actual: ${codeVerifier.length})`);
+      }
+      
+      // RFC 7636 Section 4.1: code_verifier must use unreserved characters
+      const codeVerifierRegex = /^[A-Za-z0-9\-._~]+$/;
+      if (!codeVerifierRegex.test(codeVerifier)) {
+        issues.push('code_verifier contains invalid characters (must be A-Z, a-z, 0-9, -, ., _, ~)');
+      }
+    }
+    
+    // Validate code_challenge_method if present
+    if (metadata.code_challenge_method) {
+      const method = metadata.code_challenge_method as string;
+      if (method !== 'S256' && method !== 'plain') {
+        issues.push(`Invalid code_challenge_method: ${method} (must be S256 or plain)`);
+      }
+    }
+    
+    // Log validation results
+    logInfo('PKCE parameter validation completed', {
+      integrationId: integration._id?.toString(),
+      isPKCEFlow,
+      isValid: issues.length === 0,
+      issues: issues.length > 0 ? issues : undefined,
+      codeVerifierLength: metadata.code_verifier?.length,
+      challengeMethod: metadata.code_challenge_method,
+      component: 'oauth_callback_security'
+    });
+    
+    return {
+      isValid: issues.length === 0,
+      issues: issues.length > 0 ? issues : undefined,
+      isPKCEFlow
+    };
   }
 
   /**

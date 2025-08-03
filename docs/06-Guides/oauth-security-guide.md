@@ -2,7 +2,18 @@
 
 ## Overview
 
-This guide documents the comprehensive security architecture for OAuth callback authentication in the MWAP server. The implementation addresses critical security vulnerabilities while maintaining seamless integration with external OAuth providers.
+This guide documents the comprehensive security architecture for OAuth callback authentication in the MWAP server. The implementation supports both traditional OAuth 2.0 and PKCE (Proof Key for Code Exchange) flows, addressing critical security vulnerabilities while maintaining seamless integration with external OAuth providers.
+
+## PKCE Support
+
+The MWAP backend now supports PKCE (RFC 7636) for enhanced security with public clients:
+
+- **Automatic Flow Detection**: Detects PKCE vs traditional flows based on `code_verifier` presence
+- **Dual Authentication**: Supports both HTTP Basic Auth and PKCE parameter authentication
+- **RFC 7636 Compliance**: Full validation of PKCE parameters according to specification
+- **Backward Compatibility**: Existing traditional OAuth integrations continue to work unchanged
+
+For detailed PKCE implementation information, see the [PKCE Implementation Guide](pkce-implementation-guide.md).
 
 ## Security Challenge
 
