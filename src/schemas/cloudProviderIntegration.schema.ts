@@ -7,6 +7,21 @@ const objectIdSchema = z
     message: 'Invalid ObjectId',
   });
 
+// PKCE metadata interface for OAuth 2.0 with PKCE support
+export interface PKCEMetadata {
+  oauth_code?: string;
+  redirect_uri?: string;
+  code_verifier?: string;
+  code_challenge?: string;
+  code_challenge_method?: 'S256' | 'plain';
+  pkce_flow?: boolean;
+}
+
+// Extended metadata interface that includes PKCE fields
+export interface IntegrationMetadata extends PKCEMetadata {
+  [key: string]: unknown;
+}
+
 // Base schema for cloud provider integration validation
 export const cloudProviderIntegrationSchema = z.object({
   _id: objectIdSchema,

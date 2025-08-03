@@ -170,6 +170,50 @@ export async function handleOAuthCallback(req: Request, res: Response) {
     
     auditData.provider = provider.name;
     
+    // 6.5. Validate PKCE parameters if this is a PKCE flow
+    const pkceValidation = oauthSecurityService.validatePKCEParameters(integration);
+    const isPKCEFlow = pkceValidation.isPKCEFlow || false;
+    
+    if (!pkceValidation.isValid) {
+      auditData.securityIssues.push(...(pkceValidation.issues || []));
+      auditData.errorCode = 'INVALID_PKCE_PARAMETERS';
+      
+      logError('PKCE parameter validation failed', {
+        integrationId: stateData.integrationId,
+        tenantId: stateData.tenantId,
+        issues: pkceValidation.issues,
+        ip: requestContext.ip,
+        userAgent: requestContext.userAgent
+      });
+      
+      await oauthSecurityService.logCallbackAttempt(auditData, {
+        pkceValidationIssues: pkceValidation.issues
+      });
+      
+      recordFailedAttempt();
+      
+      const errorResponse = oauthSecurityService.generateErrorResponse('INVALID_PKCE_PARAMETERS');
+      return res.redirect(errorResponse.redirectUrl);
+    }
+    
+    // Extract code_verifier for PKCE flows
+    let codeVerifier: string | undefined;
+    if (isPKCEFlow) {
+      codeVerifier = integration.metadata?.code_verifier as string;
+      
+      logInfo('PKCE OAuth flow detected', {
+        tenantId: stateData.tenantId,
+        integrationId: stateData.integrationId,
+        hasCodeVerifier: !!codeVerifier,
+        codeVerifierLength: codeVerifier?.length
+      });
+    } else {
+      logInfo('Traditional OAuth flow detected', {
+        tenantId: stateData.tenantId,
+        integrationId: stateData.integrationId
+      });
+    }
+    
     // 7. Build and validate the redirect URI that was used for the authorization request
     // CRITICAL: Always use HTTPS for OAuth security compliance across all environments
     const protocol = 'https'; // Force HTTPS for all OAuth flows for security
@@ -258,13 +302,16 @@ export async function handleOAuthCallback(req: Request, res: Response) {
       tenantId: stateData.tenantId,
       integrationId: stateData.integrationId,
       redirectUri: normalizedRedirectUri,
-      callbackRedirectUri: normalizedRedirectUri
+      callbackRedirectUri: normalizedRedirectUri,
+      flowType: isPKCEFlow ? 'PKCE' : 'traditional',
+      hasCodeVerifier: !!codeVerifier
     });
     
     const tokenResponse = await oauthService.exchangeCodeForTokens(
       code as string,
       provider,
-      normalizedRedirectUri
+      normalizedRedirectUri,
+      codeVerifier  // Pass code_verifier for PKCE flows
     );
     
     // 9. Update the integration with the tokens
@@ -284,7 +331,8 @@ export async function handleOAuthCallback(req: Request, res: Response) {
     await oauthSecurityService.logCallbackAttempt(auditData, {
       providerId: provider._id.toString(),
       scopesGranted: tokenResponse.scopesGranted,
-      tokenExpiresIn: tokenResponse.expiresIn
+      tokenExpiresIn: tokenResponse.expiresIn,
+      flowType: isPKCEFlow ? 'PKCE' : 'traditional'
     });
     
     // Record successful attempt for security monitoring
@@ -303,6 +351,7 @@ export async function handleOAuthCallback(req: Request, res: Response) {
       tenantId: stateData.tenantId,
       providerId: provider._id.toString(),
       provider: provider.name,
+      flowType: isPKCEFlow ? 'PKCE' : 'traditional',
       scopesGranted: tokenResponse.scopesGranted,
       ip: requestContext.ip,
       userAgent: requestContext.userAgent
