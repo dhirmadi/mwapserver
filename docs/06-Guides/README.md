@@ -74,6 +74,104 @@ Complete testing strategies, setup, implementation, and best practices using Vit
 
 ---
 
+### 🔐 [OAuth Security Guide](./oauth-security-guide.md)
+Comprehensive OAuth callback security implementation with PKCE support and enhanced security controls.
+
+**What's Included:**
+- **PKCE Implementation**: RFC 7636 compliant PKCE support for public clients
+- **Security Architecture**: Multi-layered defense strategy and threat mitigation
+- **Callback Security**: Enhanced validation and ownership verification
+- **Monitoring & Alerting**: Security incident detection and performance tracking
+- **Implementation Details**: Code examples and configuration patterns
+
+**Perfect for:** OAuth implementation, PKCE integration, security audits, callback security
+
+---
+
+### 🔧 [PKCE Implementation Guide](./pkce-implementation-guide.md)
+Detailed guide for implementing PKCE (Proof Key for Code Exchange) OAuth 2.0 flows for enhanced security.
+
+**What's Included:**
+- **PKCE Overview**: Understanding PKCE vs traditional OAuth flows
+- **Implementation Architecture**: Dual authentication support and flow detection
+- **Security Validation**: RFC 7636 compliant parameter validation
+- **Integration Patterns**: Frontend integration examples and best practices
+- **Testing & Debugging**: Comprehensive testing strategies and troubleshooting
+
+**Perfect for:** PKCE implementation, OAuth security enhancement, SPA authentication
+
+---
+
+### 🔍 [OAuth Integration Guide](./oauth-integration-guide.md)
+Complete guide for integrating OAuth providers with comprehensive security controls and monitoring.
+
+**What's Included:**
+- **Architecture Overview**: Core components and security model
+- **Provider Integration**: Google, Dropbox, OneDrive, and other OAuth providers
+- **Security Controls**: State parameter validation and ownership verification
+- **Monitoring & Auditing**: Comprehensive logging and security monitoring
+- **Implementation Examples**: Complete integration patterns and code examples
+
+**Perfect for:** OAuth provider integration, security implementation, monitoring setup
+
+---
+
+### 🛠️ [OAuth Troubleshooting Guide](./oauth-troubleshooting-guide.md)
+Comprehensive troubleshooting guide for OAuth integration issues and common problems.
+
+**What's Included:**
+- **Quick Diagnostics**: Rapid issue identification and resolution checklist
+- **Common Issues**: Redirect URI mismatches, token exchange failures, PKCE errors
+- **Diagnostic Procedures**: Step-by-step troubleshooting workflows
+- **Resolution Strategies**: Proven solutions for OAuth integration problems
+- **Prevention Guidelines**: Best practices to avoid common pitfalls
+
+**Perfect for:** Debugging OAuth issues, resolving integration problems, support teams
+
+---
+
+### 🔒 [OAuth Security Considerations](./oauth-security-considerations.md)
+In-depth security analysis covering threat models, attack vectors, and comprehensive security controls.
+
+**What's Included:**
+- **Threat Model**: Comprehensive attack vector analysis and mitigation strategies
+- **Security Architecture**: Defense-in-depth implementation and controls
+- **Compliance Requirements**: Security standards and regulatory compliance
+- **Operational Security**: Monitoring, incident response, and security procedures
+- **Risk Assessment**: Security risk evaluation and mitigation planning
+
+**Perfect for:** Security architecture, threat modeling, compliance audits, risk assessment
+
+---
+
+### 🛡️ [Public Route Security Model](./public-route-security-model.md)
+Zero Trust security model for public routes with comprehensive security controls and justification framework.
+
+**What's Included:**
+- **Zero Trust Principles**: Default deny security posture and explicit allow criteria
+- **Security Criteria**: Comprehensive evaluation framework for public route eligibility
+- **Control Implementation**: Multi-layered security controls and validation
+- **Monitoring & Auditing**: Comprehensive access logging and security monitoring
+- **Governance Framework**: Security review process and approval workflows
+
+**Perfect for:** Security architecture, public route security, Zero Trust implementation
+
+---
+
+### 📋 [Frontend Quick Reference](./FRONTEND_QUICK_REFERENCE.md)
+Quick reference guide for frontend developers integrating PKCE OAuth flows.
+
+**What's Included:**
+- **Critical Updates**: Domain configuration fixes and breaking changes
+- **PKCE Implementation**: Ready-to-use code examples and integration patterns
+- **Environment Configuration**: Development, staging, and production setup
+- **Testing Checklist**: Comprehensive testing requirements and validation
+- **Common Issues**: Quick solutions for frequent integration problems
+
+**Perfect for:** Frontend developers, quick integration reference, troubleshooting
+
+---
+
 ## 🗂️ Guide Organization
 
 ### New Consolidated Structure
@@ -81,18 +179,25 @@ Each guide is self-contained and comprehensive, covering all aspects of its topi
 
 ```
 06-Guides/
-├── development-guide.md     # Complete development workflow
-├── deployment-guide.md      # All deployment strategies  
-├── security-guide.md        # Complete security implementation
-├── performance-guide.md     # Performance optimization
-├── testing-guide.md         # Complete testing strategy
-├── README.md               # This navigation guide
-└── archive/                # Legacy fragmented files
-    ├── quick-start.md      # → Now in development-guide.md
-    ├── debugging.md        # → Now in development-guide.md
-    ├── how-to-deploy.md    # → Now in deployment-guide.md
-    ├── oauth-guide.md      # → Now in security-guide.md
-    ├── how-to-test.md      # → Now in testing-guide.md
+├── development-guide.md              # Complete development workflow
+├── deployment-guide.md               # All deployment strategies  
+├── security-guide.md                 # Complete security implementation
+├── performance-guide.md              # Performance optimization
+├── testing-guide.md                  # Complete testing strategy
+├── oauth-security-guide.md           # OAuth callback security & PKCE
+├── pkce-implementation-guide.md      # PKCE OAuth 2.0 implementation
+├── oauth-integration-guide.md        # OAuth provider integration
+├── oauth-troubleshooting-guide.md    # OAuth issue resolution
+├── oauth-security-considerations.md  # OAuth threat model & security
+├── public-route-security-model.md    # Zero Trust public route security
+├── FRONTEND_QUICK_REFERENCE.md       # Frontend PKCE integration reference
+├── README.md                         # This navigation guide
+└── archive/                          # Legacy fragmented files
+    ├── quick-start.md                # → Now in development-guide.md
+    ├── debugging.md                  # → Now in development-guide.md
+    ├── how-to-deploy.md              # → Now in deployment-guide.md
+    ├── oauth-guide.md                # → Now in oauth-security-guide.md
+    ├── how-to-test.md                # → Now in testing-guide.md
     └── ... (other legacy files)
 ```
 
