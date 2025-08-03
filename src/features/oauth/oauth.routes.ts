@@ -1,6 +1,6 @@
 import { Router, Request, Response, NextFunction } from 'express';
 import { wrapAsyncHandler } from '../../utils/response.js';
-import { handleOAuthCallback, refreshIntegrationTokens, initiateOAuthFlow } from './oauth.controller.js';
+import { handleOAuthCallback, refreshIntegrationTokens, initiateOAuthFlow, handleOAuthSuccess, handleOAuthError } from './oauth.controller.js';
 import { 
   getSecurityMetrics, 
   getSecurityAlerts, 
@@ -77,6 +77,39 @@ export function getOAuthRouter(): Router {
     // Call the actual handler
     return handleOAuthCallback(req, res);
   }));
+
+  // =================================================================
+  // PUBLIC ENDPOINTS: OAuth Success/Error Pages
+  // =================================================================
+  /**
+   * OAuth Success Page
+   * 
+   * Route: GET /api/v1/oauth/success
+   * Access: PUBLIC (no JWT required)
+   * Called by: Browser redirects from OAuth callback
+   * 
+   * SECURITY CONTROLS:
+   * ✅ Parameter validation for tenantId and integrationId
+   * ✅ Generic success messaging with minimal data exposure
+   * ✅ Auto-close functionality for popup windows
+   * ✅ Audit logging of page access
+   */
+  router.get('/success', wrapAsyncHandler(handleOAuthSuccess));
+
+  /**
+   * OAuth Error Page
+   * 
+   * Route: GET /api/v1/oauth/error
+   * Access: PUBLIC (no JWT required)
+   * Called by: Browser redirects from OAuth callback
+   * 
+   * SECURITY CONTROLS:
+   * ✅ Generic error messaging without sensitive details
+   * ✅ No sensitive information exposure in error messages
+   * ✅ Auto-close functionality for popup windows
+   * ✅ Audit logging of error page access
+   */
+  router.get('/error', wrapAsyncHandler(handleOAuthError));
 
   // =================================================================
   // PROTECTED ENDPOINT: OAuth Flow Initiation
