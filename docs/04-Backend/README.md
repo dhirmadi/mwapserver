@@ -63,7 +63,7 @@ This directory contains comprehensive documentation for the MWAP backend, coveri
 
 - **Runtime**: Node.js 20+ with TypeScript
 - **Framework**: Express.js with middleware stack
-- **Database**: MongoDB Atlas with Mongoose ODM
+- **Database**: MongoDB Atlas with native Node.js driver
 - **Authentication**: Auth0 JWT with RS256 validation
 - **Validation**: Zod schemas for runtime validation
 - **Security**: Helmet.js, CORS, rate limiting

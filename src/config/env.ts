@@ -3,7 +3,6 @@ import dotenv from 'dotenv';
 
 // Load environment variables
 const result = dotenv.config();
-console.log('Loaded env vars:', process.env);
 if (result.error) {
   console.error('Error loading .env file:', result.error);
 }

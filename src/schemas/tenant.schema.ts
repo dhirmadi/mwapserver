@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { sanitizeString } from '../utils/validate.js';
 import { ObjectId } from 'mongodb';
 
 // Tenant settings schema
@@ -12,7 +13,7 @@ export type TenantSettings = z.infer<typeof tenantSettingsSchema>;
 // Base tenant schema
 export const tenantSchema = z.object({
   _id: z.instanceof(ObjectId),
-  name: z.string().min(3).max(50),
+  name: z.string().min(3).max(50).transform(sanitizeString),
   ownerId: z.string(), // Auth0 sub
   settings: tenantSettingsSchema.default({
     allowPublicProjects: false,
@@ -27,7 +28,7 @@ export type Tenant = z.infer<typeof tenantSchema>;
 
 // Create tenant request schema
 export const createTenantSchema = z.object({
-  name: z.string().min(3).max(50),
+  name: z.string().min(3).max(50).transform(sanitizeString),
   settings: z.object({
     allowPublicProjects: z.boolean().optional(),
     maxProjects: z.number().int().min(1).max(100).optional()
@@ -38,7 +39,7 @@ export type CreateTenantRequest = z.infer<typeof createTenantSchema>;
 
 // Update tenant request schema
 export const updateTenantSchema = z.object({
-  name: z.string().min(3).max(50).optional(),
+  name: z.string().min(3).max(50).transform(sanitizeString).optional(),
   settings: tenantSettingsSchema.partial().optional(),
   archived: z.boolean().optional()
 });

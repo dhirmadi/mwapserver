@@ -20,9 +20,9 @@ This document serves as the canonical reference for developers and scaffolding t
 - Each domain has a folder under `src/features/{domain}`
 
 ### 2. Technology Stack
-- **Runtime**: Node.js (v18+)
+- **Runtime**: Node.js (v20+)
 - **Web Framework**: Express.js
-- **Database**: MongoDB Atlas (Mongoose ODM)
+- **Database**: MongoDB Atlas (Native Node.js Driver)
 - **Authentication**: Auth0 JWT (RS256, JWKS)
 - **Schema Validation**: Zod
 
@@ -277,7 +277,7 @@ export function validateWithSchema<T>(schema: ZodSchema<T>, input: unknown): T
 
 All middleware functions live under `src/middleware/` and are categorized by their security, role-checking, and request pre-processing responsibilities.
 
-### Authentication (`auth.js`)
+### Authentication (`auth.ts`)
 ```typescript
 export function authenticateJWT(): RequestHandler // Sets req.user
 ```
@@ -293,9 +293,9 @@ export function requireTenantOwnerOrSuperAdmin(tenantIdParam: string): RequestHa
 ```
 - Middleware to guard routes based on user's role in current scope
 - Checks for superadmin role or tenant ownership
-- Relies on `req.user` populated by `auth.js`
+- Relies on `req.user` populated by `auth.ts`
 
-### Project Roles (`roles.js`)
+### Project Roles (`roles.ts`)
 ```typescript
 export function requireProjectRole(role: 'OWNER' | 'DEPUTY' | 'MEMBER'): RequestHandler
 ```
@@ -335,8 +335,8 @@ All runtime configuration (environment, database, Auth0 keys) is loaded via:
 
 ```
 /src/config/
-├── env.ts          # dotenv-based environment variable loader
-├── db.ts           # Mongoose connection
+├── env.ts          # Zod-based environment variable validation
+├── db.ts           # MongoDB native driver connection
 ├── auth0.ts        # JWKS client setup
 ```
 

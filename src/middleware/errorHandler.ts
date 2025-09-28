@@ -8,10 +8,12 @@ export function errorHandler(
   res: Response,
   next: NextFunction
 ): void {
-  console.error("🔥 MWAP ERROR TRACE");
-  console.error("🔥 Stack:", error.stack);
-  console.error("🔥 Message:", error.message);
-  console.error("🔥 Request Body:", req.body);
+  if (process.env.NODE_ENV !== 'production') {
+    console.error("🔥 MWAP ERROR TRACE");
+    console.error("🔥 Stack:", error.stack);
+    console.error("🔥 Message:", error.message);
+    console.error("🔥 Request Body:", req.body);
+  }
   logError('Request error', error);
   errorResponse(res, error);
 }

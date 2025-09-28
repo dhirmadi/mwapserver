@@ -459,6 +459,44 @@ setInterval(() => {
 }, 60000); // Every minute
 ```
 
+## 🚀 Minimal Heroku Testing Strategy (No CI/CD)
+
+When pushing to the default branch, Heroku auto-deploys to staging. Keep checks minimal and fast:
+
+### Local (pre-push)
+- Run fast type and critical tests:
+  - `npm run type-check` (optional if configured)
+  - `npm run test:critical` (utils subset; fast and green)
+- Optional OpenAPI smoke:
+  - `npx tsx tests/openapiendpoint/test-phase4-simple.ts`
+
+### Additional suites (manual, not in release gate)
+- Middleware auth tests:
+  - `npx vitest run tests/middleware/auth.test.ts`
+- OAuth callback security tests:
+  - `npx vitest run tests/oauth/oauthCallbackSecurity.test.ts`
+- Optional OpenAPI smoke:
+  - `npx tsx tests/openapiendpoint/test-phase4-simple.ts`
+
+### Heroku Release Phase (automatic)
+- The `Procfile` runs a one-line release gate to catch issues quickly:
+  - `release: npx --yes tsx scripts/production-readiness-check.ts && npx --yes tsx scripts/verify-oauth-security.ts && npx --yes tsx scripts/deployment-validation.ts`
+- If any step fails, the release aborts and staging is not flipped.
+
+### Database Indexes (build-time)
+- Heroku `heroku-postbuild` runs `scripts/create-indexes.ts` to ensure essential indexes:
+  - `tenants.ownerId` (unique)
+  - `projects.tenantId`
+  - `projects.members.userId`
+  - `superadmins.userId` (unique)
+
+### After Dyno Starts (staging sanity)
+- Rely on `GET /health`.
+- Optional: curl one protected endpoint with a test JWT to confirm 401/200 behavior.
+
+### Intentionally Not Automatic
+- Heavy integration/performance suites; run ad-hoc to keep deploys fast.
+
 ## 🤖 AI Agent Development
 
 ### Agent Development Overview

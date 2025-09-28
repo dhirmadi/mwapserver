@@ -5,9 +5,9 @@
  */
 
 import express from 'express';
-import { app, registerRoutes } from '../../src/app.js';
-import { getDocsRouter } from '../../src/docs/index.js';
-import { logInfo } from '../../src/utils/logger.js';
+import { app, registerRoutes } from '../../src/app.ts';
+import { getDocsRouter } from '../../src/docs/index.ts';
+import { logInfo } from '../../src/utils/logger.ts';
 
 async function testPhase4Integration() {
   console.log('🧪 Testing Phase 4: Application Integration...\n');

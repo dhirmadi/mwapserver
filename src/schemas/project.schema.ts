@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import { ObjectId } from 'mongodb';
 import { Role } from '../middleware/roles.js';
+import { sanitizeString } from '../utils/validate.js';
 
 // Schema for project member
 export const projectMemberSchema = z.object({
@@ -20,9 +21,9 @@ export const projectSchema = z.object({
   tenantId: objectIdSchema,
   projectTypeId: objectIdSchema,
   cloudIntegrationId: objectIdSchema,
-  folderpath: z.string().min(1),
-  name: z.string().min(1).max(100),
-  description: z.string().max(500).optional(),
+  folderpath: z.string().min(1).transform(sanitizeString),
+  name: z.string().min(1).max(100).transform(sanitizeString),
+  description: z.string().max(500).transform(sanitizeString).optional(),
   archived: z.boolean().default(false),
   members: z.array(projectMemberSchema).max(10),
   createdAt: z.date(),
@@ -41,8 +42,8 @@ export const createProjectSchema = projectSchema
 
 // Schema for updating a project (partial)
 export const updateProjectSchema = z.object({
-  name: z.string().min(1).max(100).optional(),
-  description: z.string().max(500).optional(),
+  name: z.string().min(1).max(100).transform(sanitizeString).optional(),
+  description: z.string().max(500).transform(sanitizeString).optional(),
   archived: z.boolean().optional()
 });
 

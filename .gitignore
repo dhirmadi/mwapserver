@@ -138,3 +138,11 @@ dist
 tests/apitest.py
 tests/apiquick.py
 cursor/
+
+# Cursor IDE (ignore config and chat history)
+.cursorrules
+.cursor/
+.cursorindexingignore
+.specstory/
+mwapserver.code-workspace
+.specstory/history/2025-07-21_13-02Z-determine-api-for-auth0-test-token.md

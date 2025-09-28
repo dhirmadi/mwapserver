@@ -81,11 +81,11 @@ git config --global core.autocrlf true   # Windows
 
 ### Technology Stack
 - **Backend**: Node.js + Express + TypeScript
-- **Database**: MongoDB + Mongoose
+- **Database**: MongoDB (native Node.js driver)
 - **Authentication**: Auth0 + JWT
-- **Testing**: Jest + Supertest
-- **API**: RESTful with OpenAPI docs
-- **AI**: Custom agents + OpenHands integration
+- **Testing**: Vitest
+- **API**: RESTful with OpenAPI 3.1 docs
+- **AI**: Provider-based integrations (OpenAI, Anthropic) for inference via prompts/media
 
 ### Key Concepts
 

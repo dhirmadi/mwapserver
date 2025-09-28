@@ -14,22 +14,22 @@ import {
   OAuthCallbackSecurityService,
   StateParameter,
   CallbackAuditData
-} from '../../src/features/oauth/oauthCallbackSecurity.service.js';
+} from '../../src/features/oauth/oauthCallbackSecurity.service.ts';
 
 // Mock dependencies
-vi.mock('../../src/utils/logger.js', () => ({
+vi.mock('../../src/utils/logger', () => ({
   logInfo: vi.fn(),
   logError: vi.fn(),
   logAudit: vi.fn()
 }));
 
-vi.mock('../../src/features/cloud-integrations/cloudIntegrations.service.js', () => ({
+vi.mock('../../src/features/cloud-integrations/cloudIntegrations.service', () => ({
   CloudIntegrationsService: vi.fn().mockImplementation(() => ({
     findById: vi.fn()
   }))
 }));
 
-vi.mock('../../src/features/cloud-providers/cloudProviders.service.js', () => ({
+vi.mock('../../src/features/cloud-providers/cloudProviders.service', () => ({
   CloudProviderService: vi.fn().mockImplementation(() => ({
     findById: vi.fn()
   }))
@@ -41,17 +41,16 @@ describe('OAuth Callback Security Service', () => {
   let mockProviderService: any;
   let mockRequestContext: any;
 
-  beforeEach(() => {
+  beforeEach(async () => {
     vi.clearAllMocks();
     
     securityService = new OAuthCallbackSecurityService();
     
-    // Get mocked services
-    const CloudIntegrationsService = require('../../src/features/cloud-integrations/cloudIntegrations.service.js').CloudIntegrationsService;
-    const CloudProviderService = require('../../src/features/cloud-providers/cloudProviders.service.js').CloudProviderService;
-    
-    mockIntegrationsService = new CloudIntegrationsService();
-    mockProviderService = new CloudProviderService();
+    // Use the instances inside the service to ensure mocks affect real calls
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    mockIntegrationsService = (securityService as any).cloudIntegrationsService;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    mockProviderService = (securityService as any).cloudProviderService;
     
     // Mock request context
     mockRequestContext = {
@@ -315,7 +314,7 @@ describe('OAuth Callback Security Service', () => {
       expect(result.securityIssues).toContain('Integration already configured');
       
       // Should log potential replay attack
-      const { logAudit } = require('../../src/utils/logger.js');
+      const { logAudit } = await import('../../src/utils/logger');
       expect(logAudit).toHaveBeenCalledWith(
         'oauth.callback.duplicate_attempt',
         validState.userId,
@@ -372,7 +371,7 @@ describe('OAuth Callback Security Service', () => {
 
       await securityService.logCallbackAttempt(auditData);
 
-      const { logAudit } = require('../../src/utils/logger.js');
+      const { logAudit } = await import('../../src/utils/logger');
       expect(logAudit).toHaveBeenCalledWith(
         'oauth.callback.attempt.success',
         auditData.userId,
@@ -401,7 +400,7 @@ describe('OAuth Callback Security Service', () => {
 
       await securityService.logCallbackAttempt(auditData);
 
-      const { logAudit, logError } = require('../../src/utils/logger.js');
+      const { logAudit, logError } = await import('../../src/utils/logger');
       expect(logAudit).toHaveBeenCalledWith(
         'oauth.callback.attempt.failed',
         auditData.userId,
@@ -423,10 +422,10 @@ describe('OAuth Callback Security Service', () => {
     });
 
     it('should handle logging errors gracefully', async () => {
-      const { logError } = require('../../src/utils/logger.js');
+      const { logError } = await import('../../src/utils/logger');
       
       // Mock logAudit to throw an error
-      const { logAudit } = require('../../src/utils/logger.js');
+      const { logAudit } = await import('../../src/utils/logger');
       logAudit.mockImplementation(() => {
         throw new Error('Logging failed');
       });

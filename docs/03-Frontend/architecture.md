@@ -16,6 +16,7 @@ The MWAP frontend is a modern React application built with TypeScript, following
 - **Form Handling**: React Hook Form with Zod validation
 - **Routing**: React Router v6+
 - **Testing**: Vitest with React Testing Library
+- **AI**: Provider-based integrations (OpenAI, Anthropic) for inference via prompts/media
 
 ## 🏗️ Architecture Principles
 

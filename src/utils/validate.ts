@@ -1,6 +1,10 @@
 import { z } from 'zod';
 import { ValidationError } from './errors.js';
 
+export function sanitizeString(input: string): string {
+  return input.trim().replace(/[<>]/g, '');
+}
+
 export function validateWithSchema<T>(schema: z.Schema<T>, input: unknown): T {
   try {
     const result = schema.parse(input);
