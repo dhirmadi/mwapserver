@@ -41,40 +41,46 @@ jobs:
       run: |
         echo "📁 Checking documentation structure..."
         
-        # Verify main documentation directories exist
+        # Verify main documentation directories exist (archive ignored)
         test -d docs || (echo "❌ /docs directory missing" && exit 1)
-        test -d docs/features || (echo "❌ /docs/features directory missing" && exit 1)
-        test -d docs/testing || (echo "❌ /docs/testing directory missing" && exit 1)
-        test -d docs/integrations || (echo "❌ /docs/integrations directory missing" && exit 1)
-        test -d docs/archive || (echo "❌ /docs/archive directory missing" && exit 1)
+        test -d docs/00-Overview || (echo "❌ /docs/00-Overview missing" && exit 1)
+        test -d docs/01-Getting-Started || (echo "❌ /docs/01-Getting-Started missing" && exit 1)
+        test -d docs/02-Architecture || (echo "❌ /docs/02-Architecture missing" && exit 1)
+        test -d docs/03-Frontend || (echo "❌ /docs/03-Frontend missing" && exit 1)
+        test -d docs/04-Backend || (echo "❌ /docs/04-Backend missing" && exit 1)
+        test -d docs/06-Guides || (echo "❌ /docs/06-Guides missing" && exit 1)
+        test -d docs/07-Standards || (echo "❌ /docs/07-Standards missing" && exit 1)
+        test -d docs/08-Contribution || (echo "❌ /docs/08-Contribution missing" && exit 1)
+        test -d docs/09-Reports-and-History || (echo "❌ /docs/09-Reports-and-History missing" && exit 1)
         
-        # Verify key documentation files exist
+        # Verify key documentation files exist (archive ignored)
         test -f docs/README.md || (echo "❌ Documentation index missing" && exit 1)
-        test -f docs/v3-architecture-reference.md || (echo "❌ Architecture reference missing" && exit 1)
-        test -f docs/integrations/oauth-guide.md || (echo "❌ OAuth guide missing" && exit 1)
-        test -f docs/testing/README.md || (echo "❌ Testing documentation index missing" && exit 1)
+        test -f docs/02-Architecture/architecture.md || (echo "❌ Architecture overview missing" && exit 1)
+        test -f docs/04-Backend/api-reference.md || (echo "❌ Backend API reference missing" && exit 1)
+        test -f docs/06-Guides/development-guide.md || (echo "❌ Development guide missing" && exit 1)
+        test -f docs/09-Reports-and-History/project-status.md || (echo "❌ Project status missing" && exit 1)
         
         echo "✅ Documentation structure validation passed"
         
-    - name: Check for duplicate content
+    - name: Check for duplicate content (archive ignored)
       run: |
         echo "🔍 Checking for duplicate content..."
         
-        # Check for duplicate OAuth documentation (should only be in integrations/)
-        oauth_files=$(find docs -name "*.md" -exec grep -l "OAuth" {} \; | grep -v "docs/integrations/oauth-guide.md" | grep -v "docs/archive" | wc -l)
-        if [ "$oauth_files" -gt 2 ]; then
-          echo "⚠️  Warning: Multiple OAuth documentation files found outside integrations/"
-          find docs -name "*.md" -exec grep -l "OAuth" {} \; | grep -v "docs/integrations/oauth-guide.md" | grep -v "docs/archive"
+        # Example duplicate topic check: warn if too many OAuth guides outside 06-Guides (exclude archive)
+        oauth_files=$(find docs -path "docs/archive" -prune -o -name "*.md" -print | xargs grep -l "OAuth" | grep -v "docs/06-Guides/oauth-security-guide.md" | wc -l)
+        if [ "$oauth_files" -gt 5 ]; then
+          echo "⚠️  Warning: Multiple OAuth-related documents found outside 06-Guides/ (archive ignored)"
+          find docs -path "docs/archive" -prune -o -name "*.md" -print | xargs grep -l "OAuth" | grep -v "docs/06-Guides/oauth-security-guide.md" || true
         fi
         
         echo "✅ Duplicate content check completed"
         
-    - name: Validate markdown formatting
+    - name: Validate markdown formatting (archive ignored)
       run: |
         echo "📝 Validating markdown formatting..."
         
-        # Check for consistent heading structure
-        find docs -name "*.md" -exec grep -H "^#" {} \; | while read line; do
+        # Check for consistent heading structure (exclude archive)
+        find docs -path "docs/archive" -prune -o -name "*.md" -print | xargs grep -H "^#" | while read line; do
           file=$(echo "$line" | cut -d: -f1)
           heading=$(echo "$line" | cut -d: -f2-)
           
@@ -96,24 +102,32 @@ jobs:
     - name: Checkout repository
       uses: actions/checkout@v4
       
-    - name: Check feature documentation coverage
+    - name: Check documentation coverage (key sections)
       run: |
         echo "📊 Checking feature documentation coverage..."
         
-        # Get list of features from src/features
-        if [ -d src/features ]; then
-          src_features=$(ls src/features 2>/dev/null || echo "")
-          doc_features=$(ls docs/features 2>/dev/null | sed 's/\.md$//' || echo "")
-          
-          echo "Source features: $src_features"
-          echo "Documented features: $doc_features"
-          
-          # Check if all source features have documentation
-          for feature in $src_features; do
-            if [ ! -f "docs/features/${feature}.md" ]; then
-              echo "⚠️  Warning: Feature '$feature' missing documentation"
-            fi
-          done
+        # Verify key section files exist; ignore docs/archive
+        required_files=(
+          "docs/00-Overview/vision.md"
+          "docs/01-Getting-Started/getting-started.md"
+          "docs/02-Architecture/architecture.md"
+          "docs/03-Frontend/frontend-guide.md"
+          "docs/04-Backend/api-reference.md"
+          "docs/06-Guides/development-guide.md"
+          "docs/07-Standards/development-standards.md"
+          "docs/08-Contribution/contributing-guide.md"
+          "docs/09-Reports-and-History/project-status.md"
+        )
+        missing=0
+        for f in "${required_files[@]}"; do
+          if [ ! -f "$f" ]; then
+            echo "⚠️  Warning: Missing required documentation file: $f"
+            missing=$((missing+1))
+          fi
+        done
+        
+        if [ $missing -gt 0 ]; then
+          echo "ℹ️  Some documentation files are missing; please review."
         fi
         
-        echo "✅ Feature documentation coverage check completed"
+        echo "✅ Documentation coverage check completed"
