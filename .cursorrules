@@ -56,3 +56,96 @@ Requirements:
 ```
 
 
+## Assistant Behavior and Scope
+- Treat this repository as authoritative; prefer reading code over asking questions.
+- Default to TypeScript-first, ESM-only. Never emit CommonJS or `any`-heavy code.
+- Apply small, focused edits; keep changeset cohesive; update docs and tests with code.
+- Use existing utilities and types. Do not duplicate logic or introduce parallel abstractions.
+- Maintain strict security posture; never weaken auth, validation, or error handling.
+
+## File Naming and Extensions
+- Source code: `.ts` only under `src/`. No `.js` under `src/`.
+- Tests: `.test.ts` for unit; `.integration.test.ts` for integration; live under `tests/` mirroring feature structure.
+- Feature-first layout under `src/features/<feature>/`:
+  - Routes: `<feature>.routes.ts`
+  - Controller: `<feature>.controller.ts`
+  - Service: `<feature>.service.ts`
+  - Schemas: `<feature>.schema.ts` or specific `*.schema.ts`
+  - Types: `types.ts` where feature-specific types live
+  - Index: `index.ts` only when aggregating public feature API (avoid deep `index.ts` files)
+- Middleware: `src/middleware/<name>.ts`
+- Config: `src/config/<name>.ts`
+- Utils: `src/utils/<name>.ts` (stateless, pure where possible)
+- OpenAPI support code: `src/features/openapi/*.ts`; generated artifacts must not live in `src/`.
+- Documentation: `.md` in `docs/`; diagrams and assets colocated in `docs/**/diagrams`.
+
+## Required File Headers
+Add the following header at the top of new TypeScript files:
+
+```
+/**
+ * Module: <relative-path-from-src>
+ * Responsibility: <short, action-oriented summary>
+ * Inputs: <request params/body/query or function inputs>
+ * Outputs: <ApiResponse<T> | return type>
+ * Security: <Auth0 JWT | public | role checks>
+ * Notes: <observability/audit/rate-limits if applicable>
+ */
+```
+
+For new Markdown docs in `docs/`, include frontmatter:
+
+```
+---
+title: <Title>
+summary: <1–2 sentence summary>
+lastReviewed: YYYY-MM-DD
+---
+```
+
+## Express + MongoDB Patterns (authoritative)
+- Flow: routes → controller → service. Controllers validate with Zod, call services, map to `successResponse()`/`errorResponse()`.
+- Use `ApiError` for domain and transport errors; never throw raw strings.
+- Convert string ids to `ObjectId` only at query time in services; keep string ids at edges.
+- Responses use utilities from `src/utils/response.ts` to keep shapes consistent.
+- Log via `logger` and record significant security events with `logAudit(action, actor, target, meta)`.
+- Keep OAuth callback public; all other feature endpoints require JWT via `authenticateJWT`.
+
+## Validation and Security Standards
+- Zod at all controller boundaries; reject unknown fields; sanitize strings where needed.
+- Authorization: reuse `authorization`, `roles`, and ownership checks for multi-tenant access.
+- Apply `Helmet`, CORS, rate limiting, and OAuth callback protections as configured.
+- Never log secrets, tokens, or PII. Do not echo internal error details to clients.
+
+## Testing Conventions (Vitest)
+- Unit tests colocated under `tests/` mirroring feature paths: `tests/<area>/*.test.ts`.
+- Integration tests for routes/services: `*.integration.test.ts`; use in-memory or test Atlas as configured.
+- Prefer direct service testing for logic; controllers tested with supertest-style helpers if available.
+- Include negative tests for validation and authorization paths.
+
+## OpenAPI and Documentation
+- When endpoint contracts change, update OpenAPI code in `src/features/openapi/*` and ensure `src/docs/*` generators produce new docs.
+- Keep examples and error responses aligned with `response.ts` utilities.
+- Document security and performance-sensitive flows (especially OAuth) under `docs/04-Backend/`.
+
+## Performance and Observability
+- Avoid N+1 queries; batch where possible. Add indexes where query patterns demand.
+- Add targeted logs at INFO for state transitions; WARN/ERROR for exceptional paths.
+- Measure hot routes (OAuth, auth) and include timing in audit meta when relevant.
+
+## Prohibited Patterns
+- No secrets in code or logs. Use environment variables only.
+- No bypassing auth/authorization on protected routes.
+- No untyped `any` or implicit `unknown` leaks across module boundaries.
+- No duplication of existing utilities/services; extend instead of re-implementing.
+
+## Ready-to-use File Skeletons (concise)
+- Controller shape:
+  - Parse/validate with Zod → call service → map to `successResponse()`
+  - Catch `ApiError` → `errorResponse()`; rethrow unknown after wrapping
+- Service shape:
+  - Accept typed inputs; convert ids at DB edge; return domain objects
+- Route shape:
+  - Attach `authenticateJWT` (except public), `routeValidator`, and controller handlers in order
+
+These conventions are mandatory for new code and should be used to refactor legacy areas opportunistically.

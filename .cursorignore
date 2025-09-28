@@ -1,0 +1,49 @@
+# Cursor index ignore rules for MWAP repository
+# Keep the model focused on relevant source while excluding build artifacts, caches, and large archives.
+
+# VCS
+.git/
+
+# Dependencies and builds
+node_modules/
+dist/
+build/
+coverage/
+.tmp/
+.temp/
+
+# OS/editor noise
+.DS_Store
+.idea/
+.vscode/
+*.swp
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Env files (never commit secrets)
+.env
+.env.*
+
+# Tooling caches
+.cache/
+.turbo/
+.next/
+.vercel/
+
+# Docs archives and prompt dumps (keep primary docs indexed)
+docs/archive/**
+
+# Generated API snapshots (keep source openapi code indexed)
+openapi.json
+openapi.yaml
+*.specta.yml
+
+# Python helper artifacts in tests
+**/__pycache__/
+**/*.pyc
+
