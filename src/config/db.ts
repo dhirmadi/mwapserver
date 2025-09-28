@@ -34,3 +34,15 @@ process.on('SIGINT', async () => {
   process.exit(0);
 });
 
+// Gracefully disconnect the database (for scripts)
+export async function disconnectDB(): Promise<void> {
+  try {
+    if (client) {
+      await client.close();
+    }
+  } catch (error) {
+    // eslint-disable-next-line no-console
+    console.error('Error during MongoDB disconnect:', error);
+  }
+}
+
