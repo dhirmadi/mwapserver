@@ -138,3 +138,9 @@ dist
 tests/apitest.py
 tests/apiquick.py
 cursor/
+
+# Cursor IDE (ignore config and chat history)
+.cursorrules
+.cursor/
+.cursorindexingignore
+.specstory/
