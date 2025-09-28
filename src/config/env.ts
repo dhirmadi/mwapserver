@@ -1,10 +1,16 @@
 import { z } from 'zod';
 import dotenv from 'dotenv';
+import fs from 'fs';
+import path from 'path';
 
-// Load environment variables
-const result = dotenv.config();
-if (result.error) {
-  console.error('Error loading .env file:', result.error);
+// Load environment variables (skip noisy error when .env is absent in build/release)
+try {
+  const envPath = path.join(process.cwd(), '.env');
+  if (fs.existsSync(envPath)) {
+    dotenv.config({ path: envPath });
+  }
+} catch {
+  // Intentionally ignore; process.env from platform (e.g., Heroku) is authoritative
 }
 
 // Environment schema validation
