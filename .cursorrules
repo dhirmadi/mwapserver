@@ -1,0 +1,58 @@
+# Cursor Rules for MWAP Repository
+
+## Project Summary (from .openhands/microagents/repo.md)
+- Backend: Node.js (ESM) + Express + MongoDB Atlas
+- Auth: Auth0 (PKCE, MFA)
+- Security: Zero Trust, Helmet, CORS, rate limiting, OAuth callback protection
+- Docs: see `docs/` (architecture, API, security, testing); follow feature-first structure under `src/features/*`
+- Coding standards: strict TypeScript, centralized error handling, no secrets in code, DRY, reuse existing utilities and types
+
+## Global Development Rules
+- Respect existing architecture and docs under `docs/`
+- Keep implementations type-safe (tsconfig strict)
+- Reuse existing services, schemas, utils; do not duplicate logic
+- Validate inputs with Zod at controller boundaries
+- Preserve auth and authorization middleware; never bypass on protected routes
+- Maintain consistent response shapes using utilities in `src/utils/response.ts`
+- Update OpenAPI where endpoints change (`src/features/openapi/*`)
+- Add tests alongside features (vitest). Avoid browser/e2e; prefer unit/integration
+- Never commit secrets; use environment variables
+
+## Node Backend Execution Rules
+- Express patterns: routes → controller → service; schemas in `src/schemas/*`
+- Use MongoDB ObjectId as strings at schema edges; convert to ObjectId only at DB query time
+- Use `ApiError` for errors and `errorResponse()` for error serialization
+- Use `logger` utilities; use `logAudit(action, actor, target, meta)` for security/audit trails
+- Keep OAuth callback public; all other feature routes require JWT
+- Ensure rate limiting and CORS are respected per middleware config
+
+## Repository Knowledge
+- Directory layout:
+  - src/features/*: feature modules (cloud-providers, oauth, projects, tenants, users, files)
+  - src/middleware/*: auth, authorization, roles, errorHandler, publicRoutes
+  - src/services/openapi/*: OpenAPI document and schema generation
+  - src/utils/*: logger, errors, response, validate, constants
+  - tests/*: vitest tests, integration and performance suites
+- Important services/middleware to reuse: `authenticateJWT`, `isPublicRoute`, `routeValidator`, `securityMonitor`
+
+## Security Principles
+- Validate and sanitize all external inputs
+- Use generic error messages on public endpoints; avoid leaking internals
+- Log security events and performance for sensitive routes (OAuth callback)
+- Enforce ownership checks for multi-tenant data access
+
+## Commit & PR Practices
+- Small, focused edits; maintainers prefer incremental PRs
+- Update docs and OpenAPI when changing endpoints or contracts
+
+## Task Template
+Use this structure when asking for work:
+```
+Task: <action>
+Context: <high-level background>
+Requirements:
+  - bullet 1
+  - bullet 2
+```
+
+
