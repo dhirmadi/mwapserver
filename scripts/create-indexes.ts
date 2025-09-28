@@ -2,7 +2,7 @@
  * Create essential MongoDB indexes for performance and RBAC.
  * Safe to run multiple times.
  */
-import { getDB, connectDB } from '../src/config/db.js';
+import { getDB, connectDB, disconnectDB } from '../src/config/db.js';
 
 async function main(): Promise<void> {
   await connectDB();
@@ -23,6 +23,7 @@ async function main(): Promise<void> {
   await Promise.all(tasks);
   // eslint-disable-next-line no-console
   console.log('✅ Index creation completed');
+  await disconnectDB();
 }
 
 main().catch((err) => {
