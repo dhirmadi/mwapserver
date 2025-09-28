@@ -25,8 +25,8 @@ async function testPhase4Simple() {
     // Test 2: OpenAPI Feature Module
     console.log('📄 Test 2: OpenAPI Feature Module');
     
-    const { getOpenAPIRouter } = await import('../../src/features/openapi/openapi.routes.js');
-    const { OpenAPIFeatureService } = await import('../../src/features/openapi/openapi.service.js');
+    const { getOpenAPIRouter } = await import('../../src/features/openapi/openapi.routes.ts');
+    const { OpenAPIFeatureService } = await import('../../src/features/openapi/openapi.service.ts');
     
     const router = getOpenAPIRouter();
     const service = new OpenAPIFeatureService();

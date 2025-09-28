@@ -170,11 +170,11 @@ MWAP is a multi-tenant project management platform with:
 - **Role-based Access Control**: Granular permissions
 - **Cloud Integrations**: AWS, Azure, GCP support
 - **AI Agents**: Automated workflow assistance
-- **RESTful API**: Comprehensive v3 API
+- **RESTful API**: Comprehensive v1 API
 
 **Technology Stack:**
 - **Backend**: Node.js, Express, TypeScript
-- **Database**: MongoDB with Mongoose
+- **Database**: MongoDB (native Node.js driver)
 - **Authentication**: Auth0 with JWT
-- **Testing**: Jest with Supertest
+- **Testing**: Vitest
 - **Documentation**: OpenAPI/Swagger

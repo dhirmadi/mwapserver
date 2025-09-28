@@ -112,6 +112,27 @@ All API responses follow a consistent format for both success and error cases.
 }
 ```
 
+### Common Error Codes and Examples
+
+Error responses use the structure above and standardized codes:
+- `auth/unauthorized` – Invalid or missing JWT
+- `auth/forbidden` – Insufficient permissions
+- `validation/invalid-input` – Zod validation failed
+- `resource/not-found` – Resource not found
+- `rate-limit/exceeded` – Too many requests
+
+Example:
+```json
+{
+  "success": false,
+  "error": {
+    "code": "validation/invalid-input",
+    "message": "Invalid input provided",
+    "details": { "name": "Name must be at least 3 characters long" }
+  }
+}
+```
+
 ## 👤 Users API
 
 ### Get User Roles

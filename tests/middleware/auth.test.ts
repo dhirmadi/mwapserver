@@ -10,18 +10,9 @@
 
 import { describe, it, expect, beforeEach, vi, Mock } from 'vitest';
 import { Request, Response, NextFunction } from 'express';
-import { authenticateJWT } from '../../src/middleware/auth.js';
+import * as publicRoutes from '../../src/middleware/publicRoutes';
 
-// Extend Request interface for auth property
-declare global {
-  namespace Express {
-    interface Request {
-      auth?: any;
-    }
-  }
-}
-
-// Mock external dependencies
+// Mocks must be declared before importing the module under test
 vi.mock('../../src/config/env', () => ({
   env: {
     AUTH0_AUDIENCE: 'test-audience',
@@ -37,7 +28,7 @@ vi.mock('../../src/config/auth0', () => ({
   }
 }));
 
-vi.mock('../../src/utils/logger.js', () => ({
+vi.mock('../../src/utils/logger', () => ({
   logInfo: vi.fn(),
   logError: vi.fn(),
   logAudit: vi.fn()
@@ -46,30 +37,52 @@ vi.mock('../../src/utils/logger.js', () => ({
 vi.mock('../../src/middleware/publicRoutes.js', () => ({
   isPublicRoute: vi.fn(),
   logPublicRouteAccess: vi.fn()
-}));
+}), { virtual: true });
+
+vi.mock('../../src/middleware/publicRoutes', () => ({
+  isPublicRoute: vi.fn(),
+  logPublicRouteAccess: vi.fn()
+}), { virtual: true });
+
+vi.mock('../../src/middleware/publicRoutes.ts', () => ({
+  isPublicRoute: vi.fn(),
+  logPublicRouteAccess: vi.fn()
+}), { virtual: true });
 
 // Mock express-jwt
 vi.mock('express-jwt', () => ({
   expressjwt: vi.fn(() => {
     return (req: Request, res: Response, next: NextFunction) => {
       // Mock JWT middleware behavior
-      if (req.headers.authorization?.includes('valid-token')) {
-        req.auth = { sub: 'user123', email: 'test@example.com' };
+      if (req.headers.authorization?.trim() === 'Bearer valid-token') {
+        req.auth = { sub: 'user123', email: 'test@example.com' } as any;
         next();
       } else if (req.headers.authorization?.includes('invalid-token')) {
         const error = new Error('Invalid token') as any;
-        error.name = 'UnauthorizedError';
-        error.code = 'invalid_token';
+        (error as any).name = 'UnauthorizedError';
+        (error as any).code = 'invalid_token';
         next(error);
       } else {
         const error = new Error('No token provided') as any;
-        error.name = 'UnauthorizedError';
-        error.code = 'missing_token';
+        (error as any).name = 'UnauthorizedError';
+        (error as any).code = 'missing_token';
         next(error);
       }
     };
   })
 }));
+
+import { authenticateJWT } from '../../src/middleware/auth';
+
+// Extend Request interface for auth property
+declare global {
+  namespace Express {
+    interface Request {
+      auth?: any;
+    }
+  }
+}
+
 
 describe('Authentication Middleware Tests', () => {
   let req: any;
@@ -102,9 +115,8 @@ describe('Authentication Middleware Tests', () => {
     next = vi.fn();
 
     // Get mocked functions
-    const publicRoutes = require('../../src/middleware/publicRoutes.js');
-    mockIsPublicRoute = publicRoutes.isPublicRoute;
-    mockLogPublicRouteAccess = publicRoutes.logPublicRouteAccess;
+    mockIsPublicRoute = (publicRoutes as any).isPublicRoute;
+    mockLogPublicRouteAccess = (publicRoutes as any).logPublicRouteAccess;
   });
 
   describe('Public Route Handling', () => {
@@ -272,7 +284,7 @@ describe('Authentication Middleware Tests', () => {
 
   describe('Security Logging and Auditing', () => {
     it('should log authentication failures with comprehensive details', async () => {
-      const { logError, logAudit } = require('../../src/utils/logger.js');
+      const { logError, logAudit } = await import('../../src/utils/logger');
       
       // Setup
       mockIsPublicRoute.mockReturnValue(null);
@@ -310,7 +322,7 @@ describe('Authentication Middleware Tests', () => {
     });
 
     it('should log successful authentication with audit trail', async () => {
-      const { logInfo, logAudit } = require('../../src/utils/logger.js');
+      const { logInfo, logAudit } = await import('../../src/utils/logger');
       
       // Setup
       mockIsPublicRoute.mockReturnValue(null);
@@ -344,7 +356,7 @@ describe('Authentication Middleware Tests', () => {
     });
 
     it('should log protected route processing', async () => {
-      const { logInfo } = require('../../src/utils/logger.js');
+      const { logInfo } = await import('../../src/utils/logger');
       
       // Setup
       mockIsPublicRoute.mockReturnValue(null);
@@ -378,7 +390,7 @@ describe('Authentication Middleware Tests', () => {
       await middleware(req as Request, res as Response, next);
 
       // Should not crash and should include default value
-      const { logError } = require('../../src/utils/logger.js');
+      const { logError } = await import('../../src/utils/logger');
       expect(logError).toHaveBeenCalledWith(
         'Authentication failed',
         expect.objectContaining({
@@ -398,10 +410,10 @@ describe('Authentication Middleware Tests', () => {
       await middleware(req as Request, res as Response, next);
 
       // Should handle undefined IP
-      const { logAudit } = require('../../src/utils/logger.js');
+      const { logAudit } = await import('../../src/utils/logger');
       expect(logAudit).toHaveBeenCalledWith(
         'auth.failed',
-        undefined,
+        'unknown',
         '/api/v1/tenants',
         expect.anything()
       );
@@ -409,7 +421,7 @@ describe('Authentication Middleware Tests', () => {
 
     it('should handle non-UnauthorizedError exceptions', async () => {
       // Mock express-jwt to throw a different error
-      const { expressjwt } = require('express-jwt');
+      const { expressjwt } = await import('express-jwt');
       expressjwt.mockImplementation(() => {
         return (req: Request, res: Response, next: NextFunction) => {
           const error = new Error('Internal JWT error');

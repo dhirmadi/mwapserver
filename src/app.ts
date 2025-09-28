@@ -22,10 +22,17 @@ app.use(cors({
 }));
 
 // Rate limiting
-app.use(rateLimit({
+const apiRateLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   max: 100
-}));
+});
+const authTightLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 5,
+  standardHeaders: true,
+  legacyHeaders: false
+});
+app.use(apiRateLimiter);
 
 // Health check (open endpoint)
 app.get('/health', (req, res) => {
@@ -75,6 +82,8 @@ export async function registerRoutes(): Promise<void> {
   app.use('/api/v1/projects', getProjectsRouter());
   app.use('/api/v1/users', getUserRouter());
   app.use('/api/v1/oauth', getOAuthRouter());
+  // Tighter limits for auth-related endpoints
+  app.use('/api/v1/oauth/callback', authTightLimiter);
   app.use('/api/v1/openapi', getOpenAPIRouter());
   
   logInfo('All API routes registered successfully', {

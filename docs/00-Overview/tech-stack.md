@@ -9,8 +9,8 @@
 
 ### Database & Storage
 - **MongoDB Atlas**: Cloud-native NoSQL database
-- **Mongoose ODM**: Object Document Mapping for MongoDB
-- **Field-Level Encryption**: MongoDB encryption for sensitive data
+- **MongoDB Node.js Driver**: Native driver for data access
+- **Application-Level Encryption**: AES-256 for sensitive tokens
 
 ### Authentication & Security
 - **Auth0**: Enterprise authentication service
@@ -22,7 +22,7 @@
 
 ### Validation & Schemas
 - **Zod**: TypeScript-first schema validation
-- **OpenAPI 3.0**: API specification and documentation
+- **OpenAPI 3.1**: API specification and documentation
 - **Swagger UI**: Interactive API documentation
 
 ### Cloud Integrations

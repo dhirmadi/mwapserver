@@ -23,25 +23,148 @@ vi.mock('mongodb', () => ({
 
 // Mock database
 vi.mock('../src/config/db', () => {
-  const mockCollection = {
+  const makeFind = () => ({ toArray: vi.fn() });
+
+  const makeCollection = () => ({
     findOne: vi.fn(),
-    find: vi.fn(),
+    find: vi.fn(() => makeFind()),
     insertOne: vi.fn(),
     updateOne: vi.fn(),
     deleteOne: vi.fn(),
     findOneAndUpdate: vi.fn()
-  };
+  });
 
   const mockCollections: Record<string, any> = {
-    tenants: mockCollection,
-    superadmins: {
-      findOne: vi.fn()
-    }
+    tenants: makeCollection(),
+    superadmins: makeCollection(),
+    projects: makeCollection(),
+    projectTypes: makeCollection(),
+    cloudProviderIntegrations: makeCollection()
+  };
+
+  const makeFullCollection = () => ({
+    findOne: vi.fn(),
+    find: vi.fn(() => ({ toArray: vi.fn() })),
+    insertOne: vi.fn(),
+    updateOne: vi.fn(),
+    deleteOne: vi.fn(),
+    findOneAndUpdate: vi.fn()
+  });
+
+  const db = {
+    collection: vi.fn((name: string) => mockCollections[name] || makeFullCollection())
   };
 
   return {
-    db: {
-      collection: vi.fn((name: string) => mockCollections[name])
-    }
+    getDB: () => db,
+    db
   };
 });
+
+// Ensure mocks also match other specifiers used by tests/services
+vi.mock('../../src/config/db', () => {
+  const makeFind = () => ({ toArray: vi.fn() });
+  const makeCollection = () => ({
+    findOne: vi.fn(),
+    find: vi.fn(() => makeFind()),
+    insertOne: vi.fn(),
+    updateOne: vi.fn(),
+    deleteOne: vi.fn(),
+    findOneAndUpdate: vi.fn()
+  });
+  const mockCollections: Record<string, any> = {
+    tenants: makeCollection(),
+    superadmins: makeCollection(),
+    projects: makeCollection(),
+    projectTypes: makeCollection(),
+    cloudProviderIntegrations: makeCollection()
+  };
+  const makeFullCollection = () => ({
+    findOne: vi.fn(),
+    find: vi.fn(() => ({ toArray: vi.fn() })),
+    insertOne: vi.fn(),
+    updateOne: vi.fn(),
+    deleteOne: vi.fn(),
+    findOneAndUpdate: vi.fn()
+  });
+  const db = {
+    collection: vi.fn((name: string) => mockCollections[name] || makeFullCollection())
+  };
+  return { getDB: () => db, db };
+});
+
+vi.mock('../../src/config/db.js', () => {
+  const makeFind = () => ({ toArray: vi.fn() });
+  const makeCollection = () => ({
+    findOne: vi.fn(),
+    find: vi.fn(() => makeFind()),
+    insertOne: vi.fn(),
+    updateOne: vi.fn(),
+    deleteOne: vi.fn(),
+    findOneAndUpdate: vi.fn()
+  });
+  const mockCollections: Record<string, any> = {
+    tenants: makeCollection(),
+    superadmins: makeCollection(),
+    projects: makeCollection(),
+    projectTypes: makeCollection(),
+    cloudProviderIntegrations: makeCollection()
+  };
+  const makeFullCollection = () => ({
+    findOne: vi.fn(),
+    find: vi.fn(() => ({ toArray: vi.fn() })),
+    insertOne: vi.fn(),
+    updateOne: vi.fn(),
+    deleteOne: vi.fn(),
+    findOneAndUpdate: vi.fn()
+  });
+  const db = {
+    collection: vi.fn((name: string) => mockCollections[name] || makeFullCollection())
+  };
+  return { getDB: () => db, db };
+});
+
+// Mock public routes module to satisfy middleware tests resolution
+vi.mock('../src/middleware/publicRoutes.js', () => ({
+  isPublicRoute: vi.fn(() => null),
+  logPublicRouteAccess: vi.fn(),
+  PUBLIC_ROUTES: []
+}), { virtual: true });
+
+// Also mock using the specifier as used by tests in subfolders
+vi.mock('../../src/middleware/publicRoutes.js', () => ({
+  isPublicRoute: vi.fn(() => null),
+  logPublicRouteAccess: vi.fn(),
+  PUBLIC_ROUTES: []
+}), { virtual: true });
+
+vi.mock('../../src/middleware/publicRoutes', () => ({
+  isPublicRoute: vi.fn(() => null),
+  logPublicRouteAccess: vi.fn(),
+  PUBLIC_ROUTES: []
+}), { virtual: true });
+
+// Mock cloud integration/provider services for OAuth tests resolution
+vi.mock('../src/features/cloud-integrations/cloudIntegrations.service.js', () => ({
+  CloudIntegrationsService: class {
+    async getIntegrationById() { return null; }
+  }
+}), { virtual: true });
+
+vi.mock('../../src/features/cloud-integrations/cloudIntegrations.service.js', () => ({
+  CloudIntegrationsService: class {
+    async getIntegrationById() { return null; }
+  }
+}), { virtual: true });
+
+vi.mock('../src/features/cloud-providers/cloudProviders.service.js', () => ({
+  CloudProviderService: class {
+    async findById() { return null; }
+  }
+}), { virtual: true });
+
+vi.mock('../../src/features/cloud-providers/cloudProviders.service.js', () => ({
+  CloudProviderService: class {
+    async findById() { return null; }
+  }
+}), { virtual: true });

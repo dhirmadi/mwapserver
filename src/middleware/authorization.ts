@@ -139,3 +139,47 @@ export function requireSuperAdminRole() {
     }
   };
 }
+
+/**
+ * Unified permission middleware to reduce duplication across route handlers.
+ * Example usage: router.get('/:id', requirePermission('tenant:read'), handler)
+ */
+export function requirePermission(permission: string) {
+  return async (req: Request, _res: Response, next: NextFunction) => {
+    try {
+      const userId = (req as any).auth?.sub;
+      if (!userId) return next(new Error('Unauthorized'));
+
+      // Minimal initial implementation: map common permissions to existing checks
+      // Extend with a dedicated permissionService when needed.
+      if (permission.startsWith('tenant:')) {
+        // For tenant-scoped permissions, we reuse existing ownership checks
+        // and superadmin bypass where applicable.
+        const param = req.params.tenantId || req.params.id;
+        const superadmin = await getDB().collection('superadmins').findOne({ userId });
+        if (superadmin) return next();
+        const tenant = await getDB().collection('tenants').findOne({ _id: new ObjectId(param), ownerId: userId });
+        if (!tenant) return next(new PermissionError('Access denied'));
+        return next();
+      }
+
+      if (permission.startsWith('project:')) {
+        const projectId = req.params.projectId || req.params.id;
+        const project = await getDB().collection('projects').findOne({
+          _id: new ObjectId(projectId),
+          $or: [
+            { ownerId: userId },
+            { 'members.userId': userId }
+          ]
+        });
+        if (!project) return next(new PermissionError('Access denied'));
+        return next();
+      }
+
+      // Default: allow (no-op) until a comprehensive map is added
+      return next();
+    } catch (error) {
+      return next(error);
+    }
+  };
+}

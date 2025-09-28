@@ -11,7 +11,7 @@ MWAP (Modular Web Application Platform) is a fullstack, secure, scalable SaaS fr
 1. **Rapid Development**: Enable developers to quickly build and deploy SaaS applications
 2. **Security First**: Implement zero-trust security model with comprehensive authentication and authorization
 3. **Cloud Integration**: Provide seamless integration with multiple cloud providers (Google Drive, Dropbox, OneDrive)
-4. **AI-Ready**: Support AI agent integration and microagent architecture
+4. **AI-Ready**: Integrate AI via provider APIs (OpenAI, Anthropic) using prompts/media; inference is provider-side (no internal agent framework)
 5. **Scalability**: Design for horizontal scaling and multi-tenant architecture
 
 ### Secondary Goals
@@ -46,7 +46,7 @@ MWAP (Modular Web Application Platform) is a fullstack, secure, scalable SaaS fr
 
 1. **SaaS Applications**: Multi-tenant software-as-a-service platforms
 2. **Cloud File Management**: Applications requiring cloud storage integration
-3. **AI-Powered Services**: Applications leveraging AI agents and automation
+3. **AI-Powered Services**: Applications leveraging provider-based AI inference and automation
 4. **Project Management**: Team collaboration and project organization tools
 5. **Data Integration**: Applications requiring multiple cloud provider connections
 
@@ -82,7 +82,7 @@ MWAP (Modular Web Application Platform) is a fullstack, secure, scalable SaaS fr
 
 - Complete testing infrastructure (Phase 8)
 - Production deployment capabilities
-- Enhanced AI agent integration
+- Provider-based AI integration (no internal agent framework)
 - Performance optimization
 - Security audit completion
 
@@ -92,7 +92,7 @@ MWAP (Modular Web Application Platform) is a fullstack, secure, scalable SaaS fr
 - Real-time collaboration features
 - Enhanced monitoring and analytics
 - Mobile application support
-- Advanced AI capabilities
+- Expanded provider-based AI capabilities (prompt engineering, media inputs)
 
 ### Long Term (1-2 years)
 
@@ -100,7 +100,7 @@ MWAP (Modular Web Application Platform) is a fullstack, secure, scalable SaaS fr
 - Advanced compliance features
 - Marketplace for extensions
 - Enterprise features
-- Advanced AI orchestration
+- Deeper provider integrations; no internal agent orchestration planned
 
 ## Technology Philosophy
 

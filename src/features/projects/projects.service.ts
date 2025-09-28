@@ -31,7 +31,7 @@ export class ProjectsService {
       
       // Find project and verify user is a member
       const project = await this.collection.findOne({
-        _id: projectId.toString(),
+        _id: projectId,
         'members.userId': userId
       });
       

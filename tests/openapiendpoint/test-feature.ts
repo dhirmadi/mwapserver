@@ -5,7 +5,7 @@
  * Run with: tsx src/features/openapi/test-feature.ts
  */
 
-import { OpenAPIFeatureService } from './openapi.service.js';
+import { OpenAPIFeatureService } from '../../src/features/openapi/openapi.service.ts';
 
 async function testOpenAPIFeature() {
   console.log('🧪 Testing OpenAPI Feature Module...\n');
