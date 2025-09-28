@@ -7,8 +7,9 @@ import { fileURLToPath } from 'url';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-const docsDir = path.join(__dirname, '..', 'docs');
-const configPath = path.join(__dirname, '..', '.docs-config.json');
+const repoRoot = path.join(__dirname, '..');
+const docsDir = path.join(repoRoot, 'docs');
+const configPath = path.join(repoRoot, '.docs-config.json');
 const errors = [];
 const warnings = [];
 
@@ -27,6 +28,27 @@ try {
   console.warn('⚠️  Warning: Could not load .docs-config.json, using defaults');
 }
 
+// Helpers for exclusion patterns
+function toPosix(p) {
+  return p.split(path.sep).join('/');
+}
+
+function patternToRegex(pattern) {
+  const escaped = pattern
+    .replace(/[.+^${}()|[\]\\]/g, '\\$&')
+    .replace(/\*\*/g, '.*')
+    .replace(/\*/g, '[^/]*');
+  return new RegExp('^' + escaped + '$');
+}
+
+const excludePatterns = (config.validation && config.validation.excludePatterns) || [];
+const excludeRegexes = excludePatterns.map(p => patternToRegex(toPosix(p)));
+
+function isExcluded(absPath) {
+  const relFromRoot = toPosix(path.relative(repoRoot, absPath));
+  return excludeRegexes.some(rx => rx.test(relFromRoot));
+}
+
 // Get all markdown files
 function getAllMarkdownFiles(dir) {
   const files = [];
@@ -37,8 +59,10 @@ function getAllMarkdownFiles(dir) {
     const stat = fs.statSync(fullPath);
     
     if (stat.isDirectory()) {
+      if (isExcluded(fullPath)) continue;
       files.push(...getAllMarkdownFiles(fullPath));
     } else if (item.endsWith('.md')) {
+      if (isExcluded(fullPath)) continue;
       files.push(fullPath);
     }
   }
@@ -79,7 +103,7 @@ function validateInternalLink(linkUrl, sourceFile) {
   let targetPath;
   if (linkUrl.startsWith('/')) {
     // Absolute path from repo root
-    targetPath = path.join(__dirname, '..', linkUrl);
+    targetPath = path.join(repoRoot, linkUrl);
   } else {
     // Relative path from source file
     const sourceDir = path.dirname(sourceFile);
@@ -89,6 +113,7 @@ function validateInternalLink(linkUrl, sourceFile) {
   // Remove anchor if present
   const [filePath] = targetPath.split('#');
   
+  if (isExcluded(filePath)) return true;
   return fs.existsSync(filePath);
 }
 
@@ -134,9 +159,10 @@ function validateDocumentationLinks() {
   console.log(`🔍 Validating links in ${markdownFiles.length} markdown files...\n`);
   
   for (const file of markdownFiles) {
+    if (isExcluded(file)) continue;
     const content = fs.readFileSync(file, 'utf8');
     const links = extractLinks(content);
-    const relativePath = path.relative(path.join(__dirname, '..'), file);
+    const relativePath = path.relative(repoRoot, file);
     
     console.log(`📄 ${relativePath} (${links.length} links)`);
     
