@@ -123,6 +123,12 @@ lastReviewed: YYYY-MM-DD
 - Prefer direct service testing for logic; controllers tested with supertest-style helpers if available.
 - Include negative tests for validation and authorization paths.
 
+### Heroku-Optimized Minimal Testing (No CI/CD)
+- Local pre-push: run `npm run test:critical` and (optionally) `npm run type-check`.
+- Heroku release-phase gate: run fast scripts to validate env, OAuth security, and deploy sanity:
+  - `release: npx --yes tsx scripts/production-readiness-check.ts && npx --yes tsx scripts/verify-oauth-security.ts && npx --yes tsx scripts/deployment-validation.ts`
+- Avoid running heavy integration/performance suites automatically; keep deploys fast. Use on-demand testing when needed.
+
 ## OpenAPI and Documentation
 - When endpoint contracts change, update OpenAPI code in `src/features/openapi/*` and ensure `src/docs/*` generators produce new docs.
 - Keep examples and error responses aligned with `response.ts` utilities.
