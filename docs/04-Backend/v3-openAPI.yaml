@@ -380,13 +380,13 @@ paths:
         '204':
           description: No Content
 
-  /tenants/{id}/integrations:
+  /tenants/{tenantId}/integrations:
     get:
       summary: List tenant integrations
       security:
         - bearerAuth: []
       parameters:
-        - name: id
+        - name: tenantId
           in: path
           required: true
           schema: { type: string }
@@ -404,7 +404,7 @@ paths:
       security:
         - bearerAuth: []
       parameters:
-        - name: id
+        - name: tenantId
           in: path
           required: true
           schema: { type: string }
@@ -419,13 +419,13 @@ paths:
             application/json:
               schema: { type: object }
 
-  /tenants/{id}/integrations/{integrationId}:
+  /tenants/{tenantId}/integrations/{integrationId}:
     delete:
       summary: Delete integration
       security:
         - bearerAuth: []
       parameters:
-        - name: id
+        - name: tenantId
           in: path
           required: true
           schema: { type: string }
@@ -437,14 +437,14 @@ paths:
         '204':
           description: No Content
 
-  /tenants/{id}/integrations/{integrationId}/refresh-token:
+  /tenants/{tenantId}/integrations/{integrationId}/refresh-token:
     post:
       summary: Refresh OAuth tokens for an integration
       description: Uses the stored refresh token to obtain new access and refresh tokens from the cloud provider
       security:
         - bearerAuth: []
       parameters:
-        - name: id
+        - name: tenantId
           in: path
           required: true
           schema: { type: string }
@@ -485,14 +485,14 @@ paths:
         '500':
           description: Token refresh failed with the provider
 
-  /tenants/{id}/integrations/{integrationId}/health:
+  /tenants/{tenantId}/integrations/{integrationId}/health:
     get:
       summary: Check the health status of an integration
       description: Tests the validity of the stored access token with the cloud provider
       security:
         - bearerAuth: []
       parameters:
-        - name: id
+        - name: tenantId
           in: path
           required: true
           schema: { type: string }
@@ -620,3 +620,448 @@ paths:
               schema:
                 type: array
                 items: { type: object }
+
+  /tenants:
+    get:
+      summary: List all tenants (superadmin only)
+      description: Retrieves a list of all tenants. Requires superadmin role.
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Tenant'
+
+  /tenants/{id}:
+    get:
+      summary: Get tenant by ID
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Tenant'
+
+  /tenants/{tenantId}/integrations/{integrationId}:
+    get:
+      summary: Get tenant integration by ID
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: tenantId
+          in: path
+          required: true
+          schema: { type: string }
+        - name: integrationId
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { type: object }
+    patch:
+      summary: Update tenant integration
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: tenantId
+          in: path
+          required: true
+          schema: { type: string }
+        - name: integrationId
+          in: path
+          required: true
+          schema: { type: string }
+      requestBody:
+        content:
+          application/json:
+            schema: { type: object }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { type: object }
+
+  /cloud-providers/{id}:
+    get:
+      summary: Get cloud provider by ID
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { type: object }
+
+  /project-types/{id}:
+    get:
+      summary: Get project type by ID
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { type: object }
+
+  /projects/{id}/members/{userId}:
+    patch:
+      summary: Update project member role
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+        - name: userId
+          in: path
+          required: true
+          schema: { type: string }
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                role:
+                  type: string
+                  enum: [OWNER, DEPUTY, MEMBER]
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { type: object }
+    delete:
+      summary: Remove project member
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+        - name: userId
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        '204':
+          description: No Content
+
+  /oauth/callback:
+    get:
+      summary: OAuth callback endpoint (public)
+      description: Endpoint called by external OAuth providers. Public, no JWT required.
+      responses:
+        '200':
+          description: Callback processed
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+
+  /oauth/tenants/{tenantId}/integrations/{integrationId}/refresh:
+    post:
+      summary: Manually refresh integration tokens
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: tenantId
+          in: path
+          required: true
+          schema: { type: string }
+        - name: integrationId
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        '200':
+          description: Tokens refreshed successfully
+          content:
+            application/json:
+              schema: { type: object }
+
+  /openapi:
+    get:
+      summary: Get complete OpenAPI specification
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: query
+          name: format
+          schema:
+            type: string
+            enum: [json, yaml]
+            default: json
+        - in: query
+          name: includeExamples
+          schema:
+            type: boolean
+            default: false
+        - in: query
+          name: minify
+          schema:
+            type: boolean
+            default: false
+      responses:
+        '200':
+          description: OpenAPI specification
+          content:
+            application/json:
+              schema:
+                type: object
+            application/x-yaml:
+              schema:
+                type: string
+
+  /openapi/info:
+    get:
+      summary: Get OpenAPI information summary
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+
+  /openapi/validate:
+    get:
+      summary: Validate OpenAPI specification
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Validation successful
+          content:
+            application/json:
+              schema:
+                type: object
+
+  /openapi/health:
+    get:
+      summary: OpenAPI service health check
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+
+  /openapi/cache/status:
+    get:
+      summary: Get OpenAPI cache status
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+
+  /openapi/cache/invalidate:
+    post:
+      summary: Invalidate OpenAPI cache (admin only)
+      description: Invalidates the OpenAPI cache; requires superadmin role.
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Cache invalidated
+          content:
+            application/json:
+              schema:
+                type: object
+
+  /openapi/validation/history:
+    get:
+      summary: Get OpenAPI validation history
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: query
+          name: limit
+          schema:
+            type: integer
+            default: 10
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+
+  /openapi/validation/ci-report:
+    get:
+      summary: Generate CI/CD validation report
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: query
+          name: format
+          schema:
+            type: string
+            enum: [json, junit, text]
+            default: text
+      responses:
+        '200':
+          description: OK
+          content:
+            text/plain:
+              schema:
+                type: string
+            application/json:
+              schema:
+                type: object
+            application/xml:
+              schema:
+                type: string
+
+  /openapi/validation/monitor:
+    post:
+      summary: Monitor OpenAPI validation
+      security:
+        - bearerAuth: []
+      responses:
+        '202':
+          description: Accepted
+          content:
+            application/json:
+              schema:
+                type: object
+
+  /openapi/performance/metrics:
+    get:
+      summary: Get OpenAPI performance metrics
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+
+  /openapi/performance/benchmark:
+    post:
+      summary: Run OpenAPI performance benchmarks
+      security:
+        - bearerAuth: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                iterations:
+                  type: integer
+                  default: 10
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+
+  /openapi/performance/optimize-cache:
+    post:
+      summary: Optimize OpenAPI cache configuration
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+
+  /openapi/security/audit:
+    post:
+      summary: Perform OpenAPI security audit
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+
+  /openapi/security/sanitized:
+    get:
+      summary: Get sanitized OpenAPI specification
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+
+  /openapi/security/audit-log:
+    get:
+      summary: Get OpenAPI security audit log
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: query
+          name: limit
+          schema:
+            type: integer
+            default: 100
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
