@@ -606,8 +606,8 @@ Manually refresh OAuth access tokens.
 
 - **[API Reference](../04-Backend/api-reference.md)** - Complete API documentation
 - **[Security Guide](../04-Backend/security.md)** - Security architecture
-- **[OAuth Security Considerations](./oauth-security-considerations.md)** - Security deep dive
-- **[OAuth Troubleshooting Guide](./oauth-troubleshooting-guide.md)** - Common issues
+- **[OAuth Security Guide](./oauth-security.md)** - Security deep dive
+- **[OAuth Troubleshooting Guide](./archive/oauth-troubleshooting-guide.md)** - Common issues (archived)
 
 ---
 

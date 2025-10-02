@@ -42,12 +42,8 @@ Complete backend development and API documentation
 
 ### [05-AI-Agents](./05-AI-Agents/)
 AI integration and agent development
-- [Microagents](./05-AI-Agents/microagents.md) - Agent architecture
 - [OpenHands Integration](./05-AI-Agents/openhands-integration.md) - AI development tools
 - [OpenHands Frontend Prompt](./05-AI-Agents/openhands-frontend-prompt.md) - Frontend AI development
-- [Prompt Engineering](./05-AI-Agents/prompt-engineering.md) - Effective prompting
-- [Agent Patterns](./05-AI-Agents/agent-patterns.md) - Common patterns
-- [Best Practices](./05-AI-Agents/best-practices.md) - Development guidelines
 
 ### [06-Guides](./06-Guides/)
 Comprehensive implementation guides covering all aspects of MWAP development and operations
@@ -56,11 +52,10 @@ Comprehensive implementation guides covering all aspects of MWAP development and
 - [Security Guide](./06-Guides/security-guide.md) - Authentication, authorization, and OAuth integrations
 - [Performance Guide](./06-Guides/performance-guide.md) - API configuration and optimization strategies
 - [Testing Guide](./06-Guides/testing-guide.md) - Complete testing strategies and implementation
-- [OAuth Security Guide](./06-Guides/oauth-security-guide.md) - OAuth callback security and PKCE implementation
+- [OAuth Security Guide](./06-Guides/oauth-security.md) - OAuth security threat models and best practices
 - [PKCE Implementation Guide](./06-Guides/pkce-implementation-guide.md) - PKCE OAuth 2.0 flows for enhanced security
 - [OAuth Integration Guide](./06-Guides/oauth-integration-guide.md) - OAuth provider integration patterns
-- [OAuth Troubleshooting Guide](./06-Guides/oauth-troubleshooting-guide.md) - OAuth issue resolution and debugging
-- [Frontend Quick Reference](./06-Guides/FRONTEND_QUICK_REFERENCE.md) - Frontend PKCE integration reference
+- [OAuth Frontend Complete Guide](./06-Guides/oauth-frontend-complete-guide.md) - Complete frontend implementation guide
 
 ### [07-Standards](./07-Standards/)
 Comprehensive development standards and best practices for consistent, high-quality code
@@ -96,10 +91,11 @@ Comprehensive reports on project status, documentation evolution, and historical
 | API endpoints | [API Reference](./04-Backend/api-reference.md) |
 | Backend development | [Backend Development Guide](./04-Backend/backend-guide.md) |
 | Authentication | [Security Guide](./04-Backend/security.md) |
-| OAuth integration | [OAuth Security Guide](./06-Guides/oauth-security-guide.md) |
+| OAuth integration | [OAuth Integration Guide](./06-Guides/oauth-integration-guide.md) |
+| OAuth frontend | [OAuth Frontend Complete Guide](./06-Guides/oauth-frontend-complete-guide.md) |
+| OAuth security | [OAuth Security Guide](./06-Guides/oauth-security.md) |
 | PKCE implementation | [PKCE Implementation Guide](./06-Guides/pkce-implementation-guide.md) |
 | Frontend integration | [Frontend Integration Guide](./03-Frontend/frontend-guide.md) |
-| Frontend OAuth/PKCE | [Frontend Quick Reference](./06-Guides/FRONTEND_QUICK_REFERENCE.md) |
 | Testing | [Testing Guide](./06-Guides/testing-guide.md) |
 | Deployment | [Deployment Guide](./06-Guides/deployment-guide.md) |
 | Performance | [Performance Guide](./06-Guides/performance-guide.md) |

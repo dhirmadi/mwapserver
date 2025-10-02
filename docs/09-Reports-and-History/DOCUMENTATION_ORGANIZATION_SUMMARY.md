@@ -15,10 +15,10 @@ Organize all PKCE and OAuth documentation into a proper, maintainable structure 
 ### 1. ✅ Created Comprehensive Frontend Documentation
 - **FRONTEND_INTEGRATION_REPORT.md**: Complete implementation report for frontend team
 - **API_SPECIFICATION_CHANGES.md**: Detailed API changes and new endpoints
-- **FRONTEND_QUICK_REFERENCE.md**: Quick reference guide for developers
+- **FRONTEND_QUICK_REFERENCE.md**: Quick reference guide for developers (now archived)
 
 ### 2. ✅ Consolidated OAuth Documentation
-- **oauth-security-guide.md**: OAuth callback security and PKCE implementation
+- **oauth-security.md**: OAuth callback security and PKCE implementation
 - **pkce-implementation-guide.md**: PKCE OAuth 2.0 implementation guide
 - **oauth-integration-guide.md**: OAuth provider integration patterns
 - **oauth-troubleshooting-guide.md**: OAuth issue resolution and debugging
@@ -47,13 +47,12 @@ Organize all PKCE and OAuth documentation into a proper, maintainable structure 
 ├── security-guide.md                 # Complete security implementation
 ├── performance-guide.md              # Performance optimization
 ├── testing-guide.md                  # Complete testing strategy
-├── oauth-security-guide.md           # OAuth callback security & PKCE
+├── oauth-security.md                 # OAuth callback security & PKCE
 ├── pkce-implementation-guide.md      # PKCE OAuth 2.0 implementation
 ├── oauth-integration-guide.md        # OAuth provider integration
 ├── oauth-troubleshooting-guide.md    # OAuth issue resolution
-├── oauth-security-considerations.md  # OAuth threat model & security
+├── oauth-security.md                 # OAuth threat model & security
 ├── public-route-security-model.md    # Zero Trust public route security
-├── FRONTEND_QUICK_REFERENCE.md       # Frontend PKCE integration reference
 └── README.md                         # Navigation guide
 ```
 
@@ -109,8 +108,9 @@ Organize all PKCE and OAuth documentation into a proper, maintainable structure 
 - Testing checklist and deployment coordination
 - Support contacts and communication channels
 
-#### 2. [FRONTEND_QUICK_REFERENCE.md](../06-Guides/FRONTEND_QUICK_REFERENCE.md)
-**Purpose**: Quick reference for developers  
+#### 2. Frontend Quick Reference (Archived)
+**Purpose**: Quick reference for developers (now archived)  
+**Location**: `docs/06-Guides/archive/FRONTEND_QUICK_REFERENCE.md`  
 **Content**:
 - Critical domain changes and fixes
 - PKCE implementation examples with ready-to-use code
@@ -129,7 +129,7 @@ Organize all PKCE and OAuth documentation into a proper, maintainable structure 
 
 ### 🔧 **Supporting Technical Guides**
 
-#### 4. [OAuth Security Guide](../06-Guides/oauth-security-guide.md)
+#### 4. [OAuth Security Guide](../06-Guides/oauth-security.md)
 - OAuth callback security implementation
 - PKCE support and RFC 7636 compliance
 - Security architecture and defense strategies
@@ -139,7 +139,8 @@ Organize all PKCE and OAuth documentation into a proper, maintainable structure 
 - Code examples and integration workflows
 - Security validation and best practices
 
-#### 6. [OAuth Troubleshooting Guide](../06-Guides/oauth-troubleshooting-guide.md)
+#### 6. OAuth Troubleshooting Guide (Archived)
+**Location**: `docs/06-Guides/archive/oauth-troubleshooting-guide.md`  
 - Common OAuth integration issues
 - Diagnostic procedures and resolution steps
 - PKCE-specific troubleshooting scenarios
@@ -151,7 +152,7 @@ Organize all PKCE and OAuth documentation into a proper, maintainable structure 
 ### ✅ **Immediate Actions**
 1. **Review Documentation**: Start with FRONTEND_INTEGRATION_REPORT.md
 2. **Update Domain Configuration**: Fix production domain references
-3. **Implement PKCE Parameters**: Use FRONTEND_QUICK_REFERENCE.md examples
+3. **Implement PKCE Parameters**: See oauth-frontend-complete-guide.md for examples
 4. **Test Integration**: Follow testing checklist in integration report
 
 ### ✅ **Development Process**

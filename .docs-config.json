@@ -12,6 +12,7 @@
       "auth0.com"
     ],
     "excludePatterns": [
+      "docs/**/archive/**",
       "docs/archive/**",
       "**/*.tmp.md",
       "**/node_modules/**"
@@ -19,18 +20,22 @@
   },
   "structure": {
     "requiredDirectories": [
-      "docs/features",
-      "docs/testing", 
-      "docs/integrations",
-      "docs/archive",
-      "docs/architecture",
-      "docs/frontend"
+      "docs/00-Overview",
+      "docs/01-Getting-Started",
+      "docs/02-Architecture",
+      "docs/03-Frontend",
+      "docs/04-Backend",
+      "docs/06-Guides",
+      "docs/07-Standards",
+      "docs/08-Contribution",
+      "docs/09-Reports-and-History"
     ],
     "requiredFiles": [
       "docs/README.md",
-      "docs/v3-architecture-reference.md",
-      "docs/integrations/oauth-guide.md",
-      "docs/testing/README.md"
+      "docs/01-Getting-Started/getting-started.md",
+      "docs/02-Architecture/architecture.md",
+      "docs/04-Backend/api-reference.md",
+      "docs/06-Guides/development-guide.md"
     ]
   },
   "quality": {

@@ -196,7 +196,7 @@ This quick reference and the detailed [api-reference.md](./api-reference.md) are
 - **[API Reference](./api-reference.md)** - Comprehensive documentation with schemas, examples, and security details
 - **[Features Guide](./features.md)** - Feature-by-feature implementation guide
 - **[Security Guide](./security.md)** - Security architecture and best practices
-- **[OAuth Integration Guide](../../06-Guides/oauth-integration-guide.md)** - Complete OAuth implementation guide
+- **[OAuth Integration Guide](../06-Guides/oauth-integration-guide.md)** - Complete OAuth implementation guide
 
 ---
 
