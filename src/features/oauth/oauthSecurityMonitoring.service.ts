@@ -200,7 +200,7 @@ export class OAuthSecurityMonitoringService {
   /**
    * Test against common OAuth attack vectors
    */
-  validateAgainstAttackVectors(): {
+  validateAgainstAttackVectors(this: OAuthSecurityMonitoringService): {
     vulnerabilities: string[];
     mitigations: string[];
     riskLevel: 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL';
@@ -239,12 +239,12 @@ export class OAuthSecurityMonitoringService {
   /**
    * Generate comprehensive security report
    */
-  generateSecurityReport(): {
+  generateSecurityReport(this: OAuthSecurityMonitoringService): {
     metrics: SecurityMetrics;
     alerts: SecurityAlert[];
     patterns: SuspiciousPattern[];
-    dataExposure: ReturnType<typeof this.validatePublicRouteDataExposure>;
-    attackVectors: ReturnType<typeof this.validateAgainstAttackVectors>;
+    dataExposure: ReturnType<OAuthSecurityMonitoringService['validatePublicRouteDataExposure']>;
+    attackVectors: ReturnType<OAuthSecurityMonitoringService['validateAgainstAttackVectors']>;
     recommendations: string[];
   } {
     const metrics = this.getSecurityMetrics();

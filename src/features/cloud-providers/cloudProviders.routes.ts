@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { requireSuperAdminRole } from '../../middleware/authorization.js';
+import { requireSuperAdmin } from '../../middleware/auth.js';
 import { wrapAsyncHandler } from '../../utils/response.js';
 import {
   getAllCloudProviders,
@@ -23,7 +23,7 @@ export function getCloudProviderRouter(): Router {
   router.get('/:id', wrapAsyncHandler(getCloudProviderById));
   
   // All other routes require SUPERADMIN role
-  router.use(requireSuperAdminRole());
+  router.use(requireSuperAdmin());
   
   logInfo('Cloud providers modification endpoints initialized with superadmin authorization');
 

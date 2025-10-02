@@ -135,13 +135,16 @@ export class RouteDiscoveryServiceImpl implements RouteDiscoveryService {
 
       case 'cloud-integrations':
         return [
+          // Primary paths
           { path: `${basePath}`, method: 'GET', middleware: ['authenticateJWT', 'requireTenantOwner'], handler: 'getTenantIntegrations' },
           { path: `${basePath}`, method: 'POST', middleware: ['authenticateJWT', 'requireTenantOwner'], handler: 'createTenantIntegration' },
           { path: `${basePath}/:integrationId`, method: 'GET', middleware: ['authenticateJWT', 'requireTenantOwner'], handler: 'getTenantIntegrationById' },
           { path: `${basePath}/:integrationId`, method: 'PATCH', middleware: ['authenticateJWT', 'requireTenantOwner'], handler: 'updateTenantIntegration' },
           { path: `${basePath}/:integrationId`, method: 'DELETE', middleware: ['authenticateJWT', 'requireTenantOwner'], handler: 'deleteTenantIntegration' },
           { path: `${basePath}/:integrationId/refresh-token`, method: 'POST', middleware: ['authenticateJWT', 'requireTenantOwner'], handler: 'refreshIntegrationToken' },
-          { path: `${basePath}/:integrationId/health`, method: 'GET', middleware: ['authenticateJWT', 'requireTenantOwner'], handler: 'checkIntegrationHealth' }
+          { path: `${basePath}/:integrationId/health`, method: 'GET', middleware: ['authenticateJWT', 'requireTenantOwner'], handler: 'checkIntegrationHealth' },
+          // Backward compatibility path under cloud-integrations alias
+          { path: `/api/v1/tenants/:tenantId/cloud-integrations`, method: 'GET', middleware: ['authenticateJWT', 'requireTenantOwner'], handler: 'listTenantCloudIntegrations' }
         ];
 
       case 'users':

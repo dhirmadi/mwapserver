@@ -5,10 +5,10 @@ export function sanitizeString(input: string): string {
   return input.trim().replace(/[<>]/g, '');
 }
 
-export function validateWithSchema<T>(schema: z.Schema<T>, input: unknown): T {
+export function validateWithSchema<T>(schema: z.ZodType<T>, input: unknown): T {
   try {
     const result = schema.parse(input);
-    return result;
+    return result as T;
   } catch (error) {
     if (error instanceof z.ZodError) {
       const details: Record<string, string> = {};

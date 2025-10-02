@@ -27,11 +27,9 @@ export class ProjectsService {
 
   async findById(id: string, userId: string): Promise<Project> {
     try {
-      const projectId = new ObjectId(id);
-      
       // Find project and verify user is a member
       const project = await this.collection.findOne({
-        _id: projectId,
+        _id: id,
         'members.userId': userId
       });
       
@@ -91,7 +89,7 @@ export class ProjectsService {
       
       const now = new Date();
       const project: Project = {
-        _id: new ObjectId(),
+        _id: new ObjectId().toString(),
         tenantId: tenantId.toString(),
         projectTypeId: projectTypeId.toString(),
         cloudIntegrationId: cloudIntegrationId.toString(),

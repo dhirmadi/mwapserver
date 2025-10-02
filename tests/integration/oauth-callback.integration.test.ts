@@ -25,22 +25,17 @@ vi.mock('../../src/config/auth0.ts', () => ({
   }
 }));
 
-vi.mock('../../src/utils/logger.js', () => ({
-  logInfo: vi.fn(),
-  logError: vi.fn(),
-  logAudit: vi.fn()
-}));
+// Use real logger shim which exposes vi.fn spies
 
-vi.mock('../../src/features/oauth/oauth.service.js', () => ({
-  OAuthService: vi.fn().mockImplementation(() => ({
-    exchangeCodeForTokens: vi.fn().mockResolvedValue({
-      accessToken: 'mock-access-token',
-      refreshToken: 'mock-refresh-token',
-      expiresIn: 3600,
-      scopesGranted: ['https://www.googleapis.com/auth/drive.readonly']
-    })
-  }))
-}));
+// Use real OAuth service shim; tests will spy on prototype below
+const { OAuthService } = await import('../../src/features/oauth/oauth.service.js');
+// Provide default resolved behavior for success flows
+vi.spyOn(OAuthService.prototype as any, 'exchangeCodeForTokens').mockResolvedValue({
+  accessToken: 'mock-access-token',
+  refreshToken: 'mock-refresh-token',
+  expiresIn: 3600,
+  scopesGranted: ['https://www.googleapis.com/auth/drive.readonly']
+});
 
 describe('OAuth Callback Integration Tests', () => {
   let mongoServer: MongoMemoryServer;
@@ -57,6 +52,10 @@ describe('OAuth Callback Integration Tests', () => {
     // Connect to test database
     process.env.MONGODB_URI = mongoUri;
     await connectToDatabase();
+
+    // Ensure routes are fully registered before any requests
+    const { registerRoutes } = await import('../../src/app.js');
+    await registerRoutes();
   });
 
   afterAll(async () => {
@@ -205,8 +204,8 @@ describe('OAuth Callback Integration Tests', () => {
         .set('X-Forwarded-For', '192.168.1.100');
 
       // Verify audit logging was called
-      const { logAudit } = require('../../src/utils/logger.js');
-      expect(logAudit).toHaveBeenCalledWith(
+      const spies = (globalThis as any).__MWAP_LOGGER_SPIES__;
+      expect(spies.logAudit).toHaveBeenCalledWith(
         'oauth.callback.success',
         testUserId,
         testIntegrationId,
@@ -496,8 +495,8 @@ describe('OAuth Callback Integration Tests', () => {
       expect(response.headers.location).toContain('Integration%20already%20configured');
 
       // Verify replay attack was logged
-      const { logAudit } = require('../../src/utils/logger.js');
-      expect(logAudit).toHaveBeenCalledWith(
+      const spies = (globalThis as any).__MWAP_LOGGER_SPIES__;
+      expect(spies.logAudit).toHaveBeenCalledWith(
         'oauth.callback.duplicate_attempt',
         testUserId,
         testIntegrationId,
@@ -574,10 +573,9 @@ describe('OAuth Callback Integration Tests', () => {
     });
 
     it('should handle token exchange failures', async () => {
-      // Mock token exchange failure
-      const { OAuthService } = require('../../src/features/oauth/oauth.service.js');
-      const mockService = new OAuthService();
-      mockService.exchangeCodeForTokens.mockRejectedValue(new Error('Token exchange failed'));
+      // Force failure once
+      const { OAuthService } = await import('../../src/features/oauth/oauth.service.js');
+      (OAuthService.prototype as any).exchangeCodeForTokens.mockRejectedValueOnce(new Error('Token exchange failed'));
 
       const stateData = {
         tenantId: testTenantId,
@@ -621,8 +619,8 @@ describe('OAuth Callback Integration Tests', () => {
         .set('X-Forwarded-For', '10.0.0.1');
 
       // Verify security logging
-      const { logError } = require('../../src/utils/logger.js');
-      expect(logError).toHaveBeenCalledWith(
+      const spies = (globalThis as any).__MWAP_LOGGER_SPIES__;
+      expect(spies.logError).toHaveBeenCalledWith(
         'OAuth callback security issues detected',
         expect.objectContaining({
           securityIssues: expect.arrayContaining([
@@ -646,8 +644,8 @@ describe('OAuth Callback Integration Tests', () => {
         .set('X-Forwarded-For', '192.168.1.1');
 
       // Verify failed attempt logging
-      const { logAudit } = require('../../src/utils/logger.js');
-      expect(logAudit).toHaveBeenCalledWith(
+      const spies = (globalThis as any).__MWAP_LOGGER_SPIES__;
+      expect(spies.logAudit).toHaveBeenCalledWith(
         'oauth.callback.attempt.failed',
         'unknown',
         'unknown',
@@ -681,10 +679,9 @@ describe('OAuth Callback Integration Tests', () => {
         .set('User-Agent', 'Chrome/91.0')
         .set('X-Forwarded-For', '192.168.1.50');
 
-      const { logAudit } = require('../../src/utils/logger.js');
-
       // Should log successful attempt
-      expect(logAudit).toHaveBeenCalledWith(
+      const spies = (globalThis as any).__MWAP_LOGGER_SPIES__;
+      expect(spies.logAudit).toHaveBeenCalledWith(
         'oauth.callback.attempt.success',
         testUserId,
         testIntegrationId,
@@ -697,7 +694,7 @@ describe('OAuth Callback Integration Tests', () => {
       );
 
       // Should log ownership verification
-      expect(logAudit).toHaveBeenCalledWith(
+      expect(spies.logAudit).toHaveBeenCalledWith(
         'oauth.ownership.verified',
         testUserId,
         testIntegrationId,
@@ -708,7 +705,7 @@ describe('OAuth Callback Integration Tests', () => {
       );
 
       // Should log final success
-      expect(logAudit).toHaveBeenCalledWith(
+      expect(spies.logAudit).toHaveBeenCalledWith(
         'oauth.callback.success',
         testUserId,
         testIntegrationId,

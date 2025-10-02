@@ -1,46 +1,35 @@
+/**
+ * Consolidated Authentication and Authorization Middleware
+ * 
+ * Simplified system that handles both JWT authentication and role-based authorization
+ * in a single, maintainable module.
+ */
+
 import { expressjwt as jwt } from 'express-jwt';
 import { Request, Response, NextFunction } from 'express';
-import { env } from '../config/env';
-import { jwksClient } from '../config/auth0';
-import { logInfo, logError, logAudit } from '../utils/logger';
-import { isPublicRoute, logPublicRouteAccess, PublicRouteConfig } from './publicRoutes.js';
+import { env } from '../config/env.js';
+import { jwksClient } from '../config/auth0.js';
+import { logInfo, logError, logAudit } from '../utils/logger.js';
+import { PermissionError, AuthError } from '../utils/errors.js';
+import { getUserFromToken } from '../utils/auth.js';
+import { isPublicRoute, logPublicRouteAccess } from './publicRoutes.js';
+import { getDB } from '../config/db.js';
+import { ObjectId } from 'mongodb';
 
+// Public routes registry moved to publicRoutes.ts
+
+/**
+ * Main JWT authentication middleware
+ */
 export const authenticateJWT = () => {
-  const middleware = jwt({
+  const jwtMiddleware = jwt({
     secret: async (req) => {
-      try {
-        const token = req.headers.authorization?.split(' ')[1] || '';
-        
-        // Log token information (without the actual token for security)
-        logInfo('Processing JWT authentication', {
-          endpoint: req.originalUrl,
-          method: req.method,
-          hasToken: !!token,
-          tokenLength: token ? token.length : 0
-        });
-        
-        if (!token) {
-          logError('Missing authorization token', { endpoint: req.originalUrl });
-          throw new Error('Missing authorization token');
-        }
-        
-        const header = JSON.parse(Buffer.from(token.split('.')[0], 'base64').toString());
-        
-        logInfo('JWT header parsed', {
-          kid: header.kid,
-          alg: header.alg
-        });
-        
-        const key = await jwksClient.getSigningKey(header.kid);
-        return key.getPublicKey();
-      } catch (error) {
-        logError('Error processing JWT', {
-          error: error instanceof Error ? error.message : String(error),
-          stack: error instanceof Error ? error.stack : undefined,
-          endpoint: req.originalUrl
-        });
-        throw error;
-      }
+      const token = req.headers.authorization?.split(' ')[1] || '';
+      if (!token) throw new Error('Missing authorization token');
+      
+      const header = JSON.parse(Buffer.from(token.split('.')[0], 'base64').toString());
+      const key = await jwksClient.getSigningKey(header.kid);
+      return key.getPublicKey();
     },
     audience: env.AUTH0_AUDIENCE,
     issuer: `https://${env.AUTH0_DOMAIN}/`,
@@ -48,100 +37,221 @@ export const authenticateJWT = () => {
   });
 
   return (req: Request, res: Response, next: NextFunction) => {
-    // Check if this is a public route that should bypass JWT authentication
-    const publicRouteConfig = isPublicRoute(req.path, req.method);
-    
-    if (publicRouteConfig) {
-      // This is a public route - skip JWT authentication but log the access
-      logInfo('Public route accessed - skipping JWT authentication', {
-        path: req.path,
+    // Skip authentication for public routes
+    const publicRoute = isPublicRoute(req.path, req.method);
+    if (publicRoute) {
+      logPublicRouteAccess(publicRoute, {
+        path: publicRoute.path,
         method: req.method,
         ip: req.ip,
-        userAgent: req.get('User-Agent'),
-        justification: publicRouteConfig.justification,
-        securityControls: publicRouteConfig.securityControls.length
-      });
-
-      // Log public route access for security monitoring
-      logPublicRouteAccess(
-        publicRouteConfig,
-        {
-          path: req.path,
-          method: req.method,
-          ip: req.ip,
-          userAgent: req.get('User-Agent'),
-          queryParams: req.query
-        },
-        true // Will be updated to false if the route handler fails
-      );
-
-      // Continue to the route handler without JWT authentication
+        userAgent: req.get('User-Agent') as string,
+        endpoint: req.originalUrl,
+        queryParams: req.query as Record<string, unknown>
+      }, true);
       return next();
     }
 
-    // This is a protected route - apply JWT authentication
-    logInfo('Protected route - applying JWT authentication', {
-      path: req.path,
-      method: req.method,
-      hasAuthHeader: !!req.headers.authorization
-    });
-
-    middleware(req, res, (err) => {
+    jwtMiddleware(req, res, (err) => {
       if (err) {
-        if (err.name === 'UnauthorizedError') {
-          logError('Authentication failed', {
-            error: err.message,
-            code: err.code,
-            endpoint: req.originalUrl,
-            method: req.method,
-            ip: req.ip,
-            userAgent: req.get('User-Agent')
-          });
-          
-          // Log potential security issue
-          logAudit('auth.failed', req.ip || 'unknown', req.originalUrl, {
-            errorCode: err.code,
-            errorMessage: err.message,
-            method: req.method,
-            userAgent: req.get('User-Agent'),
-            timestamp: new Date().toISOString()
-          });
-          
-          return res.status(401).json({
-            success: false,
-            error: {
-              code: 'auth/unauthorized',
-              message: 'Invalid or expired token'
-            }
-          });
+        if ((err as any).name && (err as any).name !== 'UnauthorizedError') {
+          return next(err);
         }
-        
-        logError('Authentication error', {
+        logError('Authentication failed', {
           error: err.message,
-          name: err.name,
+          code: (err as any).code,
           endpoint: req.originalUrl,
-          method: req.method
+          method: req.method,
+          ip: req.ip,
+          userAgent: req.get('User-Agent') as string
+        });
+        logAudit('auth.failed', (req.ip || 'unknown') as string, req.originalUrl, {
+          errorCode: (err as any).code,
+          errorMessage: err.message,
+          method: req.method,
+          userAgent: req.get('User-Agent') as string
         });
         
-        return next(err);
+        return res.status(401).json({
+          success: false,
+          error: {
+            code: 'auth/unauthorized',
+            message: 'Invalid or expired token'
+          }
+        });
       }
       
-      // Log successful authentication
       logInfo('Authentication successful', {
         user: req.auth?.sub,
         endpoint: req.originalUrl,
         method: req.method
       });
-
-      // Log successful authentication for audit
-      logAudit('auth.success', req.auth?.sub || 'unknown', req.originalUrl, {
+      logInfo('Protected route - applying JWT authentication', {
+        path: req.path,
+        method: req.method,
+        hasAuthHeader: Boolean(req.headers.authorization)
+      });
+      logAudit('auth.success', req.auth?.sub as string, req.originalUrl, {
         method: req.method,
         ip: req.ip,
-        userAgent: req.get('User-Agent'),
-        timestamp: new Date().toISOString()
+        userAgent: req.get('User-Agent') as string
       });
       
       next();
     });
   };
 };
+
+/**
+ * Require SuperAdmin role
+ */
+export function requireSuperAdmin() {
+  return async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const user = getUserFromToken(req);
+      
+      const superAdmin = await getDB().collection('superadmins').findOne({ 
+        userId: user.sub 
+      });
+      
+      if (!superAdmin) {
+        throw new PermissionError('SuperAdmin access required');
+      }
+      
+      next();
+    } catch (error) {
+      next(error);
+    }
+  };
+}
+
+/**
+ * Require tenant owner access
+ */
+export function requireTenantOwner(tenantIdParam = 'tenantId') {
+  return async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const user = getUserFromToken(req);
+      const tenantId = req.params[tenantIdParam];
+      
+      if (!tenantId) {
+        throw new PermissionError('Tenant ID is required');
+      }
+      
+      // Check if user is SuperAdmin (bypass ownership check)
+      const superAdmin = await getDB().collection('superadmins').findOne({ 
+        userId: user.sub 
+      });
+      
+      if (superAdmin) {
+        return next();
+      }
+      
+      // Check tenant ownership
+      const tenant = await getDB().collection('tenants').findOne({
+        _id: new ObjectId(tenantId),
+        ownerId: user.sub
+      });
+      
+      if (!tenant) {
+        throw new PermissionError('Only tenant owners can access this resource');
+      }
+      
+      next();
+    } catch (error) {
+      next(error);
+    }
+  };
+}
+
+/**
+ * Require project role access
+ */
+export function requireProjectRole(role: 'OWNER' | 'DEPUTY' | 'MEMBER') {
+  return async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const user = getUserFromToken(req);
+      const projectId = req.params.id || req.params.projectId;
+      
+      if (!projectId) {
+        throw new PermissionError('Project ID is required');
+      }
+      
+      // Check if user is SuperAdmin (bypass role check)
+      const superAdmin = await getDB().collection('superadmins').findOne({ 
+        userId: user.sub 
+      });
+      
+      if (superAdmin) {
+        return next();
+      }
+      
+      // Find project and check user's role
+      const project = await getDB().collection('projects').findOne({
+        _id: new ObjectId(projectId)
+      });
+      
+      if (!project) {
+        throw new PermissionError('Project not found');
+      }
+      
+      const member = project.members?.find((m: any) => m.userId === user.sub);
+      
+      if (!member) {
+        throw new PermissionError('Access denied to project');
+      }
+      
+      // Check role hierarchy: OWNER > DEPUTY > MEMBER
+      const roleHierarchy = { OWNER: 3, DEPUTY: 2, MEMBER: 1 };
+      const requiredLevel = roleHierarchy[role];
+      const userLevel = roleHierarchy[member.role as keyof typeof roleHierarchy];
+      
+      if (userLevel < requiredLevel) {
+        throw new PermissionError(`${role} access required`);
+      }
+      
+      next();
+    } catch (error) {
+      next(error);
+    }
+  };
+}
+
+/**
+ * Flexible authorization - tenant owner OR superadmin
+ */
+export function requireTenantOwnerOrSuperAdmin(tenantIdParam = 'tenantId') {
+  return async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const user = getUserFromToken(req);
+      
+      // Check if user is SuperAdmin first
+      const superAdmin = await getDB().collection('superadmins').findOne({ 
+        userId: user.sub 
+      });
+      
+      if (superAdmin) {
+        return next();
+      }
+      
+      // Check tenant ownership
+      const tenantId = req.params[tenantIdParam];
+      
+      if (!tenantId) {
+        throw new PermissionError('Tenant ID is required');
+      }
+      
+      const tenant = await getDB().collection('tenants').findOne({
+        _id: new ObjectId(tenantId),
+        ownerId: user.sub
+      });
+      
+      if (!tenant) {
+        throw new PermissionError('Access denied');
+      }
+      
+      next();
+    } catch (error) {
+      next(error);
+    }
+  };
+}

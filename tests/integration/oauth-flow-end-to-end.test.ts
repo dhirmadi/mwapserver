@@ -13,7 +13,7 @@
 import { describe, it, expect, beforeAll, afterAll, beforeEach, vi } from 'vitest';
 import request from 'supertest';
 import { MongoMemoryServer } from 'mongodb-memory-server';
-import { app } from '../../src/app.js';
+import { app, whenRoutesReady } from '../../src/app.js';
 import { connectToDatabase, getDB } from '../../src/config/db.js';
 import { OAuthService } from '../../src/features/oauth/oauth.service.js';
 import { CloudIntegrationsService } from '../../src/features/cloud-integrations/cloudIntegrations.service.js';
@@ -70,6 +70,9 @@ describe('OAuth Flow End-to-End Integration Tests', () => {
     // Connect to test database
     process.env.MONGODB_URI = mongoUri;
     await connectToDatabase();
+
+    // Wait for routes to be fully registered
+    await whenRoutesReady();
 
     // Initialize services
     oauthService = new OAuthService();
@@ -218,6 +221,12 @@ describe('OAuth Flow End-to-End Integration Tests', () => {
         expiresIn: 3600,
         scopesGranted: ['https://www.googleapis.com/auth/drive.readonly']
       });
+      vi.spyOn(OAuthService.prototype as any, 'exchangeCodeForTokens').mockResolvedValueOnce({
+        accessToken: 'ya29.mock_google_access_token',
+        refreshToken: 'mock_google_refresh_token',
+        expiresIn: 3600,
+        scopesGranted: ['https://www.googleapis.com/auth/drive.readonly']
+      });
 
       const callbackResponse = await request(app)
         .get('/api/v1/oauth/callback')
@@ -303,6 +312,7 @@ describe('OAuth Flow End-to-End Integration Tests', () => {
         };
 
         vi.spyOn(oauthService, 'exchangeCodeForTokens').mockResolvedValue(mockTokenResponse);
+        vi.spyOn(OAuthService.prototype as any, 'exchangeCodeForTokens').mockResolvedValueOnce(mockTokenResponse);
 
         // Simulate callback
         const callbackResponse = await request(app)
@@ -351,6 +361,12 @@ describe('OAuth Flow End-to-End Integration Tests', () => {
         expiresIn: 10, // Short expiry for testing
         scopesGranted: ['https://www.googleapis.com/auth/drive.readonly']
       });
+      vi.spyOn(OAuthService.prototype as any, 'exchangeCodeForTokens').mockResolvedValueOnce({
+        accessToken: 'initial_access_token',
+        refreshToken: 'initial_refresh_token',
+        expiresIn: 10,
+        scopesGranted: ['https://www.googleapis.com/auth/drive.readonly']
+      });
 
       await request(app)
         .get('/api/v1/oauth/callback')
@@ -364,6 +380,12 @@ describe('OAuth Flow End-to-End Integration Tests', () => {
 
       // Step 3: Test token refresh
       vi.spyOn(oauthService, 'refreshTokens').mockResolvedValue({
+        accessToken: 'refreshed_access_token',
+        refreshToken: 'refreshed_refresh_token',
+        expiresIn: 3600,
+        scopesGranted: ['https://www.googleapis.com/auth/drive.readonly']
+      });
+      vi.spyOn(OAuthService.prototype as any, 'refreshTokens').mockResolvedValueOnce({
         accessToken: 'refreshed_access_token',
         refreshToken: 'refreshed_refresh_token',
         expiresIn: 3600,
@@ -436,6 +458,9 @@ describe('OAuth Flow End-to-End Integration Tests', () => {
       vi.spyOn(oauthService, 'exchangeCodeForTokens').mockRejectedValue(
         new Error('invalid_grant: Invalid authorization code')
       );
+      vi.spyOn(OAuthService.prototype as any, 'exchangeCodeForTokens').mockRejectedValueOnce(
+        new Error('invalid_grant: Invalid authorization code')
+      );
 
       const callbackResponse = await request(app)
         .get('/api/v1/oauth/callback')
@@ -474,6 +499,9 @@ describe('OAuth Flow End-to-End Integration Tests', () => {
 
       // Mock refresh failure
       vi.spyOn(oauthService, 'refreshTokens').mockRejectedValue(
+        new Error('invalid_grant: Invalid refresh token')
+      );
+      vi.spyOn(OAuthService.prototype as any, 'refreshTokens').mockRejectedValueOnce(
         new Error('invalid_grant: Invalid refresh token')
       );
 
@@ -515,8 +543,8 @@ describe('OAuth Flow End-to-End Integration Tests', () => {
       expect(callbackResponse.headers.location).toContain('/oauth/error');
 
       // Verify error was logged appropriately
-      const { logError } = require('../../src/utils/logger.js');
-      expect(logError).toHaveBeenCalledWith(
+      const spies = (globalThis as any).__MWAP_LOGGER_SPIES__;
+      expect(spies.logError).toHaveBeenCalledWith(
         'OAuth callback processing error',
         expect.objectContaining({
           error: expect.stringContaining('timeout')
@@ -635,10 +663,10 @@ describe('OAuth Flow End-to-End Integration Tests', () => {
         .set('X-Forwarded-For', '203.0.113.1');
 
       // Verify comprehensive audit logging
-      const { logAudit } = require('../../src/utils/logger.js');
+      const spies2 = (globalThis as any).__MWAP_LOGGER_SPIES__;
       
       // Should log callback route access
-      expect(logAudit).toHaveBeenCalledWith(
+      expect(spies2.logAudit).toHaveBeenCalledWith(
         'oauth.callback.route.access',
         'external',
         '/api/v1/oauth/callback',
@@ -650,7 +678,7 @@ describe('OAuth Flow End-to-End Integration Tests', () => {
       );
 
       // Should log successful completion
-      expect(logAudit).toHaveBeenCalledWith(
+      expect(spies2.logAudit).toHaveBeenCalledWith(
         'oauth.callback.success',
         testUserId,
         testIntegrationId,

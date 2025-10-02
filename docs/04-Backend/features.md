@@ -292,6 +292,7 @@ Projects enable tenants to create and manage application instances with specific
 |----------|--------|---------------|-------------|
 | `GET /api/v1/projects` | GET | Authenticated | List user's projects |
 | `GET /api/v1/projects/:id` | GET | Project Member | Get specific project |
+| `GET /api/v1/projects/:id/members/me` | GET | Authenticated | Get my membership in project (404 if not a member) |
 | `POST /api/v1/projects` | POST | Tenant Owner | Create new project |
 | `PATCH /api/v1/projects/:id` | PATCH | Project DEPUTY+ | Update project |
 | `DELETE /api/v1/projects/:id` | DELETE | Project OWNER | Delete project |
@@ -448,6 +449,8 @@ Cloud Integrations enable tenant owners to connect their workspaces to supported
 | `DELETE /api/v1/tenants/:tenantId/integrations/:id` | DELETE | Tenant Owner | Delete integration |
 | `POST /api/v1/tenants/:tenantId/integrations/:id/refresh-token` | POST | Tenant Owner | Refresh OAuth tokens |
 | `GET /api/v1/tenants/:tenantId/integrations/:id/health` | GET | Tenant Owner | Check integration health |
+
+Note: The OAuth Refresh flow is also available under the OAuth API as `POST /api/v1/oauth/tenants/:tenantId/integrations/:integrationId/refresh` with an optional `{ force?: boolean }` request body to bypass cached validity checks.
 
 #### Data Model
 ```typescript

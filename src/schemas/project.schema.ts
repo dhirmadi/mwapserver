@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import { ObjectId } from 'mongodb';
-import { Role } from '../middleware/roles.js';
+// Project roles are now defined inline
 import { sanitizeString } from '../utils/validate.js';
 
 // Schema for project member

@@ -33,7 +33,8 @@ export class CloudProviderService {
 
   async findById(id: string, includeDecrypted: boolean = false): Promise<CloudProvider> {
     try {
-      const cloudProvider = await this.collection.findOne({ _id: new ObjectId(id) });
+      const normalizedId = (id as any)?.$oid || id;
+      const cloudProvider = await this.collection.findOne({ _id: new ObjectId(normalizedId) });
       if (!cloudProvider) {
         throw new ApiError('Cloud provider not found', 404, CloudProviderErrorCodes.NOT_FOUND);
       }
@@ -149,7 +150,7 @@ export class CloudProviderService {
     }
 
     logAudit('cloud-provider.update', userId, id, {
-      updates: Object.keys(data).reduce((acc, key) => {
+      updates: (Object.keys(data) as (keyof typeof data)[]).reduce((acc, key) => {
         // Don't log sensitive data
         if (key !== 'clientSecret') {
           acc[key] = data[key];

@@ -16,6 +16,13 @@ MWAP implements a robust, multi-layered security model using Auth0 as the identi
 
 ## 🔐 Authentication Implementation
 
+### Public Routes
+The following endpoints are intentionally public and bypass JWT authentication (with enhanced security monitoring):
+- `GET /health` — liveness check
+- `GET /api/v1/oauth/callback` — OAuth provider redirect target
+
+All other endpoints require a valid Auth0 JWT and applicable authorization checks.
+
 ### Authentication Flow
 ```
 ┌─────────────┐    ┌─────────────┐    ┌─────────────┐

@@ -15,7 +15,7 @@ try {
 
 // Environment schema validation
 export const envSchema = z.object({
-  NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
+  NODE_ENV: z.enum(['development', 'test', 'production', 'staging']).default('development'),
   PORT: z.coerce.number().min(1).max(65535).default(3001),
   MONGODB_URI: z.string(),
   AUTH0_DOMAIN: z.string(),

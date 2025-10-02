@@ -1,7 +1,6 @@
 import { Router } from 'express';
 import { wrapAsyncHandler } from '../../utils/response.js';
-import { authenticateJWT } from '../../middleware/auth.js';
-import { requireProjectRole } from '../../middleware/roles.js';
+import { authenticateJWT, requireProjectRole } from '../../middleware/auth.js';
 import { getFilesRouter } from '../files/files.routes.js';
 import {
   getProjects,
@@ -12,14 +11,14 @@ import {
   getProjectMembers,
   addProjectMember,
   updateProjectMember,
-  removeProjectMember
+  removeProjectMember,
+  getMyProjectMembership
 } from './projects.controller.js';
 
 export function getProjectsRouter(): Router {
   const router = Router();
   
-  // Apply JWT authentication to all routes
-  router.use(authenticateJWT());
+  // JWT authentication is applied globally in app.ts - no need to reapply
   
   // Project routes
   router.get('/', wrapAsyncHandler(getProjects));
@@ -33,6 +32,8 @@ export function getProjectsRouter(): Router {
   router.post('/:id/members', requireProjectRole('DEPUTY'), wrapAsyncHandler(addProjectMember));
   router.patch('/:id/members/:userId', requireProjectRole('OWNER'), wrapAsyncHandler(updateProjectMember));
   router.delete('/:id/members/:userId', requireProjectRole('OWNER'), wrapAsyncHandler(removeProjectMember));
+  // Note: do not gate with requireProjectRole here; controller returns 404 if not a member
+  router.get('/:id/members/me', wrapAsyncHandler(getMyProjectMembership));
   
   // Mount files router
   router.use('/:id/files', getFilesRouter());
