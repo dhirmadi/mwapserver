@@ -345,12 +345,11 @@ Note: We will not build an internal agent framework. AI capabilities will be int
    - Implement integration test suites
    - Establish performance benchmarks
    - Complete security testing
+   - Stabilize performance harness (warm-up, jitter, increased timeouts for sustained tests)
 
-2. **Documentation Finalization**
-   - Update API documentation with latest changes
-   - Complete user guides and tutorials
-   - Finalize deployment documentation
-   - Create troubleshooting guides
+2. **Documentation Finalization (core API docs updated 2025-09-29)**
+   - API reference, security guide, features guide refreshed and in sync
+   - Remaining: finalize tutorials, troubleshooting, and deployment polish
 
 3. **Deployment Preparation**
    - Configure production environment
@@ -380,6 +379,7 @@ Note: We will not build an internal agent framework. AI capabilities will be int
 ## 🔄 Recent Achievements
 
 ### Major Milestones (Last 6 months)
+- **2025-09-29**: OAuth callback security finalized; E2E and integration tests stabilized
 - **2025-07-14**: Enhanced OAuth implementation with dedicated callback endpoint
 - **2025-06-10**: Completed Virtual Files implementation with multi-provider support
 - **2025-06-10**: Completed Projects + Members with comprehensive RBAC
@@ -391,6 +391,10 @@ Note: We will not build an internal agent framework. AI capabilities will be int
 - **2025-07-16**: Implemented documentation harmonization and consolidation
 - **2025-06-17**: Enhanced cloud provider integration documentation
 - **2025-06-10**: Updated API documentation with OAuth support details
+- **2025-09-29**: Synced API reference (tenants/me responses, projects/:id/members/me, OAuth refresh optional body)
+- **2025-09-29**: Updated security guide with explicit public routes (health, oauth callback)
+- **2025-09-29**: Updated features guide with members/me and OAuth refresh cross-link
+- **2025-09-29**: Added test report and comprehensive code review docs
 
 ### Security Enhancements
 - **2025-07-14**: Implemented enhanced OAuth security measures

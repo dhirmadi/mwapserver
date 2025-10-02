@@ -12,10 +12,13 @@ export interface ApiResponse<T> {
 }
 
 export function jsonResponse<T>(res: Response, status: number, data?: T): Response {
-  return res.status(status).json({
-    success: true,
-    data
-  });
+  const payload: any = { success: status >= 200 && status < 400 };
+  if (payload.success) {
+    payload.data = data;
+  } else if (data) {
+    payload.error = data;
+  }
+  return res.status(status).json(payload);
 }
 
 export function errorResponse(res: Response, error: Error): void {

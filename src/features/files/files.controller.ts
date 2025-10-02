@@ -17,16 +17,11 @@ export async function listProjectFiles(req: Request, res: Response) {
     const user = getUserFromToken(req);
     const projectId = req.params.id;
     
-    // Validate query parameters
+    // Validate query parameters (defaults handled by schema)
     const query = validateWithSchema(fileQuerySchema, req.query);
-    // Add default values for optional parameters  
-    if (!query.format) query.format = 'json';
-    if (query.includeExamples === undefined) query.includeExamples = true;
-    if (query.minify === undefined) query.minify = false;
-    if (query.recursive === undefined) query.recursive = false;
     
     // Get files from the cloud provider
-    const files = await filesService.listFiles(projectId, query, user.sub);
+    const files = await filesService.listFiles(projectId, query as Required<Pick<typeof query, 'limit' | 'recursive' | 'page'>> & typeof query, user.sub);
     
     return jsonResponse(res, 200, files);
   } catch (error) {

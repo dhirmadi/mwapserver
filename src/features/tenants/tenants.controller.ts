@@ -37,6 +37,9 @@ export async function createTenant(req: Request, res: Response) {
 export async function getTenant(req: Request, res: Response) {
   const user = getUserFromToken(req);
   const tenant = await tenantService.getTenantByUserId(user.sub);
+  if (!tenant) {
+    throw new ApiError('Tenant not found', 404, 'tenant/not-found');
+  }
   return jsonResponse(res, 200, tenant);
 }
 

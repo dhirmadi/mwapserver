@@ -45,4 +45,6 @@ export async function disconnectDB(): Promise<void> {
     console.error('Error during MongoDB disconnect:', error);
   }
 }
+// Backward compatibility for tests expecting connectToDatabase
+export const connectToDatabase = connectDB;
 

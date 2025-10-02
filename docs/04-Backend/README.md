@@ -4,13 +4,24 @@ This directory contains comprehensive documentation for the MWAP backend, coveri
 
 ## 📚 Documentation
 
-### [📖 API Reference](./api-reference.md)
+### API Documentation
+
+#### [📖 API Reference](./api-reference.md)
 **Complete API documentation** covering:
 - Authentication and authorization patterns
 - All endpoint specifications with request/response schemas
 - Error handling and response formats
 - Rate limiting and security considerations
+- OAuth security monitoring endpoints
+- OpenAPI management and validation endpoints
 - Interactive documentation and testing guides
+
+#### [⚡ API Quick Reference](./api-quickreference.md)
+**Single-page quick reference** for:
+- All 67 API endpoints with one-line descriptions
+- Endpoint organization by feature area
+- Authentication requirements at a glance
+- Quick lookup table format
 
 ### [🔧 Backend Development Guide](./backend-guide.md)
 **Complete development handbook** covering:
@@ -44,20 +55,25 @@ This directory contains comprehensive documentation for the MWAP backend, coveri
 - API endpoints, data models, and business rules for each feature
 - Security patterns and common implementation guidelines
 
-### [📄 OpenAPI Specification](./v3-openAPI.yaml)
-**Complete OpenAPI 3.1 specification** for:
-- Interactive API testing and exploration
-- Client SDK generation
-- API contract validation
-- Integration with development tools
+### Dynamic OpenAPI Specification
+**Live OpenAPI 3.1 specification** available at:
+- **Endpoint**: `GET /api/v1/openapi?format=yaml` or `GET /api/v1/openapi?format=json`
+- **Interactive UI**: Navigate to `/docs` (requires authentication)
+- **Use Cases**: API testing, client SDK generation, contract validation
+- **Note**: Dynamically generated from actual implementation (no static files)
 
 ## 🚀 Quick Start
 
-1. **Understand the API** - Start with [API Reference](./api-reference.md) for endpoint details
-2. **Set up Development** - Follow [Backend Development Guide](./backend-guide.md) for environment setup
-3. **Implement Security** - Review [Security Guide](./security.md) for authentication patterns
-4. **Build Features** - Use [Features Guide](./features.md) for development patterns
-5. **Deploy Infrastructure** - Check [Infrastructure Guide](./infrastructure.md) for production setup
+### For API Consumers
+1. **Quick Lookup** - Start with [API Quick Reference](./api-quickreference.md) for fast endpoint lookup
+2. **Detailed Integration** - Use [API Reference](./api-reference.md) for complete endpoint details
+3. **Live Testing** - Navigate to `/docs` for interactive Swagger UI
+
+### For Developers
+1. **Set up Development** - Follow [Backend Development Guide](./backend-guide.md) for environment setup
+2. **Implement Security** - Review [Security Guide](./security.md) for authentication patterns
+3. **Build Features** - Use [Features Guide](./features.md) for development patterns
+4. **Deploy Infrastructure** - Check [Infrastructure Guide](./infrastructure.md) for production setup
 
 ## 🎯 Key Technologies
 

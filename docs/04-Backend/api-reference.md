@@ -33,6 +33,8 @@ Authorization: Bearer <jwt_token>
 **Public Endpoints:**
 - `GET /health` - Health check endpoint
 - `GET /api/v1/oauth/callback` - OAuth callback endpoint (Enhanced Security)
+- `GET /api/v1/oauth/success` - OAuth success page with auto-close
+- `GET /api/v1/oauth/error` - OAuth error page with user-friendly messages
 
 ### OAuth Callback Security Architecture
 
@@ -369,6 +371,40 @@ Remove a member from a project.
 
 **Response:** `204 No Content`
 
+### Get My Project Membership
+Get the current user's membership in a specific project.
+
+**Endpoint:** `GET /api/v1/projects/:id/members/me`  
+**Authentication:** Required  
+**Authorization:** Any authenticated user
+
+If the user is not a member of the project, this endpoint returns 404.
+
+**Example Success Response:**
+
+```json
+{
+  "success": true,
+  "data": {
+    "projectId": "641f4411f24b4fcac1b1501c",
+    "userId": "auth0|123",
+    "role": "MEMBER"
+  }
+}
+```
+
+**Example Not Found Response:**
+
+```json
+{
+  "success": false,
+  "error": {
+    "code": "project/member-not-found",
+    "message": "Member not found in project"
+  }
+}
+```
+
 ## 🔧 Project Types API
 
 All project type endpoints require SUPERADMIN role.
@@ -703,7 +739,12 @@ Manually refresh OAuth tokens for a specific integration.
 - `tenantId: string` - Tenant ID (must be owned by authenticated user)
 - `integrationId: string` - Integration ID (must belong to specified tenant)
 
-**Request Body:** None
+**Request Body (optional):**
+```typescript
+{
+  force?: boolean; // If true, bypass cached validity and force refresh
+}
+```
 
 **Response Schema:**
 ```typescript
@@ -747,6 +788,148 @@ Manually refresh OAuth tokens for a specific integration.
 curl -X POST \
   -H "Authorization: Bearer $JWT_TOKEN" \
   https://api.mwap.dev/api/v1/oauth/tenants/641f4411f24b4fcac1b1501b/integrations/641f4411f24b4fcac1b1501c/refresh
+```
+
+### OAuth Success Page
+Display success message after successful OAuth authorization.
+
+**Endpoint:** `GET /api/v1/oauth/success`  
+**Authentication:** Not required (public endpoint)  
+**Authorization:** None
+
+**Query Parameters:**
+- `tenantId?: string` - Tenant ID for context
+- `integrationId?: string` - Integration ID for context
+
+**Response:** HTML page with success message and auto-close functionality for popup windows
+
+### OAuth Error Page
+Display error message after failed OAuth authorization.
+
+**Endpoint:** `GET /api/v1/oauth/error`  
+**Authentication:** Not required (public endpoint)  
+**Authorization:** None
+
+**Query Parameters:**
+- `message?: string` - User-friendly error message
+
+**Response:** HTML page with error message and auto-close functionality for popup windows
+
+## 🛡️ OAuth Security Monitoring
+
+The OAuth system includes comprehensive security monitoring endpoints for tracking and analyzing OAuth flow security.
+
+### Get Security Metrics
+Retrieve OAuth security metrics and statistics.
+
+**Endpoint:** `GET /api/v1/oauth/security/metrics`  
+**Authentication:** Required (JWT Bearer token)  
+**Authorization:** Authenticated users
+
+**Response Schema:**
+```typescript
+{
+  totalAttempts: number;
+  successfulAttempts: number;
+  failedAttempts: number;
+  securityIssuesDetected: number;
+  averageResponseTime: number;
+  lastUpdated: string;
+}
+```
+
+### Get Security Alerts
+Retrieve active security alerts from OAuth flows.
+
+**Endpoint:** `GET /api/v1/oauth/security/alerts`  
+**Authentication:** Required (JWT Bearer token)  
+**Authorization:** Authenticated users
+
+**Response Schema:**
+```typescript
+{
+  alerts: Array<{
+    id: string;
+    severity: 'low' | 'medium' | 'high' | 'critical';
+    message: string;
+    timestamp: string;
+    metadata: Record<string, any>;
+  }>;
+}
+```
+
+### Get Suspicious Patterns
+Retrieve detected suspicious patterns in OAuth flows.
+
+**Endpoint:** `GET /api/v1/oauth/security/patterns`  
+**Authentication:** Required (JWT Bearer token)  
+**Authorization:** Authenticated users
+
+**Response Schema:**
+```typescript
+{
+  patterns: Array<{
+    pattern: string;
+    occurrences: number;
+    severity: 'low' | 'medium' | 'high';
+    lastSeen: string;
+  }>;
+}
+```
+
+### Get Security Report
+Generate comprehensive security report for OAuth operations.
+
+**Endpoint:** `GET /api/v1/oauth/security/report`  
+**Authentication:** Required (JWT Bearer token)  
+**Authorization:** Authenticated users
+
+**Response Schema:**
+```typescript
+{
+  summary: {
+    totalAttempts: number;
+    successRate: number;
+    securityIssues: number;
+  };
+  alerts: Array<any>;
+  patterns: Array<any>;
+  recommendations: string[];
+  generatedAt: string;
+}
+```
+
+### Validate Data Exposure
+Validate data exposure controls in OAuth responses.
+
+**Endpoint:** `GET /api/v1/oauth/security/validate/data-exposure`  
+**Authentication:** Required (JWT Bearer token)  
+**Authorization:** Authenticated users
+
+**Response Schema:**
+```typescript
+{
+  validated: boolean;
+  issues: string[];
+  timestamp: string;
+}
+```
+
+### Validate Attack Vectors
+Validate protection against known attack vectors.
+
+**Endpoint:** `GET /api/v1/oauth/security/validate/attack-vectors`  
+**Authentication:** Required (JWT Bearer token)  
+**Authorization:** Authenticated users
+
+**Response Schema:**
+```typescript
+{
+  validated: boolean;
+  vulnerabilities: string[];
+  protections: string[];
+  timestamp: string;
+}
 ```
 
 ## 🏥 Health Check
@@ -864,18 +1047,295 @@ X-RateLimit-Reset: 1672531200
 
 ## 📚 OpenAPI Specification
 
-The complete OpenAPI 3.1 specification is available at `/api/v1/openapi.yaml` and provides:
-
-- **Complete endpoint documentation** with request/response schemas
-- **Authentication configuration** for testing tools
-- **Schema definitions** for all data models
-- **Example requests and responses** for all endpoints
+The MWAP API provides comprehensive OpenAPI 3.1 specification with management endpoints for validation, performance monitoring, and security auditing.
 
 ### Interactive Documentation
 For interactive API exploration and testing:
 1. Start the MWAP server
 2. Navigate to `/docs` (requires authentication)
 3. Use the Swagger UI interface to explore and test endpoints
+
+### Get OpenAPI Specification
+Retrieve the complete OpenAPI specification.
+
+**Endpoint:** `GET /api/v1/openapi`  
+**Authentication:** Required (JWT Bearer token)  
+**Authorization:** Authenticated users
+
+**Query Parameters:**
+- `format?: 'json' | 'yaml'` - Response format (default: json)
+- `includeExamples?: boolean` - Include examples in specification (default: false)
+- `minify?: boolean` - Return minified specification (default: false)
+
+**Response:** Complete OpenAPI 3.1.0 specification in JSON or YAML format
+
+### Get OpenAPI Info
+Get summary information about the OpenAPI specification.
+
+**Endpoint:** `GET /api/v1/openapi/info`  
+**Authentication:** Required (JWT Bearer token)  
+**Authorization:** Authenticated users
+
+**Response Schema:**
+```typescript
+{
+  title: string;
+  version: string;
+  description: string;
+  pathCount: number;
+  schemaCount: number;
+  tagCount: number;
+}
+```
+
+### Validate OpenAPI Specification
+Validate the generated OpenAPI specification for completeness and correctness.
+
+**Endpoint:** `GET /api/v1/openapi/validate`  
+**Authentication:** Required (JWT Bearer token)  
+**Authorization:** Authenticated users
+
+**Response Schema:**
+```typescript
+{
+  valid: boolean;
+  errors: string[];
+  timestamp: string;
+}
+```
+
+### OpenAPI Service Health Check
+Check the health status of the OpenAPI documentation service.
+
+**Endpoint:** `GET /api/v1/openapi/health`  
+**Authentication:** Required (JWT Bearer token)  
+**Authorization:** Authenticated users
+
+**Response Schema:**
+```typescript
+{
+  status: string;
+  timestamp: string;
+  service: string;
+  version: string;
+  cache: object;
+  metrics: object;
+}
+```
+
+### Cache Management
+
+#### Get Cache Status
+Get the current status of the OpenAPI documentation cache.
+
+**Endpoint:** `GET /api/v1/openapi/cache/status`  
+**Authentication:** Required (JWT Bearer token)  
+**Authorization:** Authenticated users
+
+**Response Schema:**
+```typescript
+{
+  cached: boolean;
+  age: number;
+  ttl: number;
+  lastGenerated: string;
+}
+```
+
+#### Invalidate Cache
+Invalidate the OpenAPI documentation cache (force regeneration).
+
+**Endpoint:** `POST /api/v1/openapi/cache/invalidate`  
+**Authentication:** Required (JWT Bearer token)  
+**Authorization:** SUPERADMIN only
+
+**Response Schema:**
+```typescript
+{
+  message: string;
+  timestamp: string;
+}
+```
+
+### Validation Management
+
+#### Get Validation History
+Retrieve historical validation results.
+
+**Endpoint:** `GET /api/v1/openapi/validation/history`  
+**Authentication:** Required (JWT Bearer token)  
+**Authorization:** Authenticated users
+
+**Query Parameters:**
+- `limit?: number` - Maximum number of history entries (default: 10)
+
+**Response Schema:**
+```typescript
+{
+  history: Array<{
+    timestamp: string;
+    valid: boolean;
+    errors: string[];
+  }>;
+  count: number;
+  timestamp: string;
+}
+```
+
+#### Generate CI/CD Validation Report
+Generate validation report for CI/CD integration.
+
+**Endpoint:** `GET /api/v1/openapi/validation/ci-report`  
+**Authentication:** Required (JWT Bearer token)  
+**Authorization:** Authenticated users
+
+**Query Parameters:**
+- `format?: 'json' | 'junit' | 'text'` - Report format (default: text)
+- `failOnErrors?: boolean` - Fail on validation errors (default: false)
+- `failOnWarnings?: boolean` - Fail on validation warnings (default: false)
+
+**Response:** Validation report in specified format
+
+#### Monitor Validation Status
+Trigger validation monitoring for error detection.
+
+**Endpoint:** `POST /api/v1/openapi/validation/monitor`  
+**Authentication:** Required (JWT Bearer token)  
+**Authorization:** Authenticated users
+
+**Response Schema:**
+```typescript
+{
+  message: string;
+  timestamp: string;
+}
+```
+
+### Performance Management
+
+#### Get Performance Metrics
+Retrieve comprehensive performance metrics for OpenAPI generation.
+
+**Endpoint:** `GET /api/v1/openapi/performance/metrics`  
+**Authentication:** Required (JWT Bearer token)  
+**Authorization:** Authenticated users
+
+**Response Schema:**
+```typescript
+{
+  metrics: {
+    averageGenerationTime: number;
+    cacheHitRate: number;
+    totalRequests: number;
+  };
+  timestamp: string;
+}
+```
+
+#### Run Performance Benchmarks
+Execute performance benchmarks for OpenAPI generation.
+
+**Endpoint:** `POST /api/v1/openapi/performance/benchmark`  
+**Authentication:** Required (JWT Bearer token)  
+**Authorization:** Authenticated users
+
+**Request Body:**
+```typescript
+{
+  iterations?: number; // Default: 10
+}
+```
+
+**Response Schema:**
+```typescript
+{
+  benchmarks: Array<{
+    iteration: number;
+    duration: number;
+    memoryUsage: number;
+  }>;
+  iterations: number;
+  timestamp: string;
+}
+```
+
+#### Optimize Cache Configuration
+Automatically optimize cache configuration for better performance.
+
+**Endpoint:** `POST /api/v1/openapi/performance/optimize-cache`  
+**Authentication:** Required (JWT Bearer token)  
+**Authorization:** Authenticated users
+
+**Response Schema:**
+```typescript
+{
+  message: string;
+  configuration: {
+    ttl: number;
+    maxSize: number;
+  };
+  timestamp: string;
+}
+```
+
+### Security Management
+
+#### Perform Security Audit
+Execute comprehensive security audit of OpenAPI documentation.
+
+**Endpoint:** `POST /api/v1/openapi/security/audit`  
+**Authentication:** Required (JWT Bearer token)  
+**Authorization:** Authenticated users
+
+**Response Schema:**
+```typescript
+{
+  secure: boolean;
+  vulnerabilities: Array<{
+    severity: string;
+    description: string;
+    recommendation: string;
+  }>;
+  warnings: Array<{
+    message: string;
+  }>;
+  timestamp: string;
+}
+```
+
+#### Get Sanitized Specification
+Retrieve OpenAPI specification with sensitive information removed.
+
+**Endpoint:** `GET /api/v1/openapi/security/sanitized`  
+**Authentication:** Required (JWT Bearer token)  
+**Authorization:** Authenticated users
+
+**Response:** Sanitized OpenAPI specification with secrets and sensitive data removed
+
+#### Get Security Audit Log
+Retrieve audit log of documentation access attempts.
+
+**Endpoint:** `GET /api/v1/openapi/security/audit-log`  
+**Authentication:** Required (JWT Bearer token)  
+**Authorization:** Authenticated users
+
+**Query Parameters:**
+- `limit?: number` - Maximum number of audit entries (default: 100)
+
+**Response Schema:**
+```typescript
+{
+  auditLog: Array<{
+    timestamp: string;
+    userId: string;
+    action: string;
+    endpoint: string;
+    success: boolean;
+  }>;
+  count: number;
+  timestamp: string;
+}
+```
 
 ### OpenAPI Metadata
 ```yaml

@@ -379,7 +379,8 @@ export class OpenAPIValidationService {
   private hasOperationSecurity(document: any): boolean {
     for (const path of Object.values(document.paths || {})) {
       for (const operation of Object.values(path as any)) {
-        if (typeof operation === 'object' && operation.security) {
+        const op: any = operation as any;
+        if (op && typeof op === 'object' && op.security) {
           return true;
         }
       }

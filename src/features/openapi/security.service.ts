@@ -261,7 +261,7 @@ export class OpenAPISecurityService {
     }
 
     // Log to system audit
-    logAudit('OpenAPI documentation access', auditEntry);
+    logAudit('OpenAPI documentation access', auditEntry.userId, auditEntry.endpoint, auditEntry as unknown as Record<string, unknown>);
 
     // Alert on suspicious activity
     this.detectSuspiciousActivity(auditEntry);
@@ -472,8 +472,9 @@ export class OpenAPISecurityService {
     // Check for SQL injection risks in parameter descriptions
     for (const [path, pathItem] of Object.entries(document.paths || {})) {
       for (const [method, operation] of Object.entries(pathItem as any)) {
-        if (typeof operation === 'object' && operation.parameters) {
-          for (const parameter of operation.parameters) {
+        const op: any = operation as any;
+        if (op && typeof op === 'object' && Array.isArray(op.parameters)) {
+          for (const parameter of op.parameters) {
             if (parameter.description && this.containsInjectionRisk(parameter.description)) {
               result.warnings.push({
                 type: 'injection_risk',
@@ -505,9 +506,9 @@ export class OpenAPISecurityService {
 
       // Check for missing rate limiting documentation
       for (const [method, operation] of Object.entries(pathItem as any)) {
-        if (typeof operation === 'object') {
-          const op = operation as any;
-          if (!op.responses?.['429']) {
+        const op: any = operation as any;
+        if (op && typeof op === 'object') {
+          if (!(op.responses && op.responses['429'])) {
             result.warnings.push({
               type: 'missing_rate_limit',
               description: `No rate limiting response documented for ${method.toUpperCase()} ${path}`,
@@ -533,7 +534,8 @@ export class OpenAPISecurityService {
     // Check each operation individually
     for (const pathItem of Object.values(document.paths || {})) {
       for (const operation of Object.values(pathItem as any)) {
-        if (typeof operation === 'object' && !operation.security) {
+        const op: any = operation as any;
+        if (op && typeof op === 'object' && !op.security) {
           return false; // Found unsecured operation
         }
       }

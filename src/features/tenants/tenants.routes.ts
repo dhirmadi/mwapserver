@@ -2,7 +2,7 @@ import { Router } from 'express';
 import { createTenant, getTenant, updateTenant, deleteTenant, getAllTenants, getTenantById } from './tenants.controller.js';
 import { wrapAsyncHandler } from '../../utils/response.js';
 import { getCloudIntegrationsRouter } from '../cloud-integrations/cloudIntegrations.routes.js';
-import { requireSuperAdminRole, requireTenantOwnerOrSuperAdmin } from '../../middleware/authorization.js';
+import { requireSuperAdmin, requireTenantOwnerOrSuperAdmin } from '../../middleware/auth.js';
 import { logInfo } from '../../utils/logger.js';
 
 export function getTenantRouter(): Router {
@@ -52,10 +52,10 @@ export function getTenantRouter(): Router {
    *       403:
    *         description: Forbidden - User is not a superadmin
    */
-  router.get('/', requireSuperAdminRole(), wrapAsyncHandler(getAllTenants));
+  router.get('/', requireSuperAdmin(), wrapAsyncHandler(getAllTenants));
   
   // Delete tenant (superadmin only)
-  router.delete('/:id', requireSuperAdminRole(), wrapAsyncHandler(deleteTenant));
+  router.delete('/:id', requireSuperAdmin(), wrapAsyncHandler(deleteTenant));
   
   // ===== TENANT-SPECIFIC ROUTES =====
   

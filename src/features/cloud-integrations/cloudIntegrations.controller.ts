@@ -9,6 +9,7 @@ import {
   updateCloudProviderIntegrationSchema, 
   CloudProviderIntegrationErrorCodes 
 } from '../../schemas/cloudProviderIntegration.schema.js';
+import type { CreateCloudProviderIntegrationRequest, UpdateCloudProviderIntegrationRequest } from '../../schemas/cloudProviderIntegration.schema.js';
 import { logInfo, logError, logAudit } from '../../utils/logger.js';
 import { CloudProviderService } from '../cloud-providers/cloudProviders.service.js';
 import { OAuthService } from '../oauth/oauth.service.js';
@@ -31,7 +32,14 @@ export async function getTenantIntegrations(req: Request, res: Response) {
   
   logInfo(`Found ${integrations.length} integrations for tenant ${tenantId}`);
   
-  return jsonResponse(res, 200, integrations);
+  // Redact sensitive tokens in responses
+  const sanitized = integrations.map((integration: any) => ({
+    ...integration,
+    accessToken: integration.accessToken ? '[REDACTED]' : undefined,
+    refreshToken: integration.refreshToken ? '[REDACTED]' : undefined
+  }));
+  
+  return jsonResponse(res, 200, sanitized);
 }
 
 /**
@@ -48,7 +56,13 @@ export async function getTenantIntegrationById(req: Request, res: Response) {
   
   logInfo(`Found integration ${integrationId} for tenant ${tenantId}`);
   
-  return jsonResponse(res, 200, integration);
+  const response = {
+    ...integration,
+    accessToken: integration.accessToken ? '[REDACTED]' : undefined,
+    refreshToken: integration.refreshToken ? '[REDACTED]' : undefined
+  };
+  
+  return jsonResponse(res, 200, response);
 }
 
 /**
@@ -69,7 +83,14 @@ export async function createTenantIntegration(req: Request, res: Response) {
     };
     
     try {
-      const data = validateWithSchema(createCloudProviderIntegrationSchema, requestWithTenantId);
+      const dataParsed = validateWithSchema(createCloudProviderIntegrationSchema, requestWithTenantId);
+      const data: CreateCloudProviderIntegrationRequest = {
+        status: (dataParsed.status ?? 'active') as 'active' | 'expired' | 'revoked' | 'error',
+        providerId: dataParsed.providerId,
+        tenantId: dataParsed.tenantId,
+        scopesGranted: dataParsed.scopesGranted,
+        metadata: dataParsed.metadata
+      };
       const integration = await cloudIntegrationsService.create(tenantId, data, user.sub);
       
       logInfo(`Created new integration for tenant ${tenantId} with provider ${data.providerId}`);
@@ -106,7 +127,7 @@ export async function updateTenantIntegration(req: Request, res: Response) {
     
     logInfo(`Updating integration ${integrationId} for tenant ${tenantId} by user ${user.sub}`);
     
-    const data = validateWithSchema(updateCloudProviderIntegrationSchema, req.body);
+    const data: UpdateCloudProviderIntegrationRequest = validateWithSchema(updateCloudProviderIntegrationSchema, req.body);
     const integration = await cloudIntegrationsService.update(integrationId, tenantId, data, user.sub);
     
     logInfo(`Updated integration ${integrationId} for tenant ${tenantId}`);
@@ -218,10 +239,7 @@ export async function checkIntegrationHealth(req: Request, res: Response) {
     
     logInfo(`Health check completed for integration ${integrationId}: ${healthStatus.status}`);
     
-    return jsonResponse(res, 200, {
-      success: true,
-      data: healthStatus
-    });
+    return jsonResponse(res, 200, healthStatus);
   } catch (error) {
     logError('Integration health check error', error);
     throw error;

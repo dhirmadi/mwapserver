@@ -9,7 +9,7 @@ import {
   refreshIntegrationToken,
   checkIntegrationHealth
 } from './cloudIntegrations.controller.js';
-import { requireTenantOwner } from '../../middleware/authorization.js';
+import { requireTenantOwner } from '../../middleware/auth.js';
 import { logInfo } from '../../utils/logger.js';
 
 export function getCloudIntegrationsRouter(): Router {

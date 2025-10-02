@@ -27,7 +27,7 @@ const openAPIFeatureService = new OpenAPIFeatureService();
 export async function getOpenAPISpec(req: Request, res: Response) {
   try {
     const user = getUserFromToken(req);
-    const query = validateWithSchema(openAPIQuerySchema, req.query);
+    const query = validateWithSchema(openAPIQuerySchema, req.query as unknown);
     
     logAudit('OpenAPI specification requested', user.sub, 'openapi_spec', {
       userEmail: user.email,
@@ -38,7 +38,11 @@ export async function getOpenAPISpec(req: Request, res: Response) {
       userAgent: req.get('User-Agent')
     });
 
-    const specification = await openAPIFeatureService.getOpenAPISpecification(query);
+    const specification = await openAPIFeatureService.getOpenAPISpecification({
+      format: query.format as 'json' | 'yaml',
+      includeExamples: !!query.includeExamples,
+      minify: !!query.minify
+    });
     
     // Set appropriate content type
     const contentType = query.format === 'yaml' 
@@ -541,9 +545,9 @@ export async function getSanitizedSpecification(req: Request, res: Response) {
       user.sub,
       user.email,
       req.path,
-      req.method,
-      req.ip,
-      req.get('User-Agent') || '',
+      req.method as string,
+      (req.ip || '') as string,
+      (req.get('User-Agent') || '') as string,
       true
     );
 
@@ -553,7 +557,7 @@ export async function getSanitizedSpecification(req: Request, res: Response) {
       minify: false
     });
 
-    const sanitizedDocument = await openAPISecurityService.sanitizeDocument(rawDocument);
+    const sanitizedDocument = await openAPISecurityService.sanitizeDocument(rawDocument as any);
     
     res.setHeader('Cache-Control', 'public, max-age=300'); // 5 minutes cache
     
@@ -566,9 +570,9 @@ export async function getSanitizedSpecification(req: Request, res: Response) {
       user.sub,
       user.email,
       req.path,
-      req.method,
-      req.ip,
-      req.get('User-Agent') || '',
+      req.method as string,
+      (req.ip || '') as string,
+      (req.get('User-Agent') || '') as string,
       false,
       '500'
     );

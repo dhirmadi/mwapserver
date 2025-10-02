@@ -181,7 +181,7 @@ describe('Public Route Registry Security Tests', () => {
 
   describe('Public Route Access Logging', () => {
     it('should log successful public route access', () => {
-      const { logAudit } = require('../../src/utils/logger.js');
+      const logger = { logAudit: vi.fn(), logError: vi.fn() } as any;
       const routeConfig = PUBLIC_ROUTES[0];
       
       logPublicRouteAccess(
@@ -193,10 +193,11 @@ describe('Public Route Registry Security Tests', () => {
           userAgent: 'Mozilla/5.0 Test',
           queryParams: { code: 'test', state: 'test' }
         },
-        true
+        true,
+        logger
       );
 
-      expect(logAudit).toHaveBeenCalledWith(
+      expect(logger.logAudit).toHaveBeenCalledWith(
         'public.route.access.success',
         'external',
         routeConfig.path,
@@ -211,7 +212,7 @@ describe('Public Route Registry Security Tests', () => {
     });
 
     it('should log failed public route access', () => {
-      const { logError } = require('../../src/utils/logger.js');
+      const logger = { logAudit: vi.fn(), logError: vi.fn() } as any;
       const routeConfig = PUBLIC_ROUTES[0];
       
       logPublicRouteAccess(
@@ -222,10 +223,11 @@ describe('Public Route Registry Security Tests', () => {
           ip: '192.168.1.1',
           userAgent: 'Mozilla/5.0 Test'
         },
-        false
+        false,
+        logger
       );
 
-      expect(logError).toHaveBeenCalledWith(
+      expect(logger.logError).toHaveBeenCalledWith(
         'public.route.access.failed',
         expect.objectContaining({
           publicRoute: routeConfig.path,

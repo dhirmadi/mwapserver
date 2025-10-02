@@ -5,6 +5,7 @@ import { ObjectId } from 'mongodb';
 export const cloudProviderSchema = z.object({
   _id: z.instanceof(ObjectId),
   name: z.string().min(3).max(50),
+  displayName: z.string().min(3).max(50).optional(), // Human-readable name for UI display
   slug: z.string().min(2).max(20).regex(/^[a-z0-9-]+$/),
   scopes: z.array(z.string()),
   authUrl: z.string().url(),

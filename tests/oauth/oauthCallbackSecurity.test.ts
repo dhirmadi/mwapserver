@@ -283,7 +283,7 @@ describe('OAuth Callback Security Service', () => {
       
       expect(result.isValid).toBe(false);
       expect(result.errorCode).toBe('INTEGRATION_NOT_FOUND');
-      expect(result.securityIssues).toContain('Integration not found or access denied');
+      expect(result.securityIssues).toContain('Integration not found');
     });
 
     it('should reject when integration already has tokens (potential replay attack)', async () => {

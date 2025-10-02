@@ -23,7 +23,7 @@ import {
   getSecurityAuditLog
 } from './openapi.controller.js';
 import { wrapAsyncHandler } from '../../utils/response.js';
-import { requireSuperAdminRole } from '../../middleware/authorization.js';
+import { requireSuperAdmin } from '../../middleware/auth.js';
 import { logInfo } from '../../utils/logger.js';
 
 export function getOpenAPIRouter(): Router {
@@ -259,7 +259,7 @@ export function getOpenAPIRouter(): Router {
    *       500:
    *         description: Internal server error
    */
-  router.post('/cache/invalidate', requireSuperAdminRole, wrapAsyncHandler(invalidateCache));
+  router.post('/cache/invalidate', requireSuperAdmin(), wrapAsyncHandler(invalidateCache));
 
   // ===== VALIDATION ROUTES =====
   
