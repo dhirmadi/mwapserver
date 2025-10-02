@@ -4,7 +4,7 @@
 
 This document provides comprehensive security guidance for OAuth implementation in the MWAP platform. It addresses threat models, attack vectors, security controls, compliance requirements, and operational security practices to ensure robust protection against OAuth-specific attacks and vulnerabilities.
 
-> **Note:** For detailed implementation specifics (code examples, configuration files, test coverage), see the archived [OAuth Callback Security Guide](./archive/oauth-security-guide.md). This document focuses on threat models, attack scenarios, and security strategy.
+> **Note:** This document focuses on threat models, attack scenarios, and security strategy. For implementation-specific code examples and configuration details, those are available in the archived documentation if needed.
 
 ## Threat Model
 

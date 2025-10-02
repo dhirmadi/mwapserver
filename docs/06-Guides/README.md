@@ -56,8 +56,8 @@ Comprehensive implementation guides for MWAP platform features and best practice
 
 ### "OAuth popup is not working"
 1. Review: [OAuth Integration Guide](./oauth-integration-guide.md) - Troubleshooting section
-2. Check: [Archived Troubleshooting Guide](./archive/oauth-troubleshooting-guide.md) - Comprehensive reference
-3. Verify: Redirect URIs and popup settings
+2. Check: Redirect URIs and popup settings
+3. Reference: See archived troubleshooting guide if needed
 
 ### "I need to implement PKCE for my SPA"
 1. Backend: [PKCE Implementation Guide](./pkce-implementation-guide.md)
@@ -143,7 +143,7 @@ Testing Guide
 
 ## 🗂️ Archive
 
-Historical documentation and review reports are preserved in the **[archive/](./archive/)** folder for reference.
+Historical documentation and review reports are preserved in the `archive/` folder for reference.
 
 ---
 
@@ -161,7 +161,7 @@ Historical documentation and review reports are preserved in the **[archive/](./
 
 **For implementation questions:** Review the appropriate guide and troubleshooting sections  
 **For security questions:** Start with [Security Guide](./security-guide.md)  
-**For OAuth issues:** Check [OAuth Troubleshooting Guide](./oauth-troubleshooting-guide.md)  
+**For OAuth issues:** Check [OAuth Integration Guide](./oauth-integration-guide.md)  
 **For testing help:** See [Testing Guide](./testing-guide.md)
 
 ---

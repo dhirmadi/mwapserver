@@ -1335,7 +1335,7 @@ You now have:
 
 - **[OAuth Integration Guide](./oauth-integration-guide.md)** - OAuth popup mechanics
 - **[API Reference](../04-Backend/api-reference.md)** - Complete API documentation
-- **[TypeScript Best Practices](./typescript-guide.md)** - Type safety guidelines
+- **[Development Standards](../07-Standards/development-standards.md)** - Coding standards and best practices
 
 ---
 

@@ -354,4 +354,4 @@ Key benefits:
 - ✅ Comprehensive security monitoring
 - ✅ RFC 7636 compliant implementation
 
-For additional support or questions about PKCE implementation, refer to the [OAuth Security Guide](oauth-security-guide.md) or contact the development team.
+For additional support or questions about PKCE implementation, refer to the [OAuth Security Guide](oauth-security.md) or contact the development team.

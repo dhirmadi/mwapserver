@@ -139,7 +139,7 @@ Created comprehensive test to verify:
    - Updated redirect URI security section
    - Added troubleshooting for redirect URI mismatch errors
 
-2. **OAuth Troubleshooting Guide** (`docs/06-Guides/oauth-troubleshooting-guide.md`)
+2. **OAuth Troubleshooting Guide** (archived: `docs/06-Guides/archive/oauth-troubleshooting-guide.md`)
    - Added comprehensive section on redirect URI mismatch errors
    - Included diagnostic steps and resolution procedures
    - Added prevention strategies

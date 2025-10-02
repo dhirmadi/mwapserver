@@ -52,7 +52,7 @@ Successfully implemented PKCE (Proof Key for Code Exchange) support in the MWAP 
 ### 5. Comprehensive Documentation
 **Files**: 
 - `docs/06-Guides/pkce-implementation-guide.md` (NEW)
-- `docs/06-Guides/oauth-security-guide.md` (UPDATED)
+- `docs/06-Guides/oauth-security.md` (OAuth security guide)
 
 - ✅ Complete PKCE implementation guide with:
   - Technical architecture explanation
