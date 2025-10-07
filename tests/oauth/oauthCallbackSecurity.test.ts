@@ -10,6 +10,7 @@
  */
 
 import { describe, it, expect, beforeEach, vi, Mock } from 'vitest';
+import { createHmac } from 'crypto';
 import { 
   OAuthCallbackSecurityService,
   StateParameter,
@@ -58,6 +59,9 @@ describe('OAuth Callback Security Service', () => {
       userAgent: 'Mozilla/5.0 Test Browser',
       timestamp: Date.now()
     };
+
+    // Ensure deterministic HMAC secret in tests
+    process.env.OAUTH_STATE_SECRET = 'test-secret';
   });
 
   describe('State Parameter Validation', () => {
@@ -70,12 +74,13 @@ describe('OAuth Callback Security Service', () => {
         nonce: 'abcdef1234567890'
       };
 
-      const stateParam = Buffer.from(JSON.stringify(validState)).toString('base64');
+      const stateParam = await securityService.generateStateParameter(validState);
       
       const result = await securityService.validateStateParameter(stateParam, mockRequestContext);
       
       expect(result.isValid).toBe(true);
-      expect(result.stateData).toEqual(validState);
+      // HMAC envelope adds iat/exp; ensure required fields match
+      expect(result.stateData).toEqual(expect.objectContaining(validState));
       expect(result.errorCode).toBeUndefined();
     });
 
@@ -110,7 +115,12 @@ describe('OAuth Callback Security Service', () => {
         // Missing integrationId, userId, timestamp, nonce
       };
 
-      const stateParam = Buffer.from(JSON.stringify(invalidState)).toString('base64');
+      // Manually sign envelope with missing fields to simulate tampered but correctly signed payload
+      const payload = { ...invalidState } as any;
+      const secret = process.env.OAUTH_STATE_SECRET || 'test-secret';
+      const sig = createHmac('sha256', secret).update(JSON.stringify(payload)).digest('hex');
+      const envelope = { p: payload, s: sig };
+      const stateParam = Buffer.from(JSON.stringify(envelope)).toString('base64url');
       
       const result = await securityService.validateStateParameter(stateParam, mockRequestContext);
       
@@ -135,7 +145,12 @@ describe('OAuth Callback Security Service', () => {
         nonce: 'abcdef1234567890'
       };
 
-      const stateParam = Buffer.from(JSON.stringify(expiredState)).toString('base64');
+      // Expired via exp in past
+      const payload = { ...expiredState, iat: Math.floor(Date.now()/1000) - 3600, exp: Math.floor(Date.now()/1000) - 60 } as any;
+      const secret = process.env.OAUTH_STATE_SECRET || 'test-secret';
+      const sig = createHmac('sha256', secret).update(JSON.stringify(payload)).digest('hex');
+      const envelope = { p: payload, s: sig };
+      const stateParam = Buffer.from(JSON.stringify(envelope)).toString('base64url');
       
       const result = await securityService.validateStateParameter(stateParam, mockRequestContext);
       
@@ -157,7 +172,11 @@ describe('OAuth Callback Security Service', () => {
         nonce: 'abcdef1234567890'
       };
 
-      const stateParam = Buffer.from(JSON.stringify(futureState)).toString('base64');
+      const payload = { ...futureState, iat: Math.floor(Date.now()/1000), exp: Math.floor(Date.now()/1000) + 600 } as any;
+      const secret = process.env.OAUTH_STATE_SECRET || 'test-secret';
+      const sig = createHmac('sha256', secret).update(JSON.stringify(payload)).digest('hex');
+      const envelope = { p: payload, s: sig };
+      const stateParam = Buffer.from(JSON.stringify(envelope)).toString('base64url');
       
       const result = await securityService.validateStateParameter(stateParam, mockRequestContext);
       
@@ -175,7 +194,11 @@ describe('OAuth Callback Security Service', () => {
         nonce: 'abcdef1234567890'
       };
 
-      const stateParam = Buffer.from(JSON.stringify(invalidState)).toString('base64');
+      const payload = { ...invalidState, iat: Math.floor(Date.now()/1000), exp: Math.floor(Date.now()/1000) + 600 } as any;
+      const secret = process.env.OAUTH_STATE_SECRET || 'test-secret';
+      const sig = createHmac('sha256', secret).update(JSON.stringify(payload)).digest('hex');
+      const envelope = { p: payload, s: sig };
+      const stateParam = Buffer.from(JSON.stringify(envelope)).toString('base64url');
       
       const result = await securityService.validateStateParameter(stateParam, mockRequestContext);
       
@@ -193,7 +216,11 @@ describe('OAuth Callback Security Service', () => {
         nonce: 'short' // Too short
       };
 
-      const stateParam = Buffer.from(JSON.stringify(invalidState)).toString('base64');
+      const payload = { ...invalidState, iat: Math.floor(Date.now()/1000), exp: Math.floor(Date.now()/1000) + 600 } as any;
+      const secret = process.env.OAUTH_STATE_SECRET || 'test-secret';
+      const sig = createHmac('sha256', secret).update(JSON.stringify(payload)).digest('hex');
+      const envelope = { p: payload, s: sig };
+      const stateParam = Buffer.from(JSON.stringify(envelope)).toString('base64url');
       
       const result = await securityService.validateStateParameter(stateParam, mockRequestContext);
       
@@ -215,7 +242,11 @@ describe('OAuth Callback Security Service', () => {
         nonce: 'invalid@nonce#chars!' // Invalid characters
       };
 
-      const stateParam = Buffer.from(JSON.stringify(invalidState)).toString('base64');
+      const payload = { ...invalidState, iat: Math.floor(Date.now()/1000), exp: Math.floor(Date.now()/1000) + 600 } as any;
+      const secret = process.env.OAUTH_STATE_SECRET || 'test-secret';
+      const sig = createHmac('sha256', secret).update(JSON.stringify(payload)).digest('hex');
+      const envelope = { p: payload, s: sig };
+      const stateParam = Buffer.from(JSON.stringify(envelope)).toString('base64url');
       
       const result = await securityService.validateStateParameter(stateParam, mockRequestContext);
       
@@ -487,7 +518,11 @@ describe('OAuth Callback Security Service', () => {
         nonce: longNonce
       };
 
-      const stateParam = Buffer.from(JSON.stringify(invalidState)).toString('base64');
+      const payload = { ...invalidState, iat: Math.floor(Date.now()/1000), exp: Math.floor(Date.now()/1000) + 600 } as any;
+      const secret = process.env.OAUTH_STATE_SECRET || 'test-secret';
+      const sig = createHmac('sha256', secret).update(JSON.stringify(payload)).digest('hex');
+      const envelope = { p: payload, s: sig };
+      const stateParam = Buffer.from(JSON.stringify(envelope)).toString('base64url');
       
       const result = await securityService.validateStateParameter(stateParam, mockRequestContext);
       
@@ -506,7 +541,11 @@ describe('OAuth Callback Security Service', () => {
         maliciousScript: '<script>alert("xss")</script>'
       };
 
-      const stateParam = Buffer.from(JSON.stringify(stateWithExtraFields)).toString('base64');
+      const payload = { ...stateWithExtraFields, iat: Math.floor(Date.now()/1000), exp: Math.floor(Date.now()/1000) + 600 } as any;
+      const secret = process.env.OAUTH_STATE_SECRET || 'test-secret';
+      const sig = createHmac('sha256', secret).update(JSON.stringify(payload)).digest('hex');
+      const envelope = { p: payload, s: sig };
+      const stateParam = Buffer.from(JSON.stringify(envelope)).toString('base64url');
       
       const result = await securityService.validateStateParameter(stateParam, mockRequestContext);
       
@@ -523,8 +562,7 @@ describe('OAuth Callback Security Service', () => {
         timestamp: Date.now(),
         nonce: 'abcdef1234567890'
       };
-
-      const stateParam = Buffer.from(JSON.stringify(validState)).toString('base64');
+      const stateParam = await securityService.generateStateParameter(validState);
       
       const emptyContext = {
         ip: '',

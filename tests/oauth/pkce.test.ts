@@ -18,6 +18,18 @@ vi.mock('../../src/utils/logger.js', () => ({
 
 vi.mock('axios');
 
+// Avoid unhandled rejections by mocking token exchange to resolve
+vi.mock('../../src/features/oauth/oauth.service.js', () => ({
+  OAuthService: vi.fn().mockImplementation(() => ({
+    exchangeCodeForTokens: vi.fn().mockResolvedValue({
+      accessToken: 'unit_test_access_token',
+      refreshToken: 'unit_test_refresh_token',
+      expiresIn: 3600,
+      scopesGranted: ['test.scope']
+    })
+  }))
+}));
+
 describe('PKCE Implementation', () => {
   let oauthService: OAuthService;
   let securityService: OAuthCallbackSecurityService;
