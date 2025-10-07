@@ -415,7 +415,8 @@ export class OAuthService {
   generateAuthorizationUrl(
     provider: CloudProvider,
     state: string,
-    redirectUri: string
+    redirectUri: string,
+    pkce?: { codeChallenge: string; codeChallengeMethod: 'S256' | 'plain' }
   ): string {
     try {
       logInfo(`Generating OAuth authorization URL for provider ${provider.name}`, {
@@ -433,6 +434,11 @@ export class OAuthService {
         redirect_uri: redirectUri,
         state: state
       });
+      // Add PKCE parameters if provided
+      if (pkce?.codeChallenge) {
+        params.set('code_challenge', pkce.codeChallenge);
+        params.set('code_challenge_method', pkce.codeChallengeMethod || 'S256');
+      }
 
       // Add scopes if available
       if (provider.scopes && provider.scopes.length > 0) {

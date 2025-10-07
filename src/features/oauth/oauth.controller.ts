@@ -502,6 +502,14 @@ export async function initiateOAuthFlow(req: Request, res: Response) {
     
     // 1. Get the integration and provider
     const integration = await cloudIntegrationsService.findById(integrationId, tenantId);
+    // Flow-lock: prevent double-init if an active flow is not expired
+    const nowMs = Date.now();
+    const expiresAt = (integration as any)?.oauth?.expiresAt ? new Date((integration as any).oauth.expiresAt).getTime() : 0;
+    const status = (integration as any)?.oauth?.status as string | undefined;
+    if (status && ['initiated','exchanging'].includes(status) && expiresAt && expiresAt > nowMs) {
+      logInfo('OAuth initiate blocked due to active flow lock', { integrationId, tenantId, status, expiresAt });
+      throw new ApiError('OAuth flow already initiated', 409);
+    }
     const provider = await cloudProviderService.findById(integration.providerId.toString(), true);
     
     // 2. Build the redirect URI using the same logic as the callback handler
@@ -536,6 +544,12 @@ export async function initiateOAuthFlow(req: Request, res: Response) {
     const pkceVerifier = Buffer.from(
       Array.from({ length: 64 }, () => Math.floor(Math.random() * 256))
     ).toString('base64url');
+    // Compute S256 code_challenge to be embedded in provider authorization URL
+    const { createHash } = await import('crypto');
+    const challenge = createHash('sha256').update(pkceVerifier).digest('base64')
+      .replace(/\+/g, '-')
+      .replace(/\//g, '_')
+      .replace(/=+$/, '');
     await cloudIntegrationsService.setOAuthFlowContext(integrationId, tenantId, {
       flowId: new ObjectId().toString(),
       nonce: stateData.nonce,
@@ -550,7 +564,11 @@ export async function initiateOAuthFlow(req: Request, res: Response) {
     const authorizationUrl = oauthService.generateAuthorizationUrl(
       provider,
       state,
-      redirectUri
+      redirectUri,
+      {
+        codeChallenge: challenge,
+        codeChallengeMethod: 'S256'
+      }
     );
     
     logInfo('OAuth authorization URL generated', {

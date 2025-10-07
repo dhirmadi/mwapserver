@@ -203,15 +203,19 @@ describe('OAuth Flow End-to-End Integration Tests', () => {
       };
       const stateParam = await new OAuthCallbackSecurityService().generateStateParameter(stateData as any);
       
-      const authUrl = new URL(provider.authUrl);
-      authUrl.searchParams.set('client_id', provider.clientId);
-      authUrl.searchParams.set('redirect_uri', `http://localhost:3000/api/v1/oauth/callback`);
-      authUrl.searchParams.set('scope', provider.scopes.join(' '));
-      authUrl.searchParams.set('response_type', 'code');
-      authUrl.searchParams.set('state', stateParam);
-
-      expect(authUrl.toString()).toContain('accounts.google.com');
-      expect(authUrl.searchParams.get('state')).toBe(stateParam);
+      // Use initiate endpoint to obtain provider URL (ensures PKCE is included)
+      const initResp = await request(app)
+        .post(`/api/v1/oauth/tenants/${testTenantId}/integrations/${createdIntegrationId}/initiate`)
+        .set('Authorization', `Bearer ${testJWT}`)
+        .send({});
+      expect(initResp.status).toBe(200);
+      const authUrlStr: string = initResp.body.data.authorizationUrl;
+      const authUrl = new URL(authUrlStr);
+      expect(authUrlStr).toContain('accounts.google.com');
+      expect(authUrl.searchParams.get('state')).toBeTruthy();
+      // PKCE in URL
+      expect(authUrl.searchParams.get('code_challenge')).toBeTruthy();
+      expect(authUrl.searchParams.get('code_challenge_method')).toBe('S256');
 
       // Step 3: Simulate OAuth provider callback with authorization code
       const mockAuthCode = 'mock_authorization_code_from_google';

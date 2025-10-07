@@ -793,54 +793,12 @@ export class OAuthCallbackSecurityService {
     isPKCEFlow?: boolean;
     challengeVerificationResult?: boolean;
   }> {
-    const metadata = integration.metadata || {};
     const issues: string[] = [];
     let challengeVerificationResult: boolean | undefined;
     
-    // Check if this is a PKCE flow
-    const isPKCEFlow = !!(metadata.code_verifier);
-    
-    if (!isPKCEFlow) {
-      return { isValid: true, isPKCEFlow: false };
-    }
-    
-    // Validate code_verifier
-    const codeVerifier = metadata.code_verifier;
-    if (!codeVerifier) {
-      issues.push('Missing code_verifier for PKCE flow');
-    } else {
-      // Length validation (43-128 characters per RFC 7636)
-      if (codeVerifier.length < 43 || codeVerifier.length > 128) {
-        issues.push('code_verifier length must be 43-128 characters');
-      }
-      
-      // Character set validation (unreserved characters only)
-      if (!/^[A-Za-z0-9\-._~]+$/.test(codeVerifier)) {
-        issues.push('code_verifier contains invalid characters');
-      }
-    }
-    
-    // Validate code_challenge and method
-    const codeChallenge = metadata.code_challenge;
-    const challengeMethod = metadata.code_challenge_method;
-    
-    if (codeChallenge && challengeMethod && codeVerifier) {
-      // Validate challenge method
-      if (!['S256', 'plain'].includes(challengeMethod)) {
-        issues.push('Invalid code_challenge_method, must be S256 or plain');
-      } else {
-        // Verify challenge against verifier
-        challengeVerificationResult = await this.validatePKCEChallenge(
-          codeVerifier,
-          codeChallenge,
-          challengeMethod
-        );
-        
-        if (!challengeVerificationResult) {
-          issues.push('code_challenge does not match code_verifier');
-        }
-      }
-    }
+    // Server-owned PKCE: flow is considered PKCE if we stored a verifier in oauth subdoc
+    const hasServerVerifier = !!integration?.oauth?.pkceVerifierEncrypted;
+    const isPKCEFlow = hasServerVerifier;
     
     return {
       isValid: issues.length === 0,

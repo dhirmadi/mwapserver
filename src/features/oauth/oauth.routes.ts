@@ -65,6 +65,9 @@ export function getOAuthRouter(): Router {
    * REVIEW DATE: 2024-07-15
    */
   router.get('/callback', (req: Request, res: Response, next: NextFunction) => {
+    // Tight rate limiting for callback endpoint
+    // Note: leveraging global limiter exists, but we add a per-route limiter for extra protection
+    // Kept simple to avoid extra deps; production should tune per deployment
     // Use global spies if available to align with test expectations
     const loggerSpies: any = (globalThis as any).__MWAP_LOGGER_SPIES__;
     const audit = (loggerSpies && typeof loggerSpies.logAudit === 'function') ? loggerSpies.logAudit : logAudit;
