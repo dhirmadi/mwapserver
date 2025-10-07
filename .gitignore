@@ -146,3 +146,4 @@ cursor/
 .specstory/
 mwapserver.code-workspace
 .specstory/history/2025-07-21_13-02Z-determine-api-for-auth0-test-token.md
+scripts/oauth-initiate-test.sh
