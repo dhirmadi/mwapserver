@@ -530,12 +530,14 @@ export async function initiateOAuthFlow(req: Request, res: Response) {
     });
     
     // 3. Generate state parameter using the security service
+    // Use cryptographically strong nonce (>= 16 chars when base64url-encoded)
+    const { randomBytes, createHash } = await import('crypto');
     const stateData = {
       tenantId,
       integrationId,
       userId: user.sub,
       timestamp: Date.now(),
-      nonce: Math.random().toString(36).substring(2, 15)
+      nonce: randomBytes(16).toString('base64url')
     };
     
     const state = await oauthSecurityService.generateStateParameter(stateData);
@@ -545,7 +547,6 @@ export async function initiateOAuthFlow(req: Request, res: Response) {
       Array.from({ length: 64 }, () => Math.floor(Math.random() * 256))
     ).toString('base64url');
     // Compute S256 code_challenge to be embedded in provider authorization URL
-    const { createHash } = await import('crypto');
     const challenge = createHash('sha256').update(pkceVerifier).digest('base64')
       .replace(/\+/g, '-')
       .replace(/\//g, '_')
