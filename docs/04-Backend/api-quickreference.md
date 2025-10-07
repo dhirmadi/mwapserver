@@ -15,7 +15,7 @@ Quick reference for all MWAP API endpoints. For detailed documentation, see [api
 | GET | `/api/v1/oauth/callback` | OAuth callback handler (enhanced security) |
 | GET | `/api/v1/oauth/success` | OAuth success page with auto-close |
 | GET | `/api/v1/oauth/error` | OAuth error page with user-friendly messages |
-| POST | `/api/v1/oauth/tenants/:tenantId/integrations/:integrationId/reset` | Reset OAuth flow context for integration (clears ephemeral state) |
+
 
 ---
 
@@ -115,6 +115,7 @@ Quick reference for all MWAP API endpoints. For detailed documentation, see [api
 | Method | Endpoint | Purpose | Auth |
 |--------|----------|---------|------|
 | POST | `/api/v1/oauth/tenants/:tenantId/integrations/:integrationId/initiate` | Generate OAuth authorization URL | Tenant Owner |
+| POST | `/api/v1/oauth/tenants/:tenantId/integrations/:integrationId/reset` | Reset OAuth flow context (clears ephemeral state only) | Tenant Owner |
 | POST | `/api/v1/oauth/tenants/:tenantId/integrations/:integrationId/refresh` | Manually refresh integration tokens | Tenant Owner |
 | GET | `/api/v1/oauth/security/metrics` | Get OAuth security metrics | JWT |
 | GET | `/api/v1/oauth/security/alerts` | Get security alerts | JWT |
@@ -150,10 +151,10 @@ Quick reference for all MWAP API endpoints. For detailed documentation, see [api
 ## 📊 Endpoint Statistics
 
 **Total Endpoints:** 67  
-- Public: 4
-- Authenticated: 63
+- Public: 3
+- Authenticated: 64
   - SUPERADMIN only: 13
-  - Tenant Owner: 17
+  - Tenant Owner: 18
   - Project roles: 9
   - General JWT: 24
 

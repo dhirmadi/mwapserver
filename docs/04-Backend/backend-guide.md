@@ -595,6 +595,20 @@ export function validateEnv() {
   }
 }
 
+## 🔑 Backend-driven OAuth (Summary)
+
+MWAP implements a backend-driven OAuth flow for cloud integrations:
+
+- Server generates PKCE verifier and S256 code_challenge; only the challenge is sent to providers.
+- State parameter is an HMAC-signed envelope containing tenant/integration/user context plus iat/exp and nonce; validated on callback.
+- Token exchange occurs exclusively on the backend; access/refresh tokens are encrypted at rest and never exposed to the client.
+- Flow-lock prevents concurrent initiations per integration; a reset endpoint clears ephemeral `oauth.*` context without deleting tokens.
+- Endpoints:
+  - `POST /api/v1/oauth/tenants/:tenantId/integrations/:integrationId/initiate` → returns provider `authorizationUrl` (includes `code_challenge` and `state`).
+  - `GET /api/v1/oauth/callback` → validates state, exchanges code, persists tokens, redirects to `/oauth/success|/oauth/error`.
+  - `POST /api/v1/oauth/tenants/:tenantId/integrations/:integrationId/reset` → clears ephemeral flow context.
+  - `POST /api/v1/oauth/tenants/:tenantId/integrations/:integrationId/refresh` → server-side token refresh.
+
 export type Env = z.infer<typeof envSchema>;
 ```
 

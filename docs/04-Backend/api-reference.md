@@ -676,6 +676,7 @@ Handle OAuth authorization callbacks from cloud providers with comprehensive sec
 
 **Security Features:**
 - ✅ Enhanced state parameter validation with cryptographic verification
+- ✅ Server-side PKCE (S256): code_challenge included in authorization URL; verifier stored server-side only and used during token exchange
 - ✅ Integration ownership verification with tenant access control
 - ✅ Timestamp validation with 10-minute expiration window
 - ✅ Replay attack prevention through nonce validation
@@ -688,16 +689,21 @@ Handle OAuth authorization callbacks from cloud providers with comprehensive sec
 - `error?: string` - Error code if OAuth authorization failed
 - `error_description?: string` - Detailed error description from provider
 
-**State Parameter Structure:**
-The state parameter must be a Base64-encoded JSON object with the following structure:
+**State Parameter Structure (HMAC-signed envelope):**
+The state parameter is a Base64URL-encoded JSON envelope with cryptographic integrity:
 ```typescript
 {
-  tenantId: string;        // MongoDB ObjectId of the tenant
-  integrationId: string;   // MongoDB ObjectId of the integration
-  userId: string;          // Auth0 user ID
-  timestamp: number;       // Unix timestamp when state was created
-  nonce: string;          // Random string (min 16 characters, alphanumeric)
-  redirectUri?: string;   // Optional custom redirect URI
+  p: {
+    tenantId: string;        // MongoDB ObjectId of the tenant
+    integrationId: string;   // MongoDB ObjectId of the integration
+    userId: string;          // Auth0 user ID
+    timestamp: number;       // Unix timestamp when state was created
+    nonce: string;           // Random string (min 16 chars, unreserved charset)
+    iat: number;             // Issued-at (seconds)
+    exp: number;             // Expiry (seconds) ~10 minutes TTL
+    redirectUri?: string;    // Optional custom redirect URI
+  };
+  s: string; // HMAC-SHA256 signature of JSON.stringify(p) using OAUTH_STATE_SECRET
 }
 ```
 
