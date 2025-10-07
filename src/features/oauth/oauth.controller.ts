@@ -744,7 +744,11 @@ export async function handleOAuthSuccess(req: Request, res: Response) {
     ip: req.ip,
     userAgent: req.get('User-Agent')
   });
-  
+
+  // Compute frontend success URL for meta refresh redirect (optional FRONTEND_URL env)
+  const frontendBase = (process.env.FRONTEND_URL || '/').replace(/\/$/, '');
+  const targetUrl = `${frontendBase}/oauth/success?tenantId=${encodeURIComponent(String(tenantId))}&integrationId=${encodeURIComponent(String(integrationId))}`;
+
   res.send(`
     <!DOCTYPE html>
     <html>
@@ -752,6 +756,7 @@ export async function handleOAuthSuccess(req: Request, res: Response) {
         <title>OAuth Success</title>
         <meta charset="utf-8">
         <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta http-equiv="refresh" content="1;url=${targetUrl}">
         <style>
           body { font-family: Arial, sans-serif; text-align: center; padding: 50px; }
           .success { color: #2e7d32; }
@@ -764,7 +769,8 @@ export async function handleOAuthSuccess(req: Request, res: Response) {
           <h1 class="success">✓ OAuth Integration Successful!</h1>
           <p>Your cloud provider has been successfully connected to your account.</p>
           <p>Integration ID: <span class="integration-id">${integrationId}</span></p>
-          <p>This window will close automatically in 3 seconds.</p>
+          <p>Redirecting you to the application...</p>
+          <p><a href="${targetUrl}">Continue</a></p>
         </div>
         <script>
           // Notify parent window if in popup
@@ -775,14 +781,10 @@ export async function handleOAuthSuccess(req: Request, res: Response) {
               integrationId: '${integrationId}'
             }, '*');
           }
-          
-          // Auto-close after 3 seconds
+          // If a popup, auto-close after 3s; otherwise meta refresh handles redirect
           setTimeout(() => {
             if (window.opener) {
               window.close();
-            } else {
-              // If not in popup, redirect to a default page
-              window.location.href = '/';
             }
           }, 3000);
         </script>
