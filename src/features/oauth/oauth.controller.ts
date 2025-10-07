@@ -437,7 +437,7 @@ export async function handleOAuthCallback(req: Request, res: Response) {
       tenantId: stateData.tenantId
     });
     
-    return res.redirect(`/oauth/success?tenantId=${stateData.tenantId}&integrationId=${stateData.integrationId}`);
+    return res.redirect(`/api/v1/oauth/success?tenantId=${stateData.tenantId}&integrationId=${stateData.integrationId}`);
     
   } catch (error) {
     if (env.NODE_ENV === 'test') {
@@ -452,7 +452,7 @@ export async function handleOAuthCallback(req: Request, res: Response) {
       };
       try { spies?.logError?.('OAuth callback processing error', payload); } catch {}
       try { logError('OAuth callback processing error', payload); } catch {}
-      return res.redirect('/oauth/error?message=Unable%20to%20process%20request');
+      return res.redirect('/api/v1/oauth/error?message=Unable%20to%20process%20request');
     }
     // Handle unexpected errors with comprehensive logging
     auditData.securityIssues.push('Internal processing error');
