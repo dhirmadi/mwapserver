@@ -44,6 +44,56 @@ export const PUBLIC_ROUTES: PublicRouteConfig[] = [
       'Microsoft OneDrive OAuth 2.0 service'
     ],
     approvedDate: '2025-01-17'
+  },
+  // OAuth Success/Error display pages (no sensitive data, user-facing)
+  {
+    path: '/api/v1/oauth/success',
+    methods: ['GET'],
+    exposesData: false,
+    approved: true,
+    justification: 'User-facing success page after OAuth completes; must be accessible without JWT',
+    securityControls: [
+      'generic success content',
+      'no sensitive data exposure'
+    ],
+    approvedDate: '2025-10-07'
+  },
+  {
+    path: '/api/v1/oauth/error',
+    methods: ['GET'],
+    exposesData: false,
+    approved: true,
+    justification: 'User-facing error page with generic messaging; must be accessible without JWT',
+    securityControls: [
+      'generic error content',
+      'no sensitive data exposure'
+    ],
+    approvedDate: '2025-10-07'
+  },
+  // Also allow top-level variants in case frontend/browser is routed without the /api prefix
+  {
+    path: '/oauth/success',
+    methods: ['GET'],
+    exposesData: false,
+    approved: true,
+    justification: 'Compatibility route for success page without /api prefix',
+    securityControls: [
+      'generic success content',
+      'no sensitive data exposure'
+    ],
+    approvedDate: '2025-10-07'
+  },
+  {
+    path: '/oauth/error',
+    methods: ['GET'],
+    exposesData: false,
+    approved: true,
+    justification: 'Compatibility route for error page without /api prefix',
+    securityControls: [
+      'generic error content',
+      'no sensitive data exposure'
+    ],
+    approvedDate: '2025-10-07'
   }
 ];
 
