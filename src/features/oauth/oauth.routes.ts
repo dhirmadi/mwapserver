@@ -238,6 +238,33 @@ export function getOAuthRouter(): Router {
     wrapAsyncHandler(getSecurityMetrics)
   );
 
+  // =================================================================
+  // PROTECTED ENDPOINT: Reset OAuth Flow
+  // =================================================================
+  router.post(
+    '/tenants/:tenantId/integrations/:integrationId/reset',
+    authenticateJWT(),
+    requireTenantOwner('tenantId'),
+    wrapAsyncHandler(async (req: Request, res: Response) => {
+      const { tenantId, integrationId } = req.params;
+      const { logAudit } = await import('../../utils/logger.js');
+      const { jsonResponse } = await import('../../utils/response.js');
+      const { CloudIntegrationsService } = await import('../cloud-integrations/cloudIntegrations.service.js');
+      const svc = new (CloudIntegrationsService as any)();
+      await svc.setOAuthFlowContext(integrationId, tenantId, {
+        flowId: undefined,
+        nonce: undefined,
+        stateHash: undefined,
+        pkceVerifierEncrypted: undefined,
+        status: 'idle',
+        createdAt: undefined,
+        expiresAt: undefined
+      });
+      logAudit('oauth.flow.reset', (req as any).user?.sub || 'unknown', integrationId, { tenantId });
+      return jsonResponse(res, 200, { success: true } as any);
+    })
+  );
+
   // Security Alerts
   router.get(
     '/security/alerts',

@@ -22,7 +22,10 @@ export const envSchema = z.object({
   AUTH0_AUDIENCE: z.string(),
   // OAuth domain configuration
   BACKEND_DOMAIN: z.string().optional(),
-  ALLOWED_OAUTH_DOMAINS: z.string().optional()
+  ALLOWED_OAUTH_DOMAINS: z.string().optional(),
+  // Security secrets
+  OAUTH_STATE_SECRET: z.string().optional(),
+  ENCRYPTION_KEY: z.string().optional()
 });
 
 // Validate and export environment

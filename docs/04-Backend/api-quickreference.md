@@ -15,6 +15,7 @@ Quick reference for all MWAP API endpoints. For detailed documentation, see [api
 | GET | `/api/v1/oauth/callback` | OAuth callback handler (enhanced security) |
 | GET | `/api/v1/oauth/success` | OAuth success page with auto-close |
 | GET | `/api/v1/oauth/error` | OAuth error page with user-friendly messages |
+| POST | `/api/v1/oauth/tenants/:tenantId/integrations/:integrationId/reset` | Reset OAuth flow context for integration (clears ephemeral state) |
 
 ---
 

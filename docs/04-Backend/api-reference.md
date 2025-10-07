@@ -36,6 +36,19 @@ Authorization: Bearer <jwt_token>
 - `GET /api/v1/oauth/success` - OAuth success page with auto-close
 - `GET /api/v1/oauth/error` - OAuth error page with user-friendly messages
 
+### Backend-driven OAuth Flow
+
+- `POST /api/v1/oauth/tenants/{tenantId}/integrations/{integrationId}/initiate`
+  - Generates HMAC-signed state, server-side PKCE verifier, persists ephemeral flow context, and returns provider `authorizationUrl`.
+  - Response: `{ authorizationUrl, provider, redirectUri, state }`
+
+- `GET /api/v1/oauth/callback?code&state`
+  - Validates HMAC state (iat/exp/nonce), verifies ownership, loads stored PKCE verifier, exchanges code for tokens, encrypts and persists tokens, records audits, and redirects to success/error page.
+
+- `POST /api/v1/oauth/tenants/{tenantId}/integrations/{integrationId}/reset`
+  - Clears ephemeral OAuth flow context (`oauth.*`) without deleting tokens.
+  - Response: `{ success: true }`
+
 ### OAuth Callback Security Architecture
 
 The OAuth callback endpoint implements multi-layered security controls to protect against common attack vectors while maintaining compatibility with external OAuth providers.
