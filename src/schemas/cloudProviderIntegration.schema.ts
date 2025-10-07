@@ -7,18 +7,8 @@ const objectIdSchema = z
     message: 'Invalid ObjectId',
   });
 
-// PKCE metadata interface for OAuth 2.0 with PKCE support
-export interface PKCEMetadata {
-  oauth_code?: string;
-  redirect_uri?: string;
-  code_verifier?: string;
-  code_challenge?: string;
-  code_challenge_method?: 'S256' | 'plain';
-  pkce_flow?: boolean;
-}
-
-// Extended metadata interface that includes PKCE fields
-export interface IntegrationMetadata extends PKCEMetadata {
+// Minimal metadata interface (no PKCE fields are stored client-side anymore)
+export interface IntegrationMetadata {
   [key: string]: unknown;
 }
 
@@ -27,13 +17,24 @@ export const cloudProviderIntegrationSchema = z.object({
   _id: objectIdSchema,
   tenantId: objectIdSchema,
   providerId: objectIdSchema,
-  accessToken: z.string().optional(),
-  refreshToken: z.string().optional(),
+  // Tokens are stored encrypted at rest
+  accessToken: z.string().nullable().optional(),
+  refreshToken: z.string().nullable().optional(),
   tokenExpiresAt: z.date().optional(),
   scopesGranted: z.array(z.string()).optional(),
   status: z.enum(['active', 'expired', 'revoked', 'error']).default('active'),
   connectedAt: z.date().optional(),
   metadata: z.record(z.unknown()).optional(),
+  // Ephemeral OAuth flow context owned by backend only
+  oauth: z.object({
+    flowId: z.string().optional(),
+    nonce: z.string().optional(),
+    stateHash: z.string().optional(),
+    pkceVerifierEncrypted: z.string().optional(),
+    status: z.enum(['idle','initiated','exchanging','completed','error']).optional(),
+    createdAt: z.date().optional(),
+    expiresAt: z.date().optional()
+  }).optional(),
   createdAt: z.date(),
   updatedAt: z.date(),
   createdBy: z.string() // Auth0 sub

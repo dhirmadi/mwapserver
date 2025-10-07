@@ -72,7 +72,7 @@ Comprehensive contribution guides for developers, documentation contributors, an
 Comprehensive reports on project status, documentation evolution, and historical integration patterns
 - [Project Status](./09-Reports-and-History/project-status.md) - Complete project status, development plan, and progress tracking with technical architecture and roadmap
 - [Documentation Evolution](./09-Reports-and-History/documentation-evolution.md) - Documentation improvement history, quality metrics, and continuous enhancement procedures
-- [Legacy Integrations](./09-Reports-and-History/legacy-integrations.md) - Historical integration patterns, API migration guides, and OAuth implementation evolution
+- Legacy Integrations (archived) - Historical integration patterns, API migration guides, and OAuth implementation evolution
 
 ## 🚀 Quick Start
 

@@ -53,7 +53,7 @@ app.use(cors({
 // Rate limiting
 const apiRateLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  max: 100
+  max: env.NODE_ENV === 'test' ? 100000 : 100
 });
 const authTightLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,

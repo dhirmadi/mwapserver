@@ -38,7 +38,7 @@ Complete record of documentation improvements, harmonization efforts, and qualit
 
 ---
 
-### 🔄 [Legacy Integrations](./legacy-integrations.md)
+### 🔄 Legacy Integrations (archived)
 Historical integration patterns, API migration guides, and OAuth implementation evolution for reference and learning.
 
 **What's Included:**
@@ -71,9 +71,9 @@ Each report is comprehensive and self-contained, covering complete domain areas:
     ├── REORGANIZATION_SUMMARY.md # → Now in project-status.md
     ├── DOCUMENTATION_HARMONIZATION_SUMMARY.md # → Now in documentation-evolution.md
     ├── HARMONIZATION_VERIFICATION.md # → Now in documentation-evolution.md
-    ├── oauth*.md files         # → Now in legacy-integrations.md
-    ├── api-migration.md        # → Now in legacy-integrations.md
-    ├── cloud-integration-example.md # → Now in legacy-integrations.md
+    ├── oauth*.md files         # → Archived reference
+    ├── api-migration.md        # → Archived reference
+    ├── cloud-integration-example.md # → Archived reference
     ├── prompts/                # Historical development prompts
     ├── build/                  # Build artifacts and historical builds
     └── analysis-reports/       # Technical analysis reports
@@ -105,14 +105,14 @@ Each report is comprehensive and self-contained, covering complete domain areas:
 3. Follow **Continuous Improvement Framework** for ongoing contributions
 
 ### For Historical Research
-1. Review **[Legacy Integrations](./legacy-integrations.md)** → API Migration History section
-2. Study **Migration Lessons Learned** for best practices and challenges overcome
-3. Reference **Legacy Implementation Patterns** for architectural evolution context
+1. Review Legacy Integrations (archived) → API Migration History section
+2. Study Migration Lessons Learned for best practices and challenges overcome
+3. Reference Legacy Implementation Patterns for architectural evolution context
 
 ### For New Team Members
 1. **[Project Status](./project-status.md)** → Project Overview and Development Guidelines
 2. **[Documentation Evolution](./documentation-evolution.md)** → Standards Framework
-3. **[Legacy Integrations](./legacy-integrations.md)** → Architecture Evolution section
+3. Legacy Integrations (archived) → Architecture Evolution section
 
 ## 🔗 Related Documentation
 

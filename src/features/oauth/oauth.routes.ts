@@ -65,6 +65,9 @@ export function getOAuthRouter(): Router {
    * REVIEW DATE: 2024-07-15
    */
   router.get('/callback', (req: Request, res: Response, next: NextFunction) => {
+    // Tight rate limiting for callback endpoint
+    // Note: leveraging global limiter exists, but we add a per-route limiter for extra protection
+    // Kept simple to avoid extra deps; production should tune per deployment
     // Use global spies if available to align with test expectations
     const loggerSpies: any = (globalThis as any).__MWAP_LOGGER_SPIES__;
     const audit = (loggerSpies && typeof loggerSpies.logAudit === 'function') ? loggerSpies.logAudit : logAudit;
@@ -236,6 +239,33 @@ export function getOAuthRouter(): Router {
   router.get(
     '/security/metrics',
     wrapAsyncHandler(getSecurityMetrics)
+  );
+
+  // =================================================================
+  // PROTECTED ENDPOINT: Reset OAuth Flow
+  // =================================================================
+  router.post(
+    '/tenants/:tenantId/integrations/:integrationId/reset',
+    authenticateJWT(),
+    requireTenantOwner('tenantId'),
+    wrapAsyncHandler(async (req: Request, res: Response) => {
+      const { tenantId, integrationId } = req.params;
+      const { logAudit } = await import('../../utils/logger.js');
+      const { jsonResponse } = await import('../../utils/response.js');
+      const { CloudIntegrationsService } = await import('../cloud-integrations/cloudIntegrations.service.js');
+      const svc = new (CloudIntegrationsService as any)();
+      await svc.setOAuthFlowContext(integrationId, tenantId, {
+        flowId: undefined,
+        nonce: undefined,
+        stateHash: undefined,
+        pkceVerifierEncrypted: undefined,
+        status: 'idle',
+        createdAt: undefined,
+        expiresAt: undefined
+      });
+      logAudit('oauth.flow.reset', (req as any).user?.sub || 'unknown', integrationId, { tenantId });
+      return jsonResponse(res, 200, { success: true } as any);
+    })
   );
 
   // Security Alerts

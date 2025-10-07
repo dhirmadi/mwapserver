@@ -8,6 +8,7 @@ import {
   UpdateCloudProviderIntegrationRequest, 
   CloudProviderIntegrationErrorCodes 
 } from '../../schemas/cloudProviderIntegration.schema.js';
+import { encrypt, decrypt } from '../../utils/encryption.js';
 import axios from 'axios';
 
 export class CloudIntegrationsService {
@@ -236,8 +237,8 @@ export class CloudIntegrationsService {
     const now = new Date();
     
     const updates: Record<string, any> = {
-      accessToken,
-      refreshToken,
+      accessToken: encrypt(accessToken),
+      refreshToken: refreshToken ? encrypt(refreshToken) : null,
       tokenExpiresAt,
       status: 'active',
       connectedAt: now,
@@ -272,6 +273,35 @@ export class CloudIntegrationsService {
     });
     
     return result;
+  }
+
+  /**
+   * Set or update ephemeral OAuth flow context on an integration
+   */
+  async setOAuthFlowContext(
+    id: string,
+    tenantId: string,
+    context: Partial<CloudProviderIntegration['oauth']>
+  ): Promise<void> {
+    const integration = await this.findById(id, tenantId);
+    const now = new Date();
+    const updateIdCandidates: any[] = [integration._id];
+    const asString = (integration._id as any)?.toString?.();
+    if (asString && asString !== integration._id) updateIdCandidates.push(asString);
+
+    await this.collection.updateOne(
+      { $or: updateIdCandidates.map(v => ({ _id: v })) },
+      {
+        $set: {
+          oauth: {
+            ...(integration as any).oauth,
+            ...context,
+            updatedAt: now
+          },
+          updatedAt: now
+        }
+      }
+    );
   }
 
   /**

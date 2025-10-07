@@ -15,12 +15,13 @@
  * - Error messages must not leak sensitive information
  */
 
-import { createHash } from 'crypto';
+import { createHash, randomBytes, createHmac } from 'crypto';
 import { logInfo, logError, logAudit } from '../../utils/logger.js';
 import { ApiError } from '../../utils/errors.js';
 import { CloudIntegrationsService } from '../cloud-integrations/cloudIntegrations.service.js';
 import { CloudProviderService } from '../cloud-providers/cloudProviders.service.js';
 import { getAllowedOAuthDomains, env } from '../../config/env.js';
+import { encrypt } from '../../utils/encryption.js';
 import { getDB } from '../../config/db.js';
 import { ObjectId } from 'mongodb';
 
@@ -173,38 +174,30 @@ export class OAuthCallbackSecurityService {
         return result;
       }
 
-      // 2. Decode state parameter (support base64 and base64url; be tolerant to '+' -> ' ' conversions)
-      let stateData: StateParameter;
-      const tryDecode = (input: string): any => {
-        // Normalize spaces to '+' for classic base64 that went through querystring
-        let normalized = input.replace(/\s/g, '+');
-        // First attempt: standard base64
-        try {
-          const decoded = Buffer.from(normalized, 'base64').toString();
-          return JSON.parse(decoded);
-        } catch {}
-        // Second attempt: base64url -> base64 with padding
-        try {
-          normalized = input.replace(/-/g, '+').replace(/_/g, '/');
-          const padLen = normalized.length % 4;
-          if (padLen) normalized = normalized + '='.repeat(4 - padLen);
-          const decoded = Buffer.from(normalized, 'base64').toString();
-          return JSON.parse(decoded);
-        } catch {}
-        // Final attempt: direct JSON (in case state was not encoded)
-        try {
-          return JSON.parse(input);
-        } catch {}
-        return null;
-      };
-      const decodedStateObj = tryDecode(stateParam);
-      if (!decodedStateObj) {
+      // 2. Decode state envelope (base64url) and verify HMAC signature
+      let envelope: { p: any; s: string } | null = null;
+      try {
+        const normalized = stateParam.replace(/-/g, '+').replace(/_/g, '/');
+        const pad = normalized.length % 4 ? '='.repeat(4 - (normalized.length % 4)) : '';
+        const json = Buffer.from(normalized + pad, 'base64').toString();
+        envelope = JSON.parse(json);
+      } catch {}
+      if (!envelope || typeof envelope !== 'object' || !envelope.p || !envelope.s) {
         result.securityIssues?.push('State parameter decode failed');
         result.errorCode = 'STATE_DECODE_ERROR';
         result.errorMessage = 'Invalid request format';
         return result;
       }
-      stateData = decodedStateObj as StateParameter;
+      const secret = process.env.OAUTH_STATE_SECRET || 'dev-state-secret';
+      const payloadStr = JSON.stringify(envelope.p);
+      const expectedSig = createHmac('sha256', secret).update(payloadStr).digest('hex');
+      if (expectedSig !== envelope.s) {
+        result.securityIssues?.push('Invalid state signature');
+        result.errorCode = 'INVALID_STATE_SIGNATURE';
+        result.errorMessage = 'Invalid security token';
+        return result;
+      }
+      const stateData = envelope.p as StateParameter & { iat?: number; exp?: number };
 
       // Normalize possible ObjectId string wrappers from Mongo (e.g., ObjectId("hex"))
       const objectIdWrapper = /^(?:new\s+)?ObjectId\("([0-9a-fA-F]{24})"\)$/;
@@ -238,8 +231,15 @@ export class OAuthCallbackSecurityService {
         return result;
       }
 
-      // 4. Validate timestamp (prevent replay attacks)
-      const timestampValidation = this.validateTimestamp(stateData.timestamp, requestContext.timestamp);
+      // 4. Validate timestamp (prevent replay attacks) using exp when present
+      const ts = typeof stateData.timestamp === 'number' ? stateData.timestamp : (stateData.iat ? stateData.iat * 1000 : Date.now());
+      const timestampValidation = this.validateTimestamp(ts, requestContext.timestamp);
+      if (stateData.exp && Date.now() > stateData.exp * 1000) {
+        result.securityIssues?.push('State parameter expired');
+        result.errorCode = 'STATE_EXPIRED';
+        result.errorMessage = 'Request has expired';
+        return result;
+      }
       if (!timestampValidation.isValid) {
         result.securityIssues?.push(...(timestampValidation.issues || []));
         result.errorCode = 'STATE_EXPIRED';
@@ -793,54 +793,12 @@ export class OAuthCallbackSecurityService {
     isPKCEFlow?: boolean;
     challengeVerificationResult?: boolean;
   }> {
-    const metadata = integration.metadata || {};
     const issues: string[] = [];
     let challengeVerificationResult: boolean | undefined;
     
-    // Check if this is a PKCE flow
-    const isPKCEFlow = !!(metadata.code_verifier);
-    
-    if (!isPKCEFlow) {
-      return { isValid: true, isPKCEFlow: false };
-    }
-    
-    // Validate code_verifier
-    const codeVerifier = metadata.code_verifier;
-    if (!codeVerifier) {
-      issues.push('Missing code_verifier for PKCE flow');
-    } else {
-      // Length validation (43-128 characters per RFC 7636)
-      if (codeVerifier.length < 43 || codeVerifier.length > 128) {
-        issues.push('code_verifier length must be 43-128 characters');
-      }
-      
-      // Character set validation (unreserved characters only)
-      if (!/^[A-Za-z0-9\-._~]+$/.test(codeVerifier)) {
-        issues.push('code_verifier contains invalid characters');
-      }
-    }
-    
-    // Validate code_challenge and method
-    const codeChallenge = metadata.code_challenge;
-    const challengeMethod = metadata.code_challenge_method;
-    
-    if (codeChallenge && challengeMethod && codeVerifier) {
-      // Validate challenge method
-      if (!['S256', 'plain'].includes(challengeMethod)) {
-        issues.push('Invalid code_challenge_method, must be S256 or plain');
-      } else {
-        // Verify challenge against verifier
-        challengeVerificationResult = await this.validatePKCEChallenge(
-          codeVerifier,
-          codeChallenge,
-          challengeMethod
-        );
-        
-        if (!challengeVerificationResult) {
-          issues.push('code_challenge does not match code_verifier');
-        }
-      }
-    }
+    // Server-owned PKCE: flow is considered PKCE if we stored a verifier in oauth subdoc
+    const hasServerVerifier = !!integration?.oauth?.pkceVerifierEncrypted;
+    const isPKCEFlow = hasServerVerifier;
     
     return {
       isValid: issues.length === 0,
@@ -993,9 +951,17 @@ export class OAuthCallbackSecurityService {
                           Math.random().toString(36).substring(2, 15);
       }
 
-      // Encode state data as base64
-      const stateJson = JSON.stringify(stateData);
-      const stateParam = Buffer.from(stateJson).toString('base64');
+      // Sign state payload (HMAC-SHA256)
+      const secret = process.env.OAUTH_STATE_SECRET || 'dev-state-secret';
+      const payload = {
+        ...stateData,
+        iat: Math.floor(Date.now() / 1000),
+        exp: Math.floor(Date.now() / 1000) + 10 * 60 // 10 minutes TTL
+      } as any;
+      const payloadStr = JSON.stringify(payload);
+      const sig = createHmac('sha256', secret).update(payloadStr).digest('hex');
+      const envelope = { p: payload, s: sig };
+      const stateParam = Buffer.from(JSON.stringify(envelope)).toString('base64url');
 
       logInfo('OAuth state parameter generated successfully', {
         tenantId: stateData.tenantId,

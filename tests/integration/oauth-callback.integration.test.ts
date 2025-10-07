@@ -11,6 +11,7 @@
  */
 
 import { describe, it, expect, beforeAll, afterAll, beforeEach, vi } from 'vitest';
+import { createHmac } from 'crypto';
 import request from 'supertest';
 import { MongoMemoryServer } from 'mongodb-memory-server';
 import { app } from '../../src/app.js';
@@ -56,6 +57,9 @@ describe('OAuth Callback Integration Tests', () => {
     // Ensure routes are fully registered before any requests
     const { registerRoutes } = await import('../../src/app.js');
     await registerRoutes();
+
+    // Deterministic secret for tests
+    process.env.OAUTH_STATE_SECRET = 'test-secret';
   });
 
   afterAll(async () => {
@@ -132,7 +136,13 @@ describe('OAuth Callback Integration Tests', () => {
         nonce: 'abcdef1234567890'
       };
 
-      const stateParam = Buffer.from(JSON.stringify(stateData)).toString('base64');
+      // HMAC-signed state envelope, mimicking backend initiate
+      const { createHmac } = await import('crypto');
+      process.env.OAUTH_STATE_SECRET = 'test-secret';
+      const payload = { ...stateData, iat: Math.floor(Date.now()/1000), exp: Math.floor(Date.now()/1000) + 600 } as any;
+      const sig = createHmac('sha256', process.env.OAUTH_STATE_SECRET).update(JSON.stringify(payload)).digest('hex');
+      const envelope = { p: payload, s: sig };
+      const stateParam = Buffer.from(JSON.stringify(envelope)).toString('base64url');
       const authCode = 'mock-auth-code';
 
       // Make callback request
@@ -155,8 +165,11 @@ describe('OAuth Callback Integration Tests', () => {
         _id: { $oid: testIntegrationId }
       });
 
-      expect(updatedIntegration?.accessToken).toBe('mock-access-token');
-      expect(updatedIntegration?.refreshToken).toBe('mock-refresh-token');
+      // Tokens are stored encrypted; ensure present and not plaintext
+      expect(typeof updatedIntegration?.accessToken).toBe('string');
+      expect(typeof updatedIntegration?.refreshToken).toBe('string');
+      expect(updatedIntegration?.accessToken).not.toBe('mock-access-token');
+      expect(updatedIntegration?.refreshToken).not.toBe('mock-refresh-token');
       expect(updatedIntegration?.scopesGranted).toEqual(['https://www.googleapis.com/auth/drive.readonly']);
       expect(updatedIntegration?.connectedAt).toBeTruthy();
     });
@@ -170,7 +183,9 @@ describe('OAuth Callback Integration Tests', () => {
         nonce: 'xyz789abc123def456'
       };
 
-      const stateParam = Buffer.from(JSON.stringify(stateData)).toString('base64');
+      const payload2 = { ...stateData, iat: Math.floor(Date.now()/1000), exp: Math.floor(Date.now()/1000) + 600 } as any;
+      const sig2 = createHmac('sha256', process.env.OAUTH_STATE_SECRET).update(JSON.stringify(payload2)).digest('hex');
+      const stateParam = Buffer.from(JSON.stringify({ p: payload2, s: sig2 })).toString('base64url');
 
       const response = await request(app)
         .get('/api/v1/oauth/callback')
@@ -192,7 +207,9 @@ describe('OAuth Callback Integration Tests', () => {
         nonce: 'logging-test-nonce-123'
       };
 
-      const stateParam = Buffer.from(JSON.stringify(stateData)).toString('base64');
+      const payload3 = { ...stateData, iat: Math.floor(Date.now()/1000), exp: Math.floor(Date.now()/1000) + 600 } as any;
+      const sig3 = createHmac('sha256', process.env.OAUTH_STATE_SECRET).update(JSON.stringify(payload3)).digest('hex');
+      const stateParam = Buffer.from(JSON.stringify({ p: payload3, s: sig3 })).toString('base64url');
 
       await request(app)
         .get('/api/v1/oauth/callback')
@@ -268,7 +285,9 @@ describe('OAuth Callback Integration Tests', () => {
         // Missing integrationId, userId, timestamp, nonce
       };
 
-      const stateParam = Buffer.from(JSON.stringify(incompleteState)).toString('base64');
+      const payload4 = { ...incompleteState } as any;
+      const sig4 = createHmac('sha256', process.env.OAUTH_STATE_SECRET!).update(JSON.stringify(payload4)).digest('hex');
+      const stateParam = Buffer.from(JSON.stringify({ p: payload4, s: sig4 })).toString('base64url');
 
       const response = await request(app)
         .get('/api/v1/oauth/callback')
@@ -291,7 +310,9 @@ describe('OAuth Callback Integration Tests', () => {
         nonce: 'expired-test-nonce'
       };
 
-      const stateParam = Buffer.from(JSON.stringify(expiredState)).toString('base64');
+      const payload5 = { ...expiredState, iat: Math.floor(Date.now()/1000) - 3600, exp: Math.floor(Date.now()/1000) - 60 } as any;
+      const sig5 = createHmac('sha256', process.env.OAUTH_STATE_SECRET!).update(JSON.stringify(payload5)).digest('hex');
+      const stateParam = Buffer.from(JSON.stringify({ p: payload5, s: sig5 })).toString('base64url');
 
       const response = await request(app)
         .get('/api/v1/oauth/callback')
@@ -314,7 +335,9 @@ describe('OAuth Callback Integration Tests', () => {
         nonce: 'future-test-nonce'
       };
 
-      const stateParam = Buffer.from(JSON.stringify(futureState)).toString('base64');
+      const payload6 = { ...futureState, iat: Math.floor(Date.now()/1000), exp: Math.floor(Date.now()/1000) + 600 } as any;
+      const sig6 = createHmac('sha256', process.env.OAUTH_STATE_SECRET!).update(JSON.stringify(payload6)).digest('hex');
+      const stateParam = Buffer.from(JSON.stringify({ p: payload6, s: sig6 })).toString('base64url');
 
       const response = await request(app)
         .get('/api/v1/oauth/callback')
@@ -337,7 +360,9 @@ describe('OAuth Callback Integration Tests', () => {
         nonce: 'invalid-id-test-nonce'
       };
 
-      const stateParam = Buffer.from(JSON.stringify(invalidState)).toString('base64');
+      const payload7 = { ...invalidState, iat: Math.floor(Date.now()/1000), exp: Math.floor(Date.now()/1000) + 600 } as any;
+      const sig7 = createHmac('sha256', process.env.OAUTH_STATE_SECRET!).update(JSON.stringify(payload7)).digest('hex');
+      const stateParam = Buffer.from(JSON.stringify({ p: payload7, s: sig7 })).toString('base64url');
 
       const response = await request(app)
         .get('/api/v1/oauth/callback')
@@ -360,7 +385,9 @@ describe('OAuth Callback Integration Tests', () => {
         nonce: 'short' // Too short (< 16 characters)
       };
 
-      const stateParam = Buffer.from(JSON.stringify(shortNonceState)).toString('base64');
+      const payload8 = { ...shortNonceState, iat: Math.floor(Date.now()/1000), exp: Math.floor(Date.now()/1000) + 600 } as any;
+      const sig8 = createHmac('sha256', process.env.OAUTH_STATE_SECRET!).update(JSON.stringify(payload8)).digest('hex');
+      const stateParam = Buffer.from(JSON.stringify({ p: payload8, s: sig8 })).toString('base64url');
 
       const response = await request(app)
         .get('/api/v1/oauth/callback')
@@ -383,7 +410,9 @@ describe('OAuth Callback Integration Tests', () => {
         nonce: 'invalid@nonce#chars!' // Invalid characters
       };
 
-      const stateParam = Buffer.from(JSON.stringify(invalidNonceState)).toString('base64');
+      const payload9 = { ...invalidNonceState, iat: Math.floor(Date.now()/1000), exp: Math.floor(Date.now()/1000) + 600 } as any;
+      const sig9 = createHmac('sha256', process.env.OAUTH_STATE_SECRET!).update(JSON.stringify(payload9)).digest('hex');
+      const stateParam = Buffer.from(JSON.stringify({ p: payload9, s: sig9 })).toString('base64url');
 
       const response = await request(app)
         .get('/api/v1/oauth/callback')
@@ -409,7 +438,9 @@ describe('OAuth Callback Integration Tests', () => {
         nonce: 'nonexistent-integration'
       };
 
-      const stateParam = Buffer.from(JSON.stringify(stateData)).toString('base64');
+      const payload10 = { ...stateData, iat: Math.floor(Date.now()/1000), exp: Math.floor(Date.now()/1000) + 600 } as any;
+      const sig10 = createHmac('sha256', process.env.OAUTH_STATE_SECRET!).update(JSON.stringify(payload10)).digest('hex');
+      const stateParam = Buffer.from(JSON.stringify({ p: payload10, s: sig10 })).toString('base64url');
 
       const response = await request(app)
         .get('/api/v1/oauth/callback')
@@ -443,7 +474,9 @@ describe('OAuth Callback Integration Tests', () => {
         nonce: 'wrong-tenant-test'
       };
 
-      const stateParam = Buffer.from(JSON.stringify(stateData)).toString('base64');
+      const payloadA = { ...stateData, iat: Math.floor(Date.now()/1000), exp: Math.floor(Date.now()/1000) + 600 } as any;
+      const sigA = createHmac('sha256', process.env.OAUTH_STATE_SECRET!).update(JSON.stringify(payloadA)).digest('hex');
+      const stateParam = Buffer.from(JSON.stringify({ p: payloadA, s: sigA })).toString('base64url');
 
       const response = await request(app)
         .get('/api/v1/oauth/callback')
@@ -481,7 +514,9 @@ describe('OAuth Callback Integration Tests', () => {
         nonce: 'replay-attack-test'
       };
 
-      const stateParam = Buffer.from(JSON.stringify(stateData)).toString('base64');
+      const payloadB = { ...stateData, iat: Math.floor(Date.now()/1000), exp: Math.floor(Date.now()/1000) + 600 } as any;
+      const sigB = createHmac('sha256', process.env.OAUTH_STATE_SECRET!).update(JSON.stringify(payloadB)).digest('hex');
+      const stateParam = Buffer.from(JSON.stringify({ p: payloadB, s: sigB })).toString('base64url');
 
       const response = await request(app)
         .get('/api/v1/oauth/callback')
@@ -520,7 +555,9 @@ describe('OAuth Callback Integration Tests', () => {
         nonce: 'no-provider-test'
       };
 
-      const stateParam = Buffer.from(JSON.stringify(stateData)).toString('base64');
+      const payloadC = { ...stateData, iat: Math.floor(Date.now()/1000), exp: Math.floor(Date.now()/1000) + 600 } as any;
+      const sigC = createHmac('sha256', process.env.OAUTH_STATE_SECRET!).update(JSON.stringify(payloadC)).digest('hex');
+      const stateParam = Buffer.from(JSON.stringify({ p: payloadC, s: sigC })).toString('base64url');
 
       const response = await request(app)
         .get('/api/v1/oauth/callback')
@@ -558,7 +595,9 @@ describe('OAuth Callback Integration Tests', () => {
         nonce: 'missing-code-test'
       };
 
-      const stateParam = Buffer.from(JSON.stringify(stateData)).toString('base64');
+      const payloadD = { ...stateData, iat: Math.floor(Date.now()/1000), exp: Math.floor(Date.now()/1000) + 600 } as any;
+      const sigD = createHmac('sha256', process.env.OAUTH_STATE_SECRET!).update(JSON.stringify(payloadD)).digest('hex');
+      const stateParam = Buffer.from(JSON.stringify({ p: payloadD, s: sigD })).toString('base64url');
 
       const response = await request(app)
         .get('/api/v1/oauth/callback')
@@ -585,7 +624,9 @@ describe('OAuth Callback Integration Tests', () => {
         nonce: 'token-failure-test'
       };
 
-      const stateParam = Buffer.from(JSON.stringify(stateData)).toString('base64');
+      const payloadE = { ...stateData, iat: Math.floor(Date.now()/1000), exp: Math.floor(Date.now()/1000) + 600 } as any;
+      const sigE = createHmac('sha256', process.env.OAUTH_STATE_SECRET!).update(JSON.stringify(payloadE)).digest('hex');
+      const stateParam = Buffer.from(JSON.stringify({ p: payloadE, s: sigE })).toString('base64url');
 
       const response = await request(app)
         .get('/api/v1/oauth/callback')
@@ -607,7 +648,9 @@ describe('OAuth Callback Integration Tests', () => {
         // Missing other required fields
       };
 
-      const stateParam = Buffer.from(JSON.stringify(invalidState)).toString('base64');
+      const payloadF = { ...invalidState, iat: Math.floor(Date.now()/1000), exp: Math.floor(Date.now()/1000) + 600 } as any;
+      const sigF = createHmac('sha256', process.env.OAUTH_STATE_SECRET!).update(JSON.stringify(payloadF)).digest('hex');
+      const stateParam = Buffer.from(JSON.stringify({ p: payloadF, s: sigF })).toString('base64url');
 
       await request(app)
         .get('/api/v1/oauth/callback')
@@ -668,7 +711,9 @@ describe('OAuth Callback Integration Tests', () => {
         nonce: 'audit-trail-test'
       };
 
-      const stateParam = Buffer.from(JSON.stringify(stateData)).toString('base64');
+      const payloadG = { ...stateData, iat: Math.floor(Date.now()/1000), exp: Math.floor(Date.now()/1000) + 600 } as any;
+      const sigG = createHmac('sha256', process.env.OAUTH_STATE_SECRET!).update(JSON.stringify(payloadG)).digest('hex');
+      const stateParam = Buffer.from(JSON.stringify({ p: payloadG, s: sigG })).toString('base64url');
 
       await request(app)
         .get('/api/v1/oauth/callback')
@@ -729,7 +774,9 @@ describe('OAuth Callback Integration Tests', () => {
         nonce: longNonce
       };
 
-      const stateParam = Buffer.from(JSON.stringify(stateData)).toString('base64');
+      const payloadH = { ...stateData, iat: Math.floor(Date.now()/1000), exp: Math.floor(Date.now()/1000) + 600 } as any;
+      const sigH = createHmac('sha256', process.env.OAUTH_STATE_SECRET!).update(JSON.stringify(payloadH)).digest('hex');
+      const stateParam = Buffer.from(JSON.stringify({ p: payloadH, s: sigH })).toString('base64url');
 
       const response = await request(app)
         .get('/api/v1/oauth/callback')
@@ -754,7 +801,9 @@ describe('OAuth Callback Integration Tests', () => {
         maliciousScript: '<script>alert("xss")</script>'
       };
 
-      const stateParam = Buffer.from(JSON.stringify(stateWithExtras)).toString('base64');
+      const payload11 = { ...stateWithExtras, iat: Math.floor(Date.now()/1000), exp: Math.floor(Date.now()/1000) + 600 } as any;
+      const sig11 = createHmac('sha256', process.env.OAUTH_STATE_SECRET!).update(JSON.stringify(payload11)).digest('hex');
+      const stateParam = Buffer.from(JSON.stringify({ p: payload11, s: sig11 })).toString('base64url');
 
       const response = await request(app)
         .get('/api/v1/oauth/callback')
@@ -777,7 +826,9 @@ describe('OAuth Callback Integration Tests', () => {
         nonce: 'missing-headers-test'
       };
 
-      const stateParam = Buffer.from(JSON.stringify(stateData)).toString('base64');
+      const payload12 = { ...stateData, iat: Math.floor(Date.now()/1000), exp: Math.floor(Date.now()/1000) + 600 } as any;
+      const sig12 = createHmac('sha256', process.env.OAUTH_STATE_SECRET!).update(JSON.stringify(payload12)).digest('hex');
+      const stateParam = Buffer.from(JSON.stringify({ p: payload12, s: sig12 })).toString('base64url');
 
       const response = await request(app)
         .get('/api/v1/oauth/callback')

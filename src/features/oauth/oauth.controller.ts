@@ -240,23 +240,11 @@ export async function handleOAuthCallback(req: Request, res: Response) {
       });
     }
     
-    // Extract code_verifier for PKCE flows
-    let codeVerifier: string | undefined;
-    if (isPKCEFlow) {
-      codeVerifier = integration.metadata?.code_verifier as string;
-      
-      logInfo('PKCE OAuth flow detected', {
-        tenantId: stateData.tenantId,
-        integrationId: stateData.integrationId,
-        hasCodeVerifier: !!codeVerifier,
-        codeVerifierLength: codeVerifier?.length
-      });
-    } else {
-      logInfo('Traditional OAuth flow detected', {
-        tenantId: stateData.tenantId,
-        integrationId: stateData.integrationId
-      });
-    }
+    // Flow type logging (PKCE verifier is now server-side only)
+    logInfo(isPKCEFlow ? 'Enhanced PKCE OAuth flow detected' : 'Traditional OAuth flow detected', {
+      tenantId: stateData.tenantId,
+      integrationId: stateData.integrationId
+    });
     
     // 7. Build and validate the redirect URI that was used for the authorization request
     // CRITICAL: Always use HTTPS for OAuth security compliance across all environments
@@ -340,7 +328,20 @@ export async function handleOAuthCallback(req: Request, res: Response) {
     // Use the normalized redirect URI for security
     const normalizedRedirectUri = redirectValidation.normalizedUri || redirectUri;
     
-    // 8. Exchange the code for tokens
+    // 8. Load PKCE verifier (server-side) from stored flow context if present
+    let codeVerifier: string | undefined;
+    try {
+      const { getDB } = await import('../../config/db.js');
+      const integrationDoc = await getDB().collection('cloudProviderIntegrations').findOne({
+        $or: [ { _id: new ObjectId(stateData.integrationId) }, { _id: stateData.integrationId } ]
+      } as any);
+      const encVerifier = (integrationDoc as any)?.oauth?.pkceVerifierEncrypted;
+      if (encVerifier) {
+        const { decrypt } = await import('../../utils/encryption.js');
+        codeVerifier = decrypt(encVerifier);
+      }
+    } catch {}
+
     logInfo('Exchanging OAuth code for tokens', {
       provider: provider.name,
       tenantId: stateData.tenantId,
@@ -376,15 +377,17 @@ export async function handleOAuthCallback(req: Request, res: Response) {
     // Ensure refreshToken persisted for later refresh tests (test-mode direct DB update)
     if (env.NODE_ENV === 'test' && tokenResponse.refreshToken) {
       const { getDB } = await import('../../config/db.js');
+      const { encrypt } = await import('../../utils/encryption.js');
       const collection = getDB().collection('cloudProviderIntegrations');
+      const encryptedRefresh = encrypt(tokenResponse.refreshToken);
       let result = await collection.updateOne(
         { _id: new ObjectId(stateData.integrationId) } as any,
-        { $set: { refreshToken: tokenResponse.refreshToken } } as any
+        { $set: { refreshToken: encryptedRefresh } } as any
       );
       if (!result || (result as any).modifiedCount === 0) {
         await collection.updateOne(
           { _id: stateData.integrationId } as any,
-          { $set: { refreshToken: tokenResponse.refreshToken } } as any
+          { $set: { refreshToken: encryptedRefresh } } as any
         );
       }
     }
@@ -499,6 +502,14 @@ export async function initiateOAuthFlow(req: Request, res: Response) {
     
     // 1. Get the integration and provider
     const integration = await cloudIntegrationsService.findById(integrationId, tenantId);
+    // Flow-lock: prevent double-init if an active flow is not expired
+    const nowMs = Date.now();
+    const expiresAt = (integration as any)?.oauth?.expiresAt ? new Date((integration as any).oauth.expiresAt).getTime() : 0;
+    const status = (integration as any)?.oauth?.status as string | undefined;
+    if (status && ['initiated','exchanging'].includes(status) && expiresAt && expiresAt > nowMs) {
+      logInfo('OAuth initiate blocked due to active flow lock', { integrationId, tenantId, status, expiresAt });
+      throw new ApiError('OAuth flow already initiated', 409);
+    }
     const provider = await cloudProviderService.findById(integration.providerId.toString(), true);
     
     // 2. Build the redirect URI using the same logic as the callback handler
@@ -528,12 +539,36 @@ export async function initiateOAuthFlow(req: Request, res: Response) {
     };
     
     const state = await oauthSecurityService.generateStateParameter(stateData);
+
+    // Generate PKCE verifier server-side and persist flow context (encrypted)
+    const pkceVerifier = Buffer.from(
+      Array.from({ length: 64 }, () => Math.floor(Math.random() * 256))
+    ).toString('base64url');
+    // Compute S256 code_challenge to be embedded in provider authorization URL
+    const { createHash } = await import('crypto');
+    const challenge = createHash('sha256').update(pkceVerifier).digest('base64')
+      .replace(/\+/g, '-')
+      .replace(/\//g, '_')
+      .replace(/=+$/, '');
+    await cloudIntegrationsService.setOAuthFlowContext(integrationId, tenantId, {
+      flowId: new ObjectId().toString(),
+      nonce: stateData.nonce,
+      stateHash: state,
+      pkceVerifierEncrypted: (await import('../../utils/encryption.js')).encrypt(pkceVerifier),
+      status: 'initiated',
+      createdAt: new Date(),
+      expiresAt: new Date(Date.now() + 10 * 60 * 1000)
+    });
     
     // 4. Generate the authorization URL
     const authorizationUrl = oauthService.generateAuthorizationUrl(
       provider,
       state,
-      redirectUri
+      redirectUri,
+      {
+        codeChallenge: challenge,
+        codeChallengeMethod: 'S256'
+      }
     );
     
     logInfo('OAuth authorization URL generated', {
