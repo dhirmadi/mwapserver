@@ -189,8 +189,9 @@ export async function refreshIntegrationToken(req: Request, res: Response) {
     }
     
     // 2. Refresh the tokens using OAuth service
+    const decryptedRefresh = decrypt(integration.refreshToken);
     const tokenResponse = await oauthService.refreshTokens(
-      integration.refreshToken,
+      decryptedRefresh,
       provider
     );
     
