@@ -184,6 +184,9 @@ export class OAuthService {
         tokenType: response.data.token_type
       });
       
+      // DEBUG: Log token lengths from provider response
+      console.log(`[OAUTH-TOKEN-EXCHANGE] Provider ${provider.name} returned: accessToken length=${response.data.access_token?.length}, refreshToken length=${response.data.refresh_token?.length}, accessToken starts with: ${response.data.access_token?.substring(0, 20)}`);
+      
       // Parse the response (handling different provider formats)
       return {
         accessToken: response.data.access_token,

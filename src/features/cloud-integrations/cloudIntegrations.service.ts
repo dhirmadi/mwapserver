@@ -236,9 +236,14 @@ export class CloudIntegrationsService {
     tokenExpiresAt.setSeconds(tokenExpiresAt.getSeconds() + expiresIn);
     const now = new Date();
     
+    console.log(`[OAUTH-UPDATE-TOKENS] Before encryption: accessToken length=${accessToken.length}, refreshToken length=${refreshToken?.length || 0}, accessToken starts with: ${accessToken.substring(0, 20)}`);
+    const encryptedAccess = encrypt(accessToken);
+    const encryptedRefresh = refreshToken ? encrypt(refreshToken) : null;
+    console.log(`[OAUTH-UPDATE-TOKENS] After encryption: accessToken length=${encryptedAccess.length}, refreshToken length=${encryptedRefresh?.length || 0}`);
+    
     const updates: Record<string, any> = {
-      accessToken: encrypt(accessToken),
-      refreshToken: refreshToken ? encrypt(refreshToken) : null,
+      accessToken: encryptedAccess,
+      refreshToken: encryptedRefresh,
       tokenExpiresAt,
       status: 'active',
       connectedAt: now,
