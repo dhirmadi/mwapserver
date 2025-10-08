@@ -440,20 +440,30 @@ export class CloudIntegrationsService {
       const apiBase = (provider?.metadata?.apiBaseUrl || 'https://api.dropboxapi.com/2').replace(/\/$/, '');
       const url = `${apiBase}/users/get_current_account`;
       console.log(`[OAUTH-HEALTH-SERVICE] Calling Dropbox API: ${url}`);
+      console.log(`[OAUTH-HEALTH-SERVICE] Token for Dropbox: length=${accessToken.length}, first 30 chars: ${accessToken.substring(0, 30)}, last 30 chars: ${accessToken.substring(accessToken.length - 30)}`);
       const t0 = Date.now();
-      const resp = await axios.post(url, {}, {
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
-          'Content-Type': 'application/json'
-        },
-        timeout: 5000
-      });
-      console.log(`[OAUTH-HEALTH-SERVICE] Dropbox API response: status=${resp.status}, duration=${Date.now() - t0}ms`);
-      if (process.env.OAUTH_DEBUG === 'true') {
-        logInfo('Health: Dropbox get_current_account result', { status: resp.status, durationMs: Date.now() - t0 });
+      try {
+        const resp = await axios.post(url, {}, {
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+            'Content-Type': 'application/json'
+          },
+          timeout: 5000,
+          validateStatus: () => true // Don't throw on any status
+        });
+        console.log(`[OAUTH-HEALTH-SERVICE] Dropbox API response: status=${resp.status}, duration=${Date.now() - t0}ms, data=${JSON.stringify(resp.data).substring(0, 200)}`);
+        if (resp.status !== 200) {
+          throw new Error(`Dropbox API returned ${resp.status}: ${JSON.stringify(resp.data)}`);
+        }
+        if (process.env.OAUTH_DEBUG === 'true') {
+          logInfo('Health: Dropbox get_current_account result', { status: resp.status, durationMs: Date.now() - t0 });
+        }
+        logInfo('Token validation successful for provider Dropbox');
+        return;
+      } catch (err: any) {
+        console.log(`[OAUTH-HEALTH-SERVICE] Dropbox API ERROR: ${err.message}, status=${err.response?.status}, data=${JSON.stringify(err.response?.data).substring(0, 200)}`);
+        throw err;
       }
-      logInfo('Token validation successful for provider Dropbox');
-      return;
     }
 
     // Generic fallbacks for other providers
