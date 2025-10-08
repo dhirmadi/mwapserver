@@ -296,11 +296,17 @@ export async function testIntegrationConnectivity(req: Request, res: Response) {
           }
         );
         const ms = Date.now() - t0;
+        if (process.env.OAUTH_DEBUG === 'true') {
+          logInfo('Dropbox get_current_account result', { status: resp.status, durationMs: ms });
+        }
         if (resp.status === 200) {
           return { tokenValid: true, apiReachable: true, scopesValid: true, responseTime: ms };
         }
-        if (resp.status === 401 || resp.status === 403) {
+        if (resp.status === 401) {
           return { tokenValid: false, apiReachable: true, scopesValid: false, responseTime: ms, authError: true } as any;
+        }
+        if (resp.status === 403) {
+          return { tokenValid: true, apiReachable: true, scopesValid: false, responseTime: ms, scopeError: true } as any;
         }
         if (resp.status === 409 || resp.status === 429) {
           return { tokenValid: false, apiReachable: true, scopesValid: false, responseTime: ms, rateLimited: true } as any;
@@ -309,6 +315,9 @@ export async function testIntegrationConnectivity(req: Request, res: Response) {
       } catch (err: any) {
         const ms = Date.now() - t0;
         const isTimeout = err?.code === 'ECONNABORTED' || err?.message?.includes('timeout');
+        if (process.env.OAUTH_DEBUG === 'true') {
+          logError('Dropbox get_current_account failed', { code: err?.code, message: err?.message } as any);
+        }
         return { tokenValid: false, apiReachable: false, scopesValid: false, responseTime: ms, networkError: true, timeout: isTimeout } as any;
       }
     };
