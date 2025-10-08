@@ -13,6 +13,8 @@ import type { CreateCloudProviderIntegrationRequest, UpdateCloudProviderIntegrat
 import { logInfo, logError, logAudit } from '../../utils/logger.js';
 import { CloudProviderService } from '../cloud-providers/cloudProviders.service.js';
 import { OAuthService } from '../oauth/oauth.service.js';
+import axios from 'axios';
+import { decrypt, encrypt } from '../../utils/encryption.js';
 
 const cloudIntegrationsService = new CloudIntegrationsService();
 const cloudProviderService = new CloudProviderService();
@@ -242,6 +244,151 @@ export async function checkIntegrationHealth(req: Request, res: Response) {
     return jsonResponse(res, 200, healthStatus);
   } catch (error) {
     logError('Integration health check error', error);
+    throw error;
+  }
+}
+
+/**
+ * Test integration connectivity and token validity (with optional one-time refresh retry)
+ */
+export async function testIntegrationConnectivity(req: Request, res: Response) {
+  const user = getUserFromToken(req);
+  const { tenantId, integrationId } = req.params;
+
+  logInfo(`Testing integration connectivity ${integrationId} for tenant ${tenantId} by user ${user.sub}`);
+
+  const startedAt = Date.now();
+  try {
+    // 1) Load integration and verify tenant ownership
+    const integration = await cloudIntegrationsService.findById(integrationId, tenantId);
+    const provider = await cloudProviderService.findById(integration.providerId.toString(), true);
+
+    // 2) Decrypt tokens
+    const accessToken = integration.accessToken ? decrypt(integration.accessToken) : '';
+    const refreshToken = integration.refreshToken ? decrypt(integration.refreshToken) : '';
+
+    if (!accessToken) {
+      return jsonResponse(res, 200, {
+        success: false,
+        details: {
+          tokenValid: false,
+          apiReachable: true,
+          scopesValid: false,
+          responseTime: 0
+        },
+        error: 'Missing access token'
+      } as any);
+    }
+
+    const doDropboxTest = async (token: string) => {
+      const t0 = Date.now();
+      try {
+        const resp = await axios.post(
+          'https://api.dropboxapi.com/2/users/get_current_account',
+          {},
+          {
+            headers: {
+              Authorization: `Bearer ${token}`,
+              'Content-Type': 'application/json'
+            },
+            timeout: 5000,
+            validateStatus: () => true
+          }
+        );
+        const ms = Date.now() - t0;
+        if (resp.status === 200) {
+          return { tokenValid: true, apiReachable: true, scopesValid: true, responseTime: ms };
+        }
+        if (resp.status === 401 || resp.status === 403) {
+          return { tokenValid: false, apiReachable: true, scopesValid: false, responseTime: ms, authError: true } as any;
+        }
+        if (resp.status === 409 || resp.status === 429) {
+          return { tokenValid: false, apiReachable: true, scopesValid: false, responseTime: ms, rateLimited: true } as any;
+        }
+        return { tokenValid: false, apiReachable: true, scopesValid: false, responseTime: ms };
+      } catch {
+        const ms = Date.now() - t0;
+        return { tokenValid: false, apiReachable: false, scopesValid: false, responseTime: ms };
+      }
+    };
+
+    const providerName = (provider.name || provider.slug || '').toLowerCase();
+    if (providerName !== 'dropbox' && provider.slug?.toLowerCase() !== 'dropbox') {
+      throw new ApiError('Unsupported provider for test endpoint', 400, CloudProviderIntegrationErrorCodes.INVALID_INPUT);
+    }
+
+    let details: any = await doDropboxTest(accessToken);
+
+    // 4) One-time refresh retry on 401/403
+    if (details.authError && refreshToken) {
+      try {
+        const params = new URLSearchParams({
+          grant_type: 'refresh_token',
+          refresh_token: refreshToken
+        });
+        const basic = Buffer.from(`${provider.clientId}:${provider.clientSecret}`).toString('base64');
+        const refreshResp = await axios.post(
+          'https://api.dropboxapi.com/oauth2/token',
+          params.toString(),
+          {
+            headers: {
+              'Content-Type': 'application/x-www-form-urlencoded',
+              Authorization: `Basic ${basic}`
+            },
+            timeout: 10000,
+            validateStatus: () => true
+          }
+        );
+        if (refreshResp.status === 200 && refreshResp.data?.access_token) {
+          const newAccess = refreshResp.data.access_token as string;
+          const newRefresh = refreshResp.data.refresh_token as string | undefined;
+          const expiresIn = Number(refreshResp.data.expires_in || 0);
+          await cloudIntegrationsService.updateTokens(
+            integrationId,
+            tenantId,
+            newAccess,
+            newRefresh,
+            expiresIn,
+            user.sub,
+            undefined
+          );
+          details = await doDropboxTest(newAccess);
+          await cloudIntegrationsService.update(integrationId, tenantId, { status: details.tokenValid ? 'active' : 'error' } as any, user.sub);
+        } else {
+          await cloudIntegrationsService.update(integrationId, tenantId, { status: 'error' } as any, user.sub);
+          return jsonResponse(res, 200, {
+            success: false,
+            details,
+            error: 'Refresh token invalid or expired; reconnect required'
+          } as any);
+        }
+      } catch {
+        await cloudIntegrationsService.update(integrationId, tenantId, { status: 'error' } as any, user.sub);
+        return jsonResponse(res, 200, {
+          success: false,
+          details,
+          error: 'Refresh token invalid or expired; reconnect required'
+        } as any);
+      }
+    }
+
+    // 5) Persist minor state based on final details
+    await cloudIntegrationsService.update(integrationId, tenantId, { status: details.tokenValid ? 'active' : 'error' } as any, user.sub);
+
+    // 6) Return result
+    const totalMs = Date.now() - startedAt;
+    return jsonResponse(res, 200, {
+      success: Boolean(details.tokenValid && details.apiReachable && details.scopesValid),
+      details: {
+        tokenValid: Boolean(details.tokenValid),
+        apiReachable: Boolean(details.apiReachable),
+        scopesValid: Boolean(details.scopesValid),
+        responseTime: details.responseTime ?? totalMs
+      },
+      ...(details.rateLimited ? { error: 'Rate limited by provider; retry later' } : {})
+    } as any);
+  } catch (error) {
+    logError('Integration test error', error as any);
     throw error;
   }
 }

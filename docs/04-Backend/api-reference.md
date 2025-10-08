@@ -587,6 +587,43 @@ Check the health status of a cloud integration.
 **Authentication:** Required  
 **Authorization:** Tenant owner
 
+### Test Integration Connectivity
+Validate connectivity and token validity to the provider (with a one-time refresh retry on 401/403 if a refresh token is present).
+
+**Endpoint:** `POST /api/v1/tenants/:tenantId/integrations/:integrationId/test`  
+**Authentication:** Required  
+**Authorization:** Tenant owner  
+**Rate Limit:** 10 requests/minute per integration
+
+**Response (examples):**
+
+Successful test:
+```json
+{
+  "success": true,
+  "data": {
+    "tokenValid": true,
+    "apiReachable": true,
+    "scopesValid": true,
+    "responseTime": 142
+  }
+}
+```
+
+Auth failure with refresh retry failed:
+```json
+{
+  "success": false,
+  "data": {
+    "tokenValid": false,
+    "apiReachable": true,
+    "scopesValid": false,
+    "responseTime": 95
+  },
+  "error": "Refresh token invalid or expired; reconnect required"
+}
+```
+
 ## 📄 Files API
 
 ### List Project Files
@@ -724,10 +761,10 @@ All errors result in generic responses to prevent information disclosure:
 - Provider error → "Authentication failed"
 
 **Success Response:**
-Redirects to: `/oauth/success?tenantId={tenantId}&integrationId={integrationId}`
+Redirects to: `/api/v1/oauth/success?tenantId={tenantId}&integrationId={integrationId}`
 
 **Error Response:**
-Redirects to: `/oauth/error?message={encoded_message}`
+Redirects to: `/api/v1/oauth/error?message={encoded_message}`
 
 **Security Monitoring:**
 All callback attempts are logged with comprehensive context:
