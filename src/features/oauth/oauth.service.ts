@@ -130,6 +130,9 @@ export class OAuthService {
       const response = await axios(tokenRequest);
       const duration = Date.now() - startTime;
       
+      // DEBUG: Log the raw response from provider
+      console.log(`[OAUTH-TOKEN-EXCHANGE-RAW] Provider ${provider.name} raw response: status=${response.status}, data keys=${Object.keys(response.data || {}).join(',')}, full response data:`, JSON.stringify(response.data).substring(0, 500));
+      
       // Handle different HTTP status codes
       if (response.status >= 400) {
         const errorData = response.data || {};
