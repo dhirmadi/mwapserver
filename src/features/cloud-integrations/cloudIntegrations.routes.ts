@@ -1,4 +1,5 @@
 import { Router } from 'express';
+import rateLimit from 'express-rate-limit';
 import { wrapAsyncHandler } from '../../utils/response.js';
 import {
   getTenantIntegrations,
@@ -7,7 +8,8 @@ import {
   updateTenantIntegration,
   deleteTenantIntegration,
   refreshIntegrationToken,
-  checkIntegrationHealth
+  checkIntegrationHealth,
+  testIntegrationConnectivity
 } from './cloudIntegrations.controller.js';
 import { requireTenantOwner } from '../../middleware/auth.js';
 import { logInfo } from '../../utils/logger.js';
@@ -39,6 +41,17 @@ export function getCloudIntegrationsRouter(): Router {
   // POST /api/v1/tenants/:tenantId/integrations/:integrationId/refresh-token
   router.post('/:integrationId/refresh-token', wrapAsyncHandler(refreshIntegrationToken));
   
+  // POST /api/v1/tenants/:tenantId/integrations/:integrationId/test
+  // Per-integration rate limit: 10 requests/minute
+  const testLimiter = rateLimit({
+    windowMs: 60 * 1000,
+    max: 10,
+    standardHeaders: true,
+    legacyHeaders: false,
+    keyGenerator: (req: any) => `test:${req.params?.integrationId || 'unknown'}`
+  });
+  router.post('/:integrationId/test', testLimiter, wrapAsyncHandler(testIntegrationConnectivity));
+
   // GET /api/v1/tenants/:tenantId/integrations/:integrationId/health
   router.get('/:integrationId/health', wrapAsyncHandler(checkIntegrationHealth));
   
