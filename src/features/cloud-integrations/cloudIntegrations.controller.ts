@@ -268,16 +268,15 @@ export async function testIntegrationConnectivity(req: Request, res: Response) {
     const refreshToken = integration.refreshToken ? decrypt(integration.refreshToken) : '';
 
     if (!accessToken) {
-      return jsonResponse(res, 200, {
+      return res.status(200).json({
         success: false,
         details: {
           tokenValid: false,
-          apiReachable: true,
-          scopesValid: false,
-          responseTime: 0
+          apiReachable: false,
+          scopesValid: false
         },
         error: 'Missing access token'
-      } as any);
+      });
     }
 
     const doDropboxTest = async (token: string) => {
@@ -306,9 +305,10 @@ export async function testIntegrationConnectivity(req: Request, res: Response) {
           return { tokenValid: false, apiReachable: true, scopesValid: false, responseTime: ms, rateLimited: true } as any;
         }
         return { tokenValid: false, apiReachable: true, scopesValid: false, responseTime: ms };
-      } catch {
+      } catch (err: any) {
         const ms = Date.now() - t0;
-        return { tokenValid: false, apiReachable: false, scopesValid: false, responseTime: ms };
+        const isTimeout = err?.code === 'ECONNABORTED' || err?.message?.includes('timeout');
+        return { tokenValid: false, apiReachable: false, scopesValid: false, responseTime: ms, networkError: true, timeout: isTimeout } as any;
       }
     };
 
@@ -347,7 +347,7 @@ export async function testIntegrationConnectivity(req: Request, res: Response) {
             integrationId,
             tenantId,
             newAccess,
-            newRefresh,
+            newRefresh || '',
             expiresIn,
             user.sub,
             undefined
@@ -356,19 +356,29 @@ export async function testIntegrationConnectivity(req: Request, res: Response) {
           await cloudIntegrationsService.update(integrationId, tenantId, { status: details.tokenValid ? 'active' : 'error' } as any, user.sub);
         } else {
           await cloudIntegrationsService.update(integrationId, tenantId, { status: 'error' } as any, user.sub);
-          return jsonResponse(res, 200, {
+          return res.status(200).json({
             success: false,
-            details,
+            details: {
+              tokenValid: Boolean(details.tokenValid),
+              apiReachable: Boolean(details.apiReachable),
+              scopesValid: Boolean(details.scopesValid),
+              ...(details.responseTime != null ? { responseTime: details.responseTime } : {})
+            },
             error: 'Refresh token invalid or expired; reconnect required'
-          } as any);
+          });
         }
       } catch {
         await cloudIntegrationsService.update(integrationId, tenantId, { status: 'error' } as any, user.sub);
-        return jsonResponse(res, 200, {
+        return res.status(200).json({
           success: false,
-          details,
+          details: {
+            tokenValid: Boolean(details.tokenValid),
+            apiReachable: Boolean(details.apiReachable),
+            scopesValid: Boolean(details.scopesValid),
+            ...(details.responseTime != null ? { responseTime: details.responseTime } : {})
+          },
           error: 'Refresh token invalid or expired; reconnect required'
-        } as any);
+        });
       }
     }
 
@@ -377,16 +387,19 @@ export async function testIntegrationConnectivity(req: Request, res: Response) {
 
     // 6) Return result
     const totalMs = Date.now() - startedAt;
-    return jsonResponse(res, 200, {
-      success: Boolean(details.tokenValid && details.apiReachable && details.scopesValid),
+    const successEval = Boolean(details.tokenValid && details.apiReachable && details.scopesValid);
+    const base: any = {
+      success: successEval,
       details: {
         tokenValid: Boolean(details.tokenValid),
         apiReachable: Boolean(details.apiReachable),
         scopesValid: Boolean(details.scopesValid),
         responseTime: details.responseTime ?? totalMs
-      },
-      ...(details.rateLimited ? { error: 'Rate limited by provider; retry later' } : {})
-    } as any);
+      }
+    };
+    if (details.rateLimited) base.error = 'Provider rate limit exceeded; retry later';
+    if (details.networkError) base.error = 'Provider unreachable (timeout)';
+    return res.status(200).json(base);
   } catch (error) {
     logError('Integration test error', error as any);
     throw error;
