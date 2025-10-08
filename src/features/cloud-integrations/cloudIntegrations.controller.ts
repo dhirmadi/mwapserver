@@ -1,6 +1,7 @@
 import { Request, Response } from 'express';
 import { CloudIntegrationsService } from './cloudIntegrations.service.js';
 import { validateWithSchema } from '../../utils/validate.js';
+import { z } from 'zod';
 import { getUserFromToken } from '../../utils/auth.js';
 import { jsonResponse } from '../../utils/response.js';
 import { ApiError } from '../../utils/errors.js';
@@ -407,5 +408,216 @@ export async function testIntegrationConnectivity(req: Request, res: Response) {
   } catch (error) {
     logError('Integration test error', error as any);
     throw error;
+  }
+}
+
+// ===== Folder Browsing Endpoint =====
+
+const browseQuerySchema = z.object({
+  containerId: z.string().trim().min(1).optional(),
+  folderId: z.string().trim().min(1).optional(),
+  path: z.string().trim().optional(),
+  cursor: z.string().trim().optional()
+}).transform((v) => ({
+  containerId: v.containerId,
+  folderId: v.folderId,
+  cursor: v.cursor,
+  path: (v.path && v.path.length > 0 ? v.path : '/')
+})).refine((v) => v.path.startsWith('/'), { message: 'path must start with "/"', path: ['path'] });
+
+type BrowseQuery = { containerId?: string; folderId?: string; cursor?: string; path: string };
+
+interface FolderItem {
+  id: string;
+  name: string;
+  path: string;
+  isFolder: true;
+  isContainer?: boolean;
+}
+
+interface ListResult {
+  items: FolderItem[];
+  nextCursor?: string | null;
+}
+
+interface ProviderCapabilities {
+  supportsPath: boolean;
+  supportsId: boolean;
+  supportsContainers: boolean;
+  maxPageSize: number | null;
+}
+
+interface ProviderContext {
+  accessToken: string;
+  provider: any;
+}
+
+interface ProviderAdapter {
+  listContainers(ctx: ProviderContext, cursor?: string | undefined): Promise<ListResult>;
+  listFoldersById(ctx: ProviderContext, containerId: string, folderId: string, cursor?: string | undefined): Promise<ListResult>;
+  listFoldersByPath(ctx: ProviderContext, containerId: string | undefined, path: string, cursor?: string | undefined): Promise<ListResult>;
+  capabilities(): ProviderCapabilities;
+}
+
+class DropboxAdapter implements ProviderAdapter {
+  capabilities(): ProviderCapabilities {
+    return { supportsPath: true, supportsId: false, supportsContainers: false, maxPageSize: null };
+  }
+  async listContainers(_ctx: ProviderContext): Promise<ListResult> {
+    return { items: [], nextCursor: null };
+  }
+  async listFoldersById(_ctx: ProviderContext, _containerId: string, _folderId: string): Promise<ListResult> {
+    throw new ApiError('Provider does not support id-based folder listing', 400, 'capability/not-supported');
+  }
+  async listFoldersByPath(ctx: ProviderContext, _containerId: string | undefined, path: string, cursor?: string): Promise<ListResult> {
+    const listUrl = 'https://api.dropboxapi.com/2/files/list_folder';
+    if (cursor) {
+      const continueUrl = 'https://api.dropboxapi.com/2/files/list_folder/continue';
+      const resp = await axios({
+        method: 'POST',
+        url: continueUrl,
+        headers: { Authorization: `Bearer ${ctx.accessToken}`, 'Content-Type': 'application/json' },
+        data: { cursor },
+        timeout: 10000,
+        validateStatus: () => true
+      });
+      if (resp.status === 401) throw new ApiError('Unauthorized', 401, 'oauth/unauthorized');
+      if (resp.status === 403) throw new ApiError('Forbidden', 403, 'oauth/forbidden');
+      if (resp.status >= 500) throw new ApiError('Provider error', 502, 'provider/error');
+      const entries = Array.isArray(resp.data?.entries) ? resp.data.entries : [];
+      const items: FolderItem[] = entries.filter((e: any) => e['.tag'] === 'folder')
+        .map((e: any) => ({ id: e.id, name: e.name, path: path === '/' ? `/${e.name}` : `${path}/${e.name}`, isFolder: true as const }));
+      return { items, nextCursor: resp.data?.has_more ? resp.data?.cursor : null };
+    }
+    const resp = await axios({
+      method: 'POST',
+      url: listUrl,
+      headers: { Authorization: `Bearer ${ctx.accessToken}`, 'Content-Type': 'application/json' },
+      data: { path: path === '/' ? '' : path, recursive: false, include_deleted: false, include_non_downloadable_files: true },
+      timeout: 10000,
+      validateStatus: () => true
+    });
+    if (resp.status === 401) throw new ApiError('Unauthorized', 401, 'oauth/unauthorized');
+    if (resp.status === 403) throw new ApiError('Forbidden', 403, 'oauth/forbidden');
+    if (resp.status >= 500) throw new ApiError('Provider error', 502, 'provider/error');
+    const entries = Array.isArray(resp.data?.entries) ? resp.data.entries : [];
+    const items: FolderItem[] = entries.filter((e: any) => e['.tag'] === 'folder')
+      .map((e: any) => ({ id: e.id, name: e.name, path: path === '/' ? `/${e.name}` : `${path}/${e.name}`, isFolder: true as const }));
+    return { items, nextCursor: resp.data?.has_more ? resp.data?.cursor : null };
+  }
+}
+
+function getAdapterForProvider(provider: any): ProviderAdapter {
+  const name = (provider?.name || provider?.slug || provider?.metadata?.providerType || '').toLowerCase();
+  if (name === 'dropbox') return new DropboxAdapter();
+  return new DropboxAdapter();
+}
+
+export async function browseIntegrationFolders(req: Request, res: Response) {
+  const user = getUserFromToken(req);
+  const { tenantId, integrationId } = req.params as { tenantId: string; integrationId: string };
+  const parsed = browseQuerySchema.parse(req.query);
+  const query: BrowseQuery = { containerId: parsed.containerId, folderId: parsed.folderId, cursor: parsed.cursor, path: parsed.path };
+
+  logInfo('Browse folders request', { tenantId, integrationId, userId: user.sub, containerId: query.containerId, folderId: query.folderId, path: query.path, cursor: query.cursor });
+
+  try {
+    const integration = await cloudIntegrationsService.findById(integrationId, tenantId);
+    const provider = await cloudProviderService.findById(integration.providerId.toString(), true);
+    const accessToken = integration.accessToken ? decrypt(integration.accessToken) : '';
+    const refreshToken = integration.refreshToken ? decrypt(integration.refreshToken) : '';
+    if (!accessToken) throw new ApiError('Missing access token', 401, 'oauth/unauthorized');
+
+    const adapter = getAdapterForProvider(provider);
+    const capabilities = adapter.capabilities();
+    const ctx: ProviderContext = { accessToken, provider };
+
+    const execList = async (): Promise<ListResult> => {
+      if (!query.containerId && !query.folderId) {
+        if (capabilities.supportsContainers) {
+          const containers = await adapter.listContainers(ctx, query.cursor);
+          containers.items = containers.items.map(i => ({ ...i, isContainer: true }));
+          return containers;
+        }
+        if (capabilities.supportsPath) return adapter.listFoldersByPath(ctx, undefined, '/', query.cursor);
+        throw new ApiError('Provider does not support path addressing', 400, 'capability/not-supported');
+      }
+      if (query.folderId) {
+        if (!capabilities.supportsId) throw new ApiError('Provider does not support id addressing', 400, 'capability/not-supported');
+        return adapter.listFoldersById(ctx, query.containerId || '', query.folderId, query.cursor);
+      }
+      if (query.path) {
+        if (!capabilities.supportsPath) throw new ApiError('Provider does not support path addressing', 400, 'capability/not-supported');
+        return adapter.listFoldersByPath(ctx, query.containerId, query.path, query.cursor);
+      }
+      throw new ApiError('Invalid parameters', 400, 'validation/invalid-params');
+    };
+
+    let result: ListResult | undefined;
+    try {
+      result = await execList();
+    } catch (err: any) {
+      // Try one-time refresh on 401/403 auth errors
+      const status = (err instanceof ApiError ? (err as any).statusCode : undefined) || err?.status;
+      const isAuthError = status === 401 || status === 403;
+      if (isAuthError && refreshToken) {
+        try {
+          const tokenResp = await oauthService.refreshTokens(refreshToken, provider);
+          await cloudIntegrationsService.updateTokens(
+            integrationId,
+            tenantId,
+            tokenResp.accessToken,
+            tokenResp.refreshToken || '',
+            tokenResp.expiresIn,
+            user.sub,
+            tokenResp.scopesGranted
+          );
+          const ctxRefreshed: ProviderContext = { accessToken: tokenResp.accessToken, provider };
+          // Re-run with new token
+          const rerun = async (): Promise<ListResult> => {
+            if (!query.containerId && !query.folderId) {
+              if (capabilities.supportsContainers) {
+                const containers = await adapter.listContainers(ctxRefreshed, query.cursor);
+                containers.items = containers.items.map(i => ({ ...i, isContainer: true }));
+                return containers;
+              }
+              if (capabilities.supportsPath) return adapter.listFoldersByPath(ctxRefreshed, undefined, '/', query.cursor);
+              throw new ApiError('Provider does not support path addressing', 400, 'capability/not-supported');
+            }
+            if (query.folderId) {
+              if (!capabilities.supportsId) throw new ApiError('Provider does not support id addressing', 400, 'capability/not-supported');
+              return adapter.listFoldersById(ctxRefreshed, query.containerId || '', query.folderId, query.cursor);
+            }
+            if (query.path) {
+              if (!capabilities.supportsPath) throw new ApiError('Provider does not support path addressing', 400, 'capability/not-supported');
+              return adapter.listFoldersByPath(ctxRefreshed, query.containerId, query.path, query.cursor);
+            }
+            throw new ApiError('Invalid parameters', 400, 'validation/invalid-params');
+          };
+          result = await rerun();
+        } catch (refreshErr) {
+          throw err; // fall back to original error mapping
+        }
+      } else {
+        throw err;
+      }
+    }
+
+    return res.status(200).json({
+      success: true,
+      data: result.items.map(i => ({ ...i, isFolder: true, isContainer: Boolean(i.isContainer) })),
+      nextCursor: result.nextCursor ?? null,
+      hasMore: Boolean(result.nextCursor),
+      capabilities
+    });
+  } catch (error: any) {
+    if (error instanceof ApiError) {
+      const status = (error as any).statusCode || 500;
+      const code = error.code || (status >= 500 ? 'server/error' : 'client/error');
+      const message = status >= 500 ? 'Upstream provider error' : error.message;
+      return res.status(status).json({ success: false, error: { code, message } });
+    }
+    logError('Folder browsing failed', error);
+    return res.status(500).json({ success: false, error: { code: 'server/error', message: 'Unexpected server error' } });
   }
 }

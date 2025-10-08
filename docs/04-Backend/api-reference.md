@@ -37,6 +37,54 @@ Authorization: Bearer <jwt_token>
 - `GET /api/v1/oauth/error` - OAuth error page with user-friendly messages
 
 ### Backend-driven OAuth Flow
+### Cloud Integrations: Folder Browsing
+
+Browse folders for a connected provider in a provider-agnostic way. Returns only folders (no files) with normalized fields and pagination.
+
+Endpoint: `GET /api/v1/tenants/:tenantId/integrations/:integrationId/folders`
+
+Query Parameters:
+- `containerId` (optional string): Provider container (e.g., driveId, bucket, siteId). If omitted and provider requires a container, the response lists available containers as folders with `isContainer: true`.
+- `folderId` (optional string): Folder id to list by id-first capability; preferred when supported.
+- `path` (optional string, default `/`): Absolute display path for path-addressing providers. Ignored if `folderId` is provided.
+- `cursor` (optional string): Provider pagination cursor.
+
+AuthZ:
+- Requires valid JWT
+- Enforces tenant RBAC
+- Verifies integration belongs to tenant
+
+Behavior:
+- Resolves integration and provider; decrypts token; refreshes once on 401 and retries
+- Resolves starting scope based on `containerId`/`folderId`/`path` and provider capabilities
+- Returns only folders; normalizes `id`, `name`, `path`, `isFolder`, `isContainer`
+- Includes `capabilities` { supportsPath, supportsId, supportsContainers, maxPageSize }
+
+Response 200:
+```
+{
+  "success": true,
+  "data": [
+    { "id": "string", "name": "Folder Name", "path": "/Display/Path", "isFolder": true, "isContainer": false }
+  ],
+  "nextCursor": "string|null",
+  "hasMore": true,
+  "capabilities": {
+    "supportsPath": true,
+    "supportsId": false,
+    "supportsContainers": false,
+    "maxPageSize": null
+  }
+}
+```
+
+Errors:
+- 400 `capability/not-supported` | `validation/invalid-params`
+- 401/403: Authorization/token errors; refresh failed
+- 404: `integration/not-found` | `container/not-found` | `folder/not-found`
+- 429: Rate-limited; may include `retryAfter`
+- 5xx: Provider/upstream error mapped to 502/504
+
 
 - `POST /api/v1/oauth/tenants/{tenantId}/integrations/{integrationId}/initiate`
   - Generates HMAC-signed state, server-side PKCE verifier, persists ephemeral flow context, and returns provider `authorizationUrl`.
