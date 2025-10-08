@@ -9,7 +9,8 @@ import {
   deleteTenantIntegration,
   refreshIntegrationToken,
   checkIntegrationHealth,
-  testIntegrationConnectivity
+  testIntegrationConnectivity,
+  browseIntegrationFolders
 } from './cloudIntegrations.controller.js';
 import { requireTenantOwner } from '../../middleware/auth.js';
 import { logInfo } from '../../utils/logger.js';
@@ -54,6 +55,24 @@ export function getCloudIntegrationsRouter(): Router {
 
   // GET /api/v1/tenants/:tenantId/integrations/:integrationId/health
   router.get('/:integrationId/health', wrapAsyncHandler(checkIntegrationHealth));
+
+  // GET /api/v1/tenants/:tenantId/integrations/:integrationId/folders
+  // Per-tenant+integration token-bucket style rate limit (approx 60 rpm)
+  const foldersLimiter = rateLimit({
+    windowMs: 60 * 1000,
+    max: 60,
+    standardHeaders: true,
+    legacyHeaders: false,
+    keyGenerator: (req: any) => `folders:${req.params?.tenantId || 'ten'}:${req.params?.integrationId || 'unknown'}`,
+    message: {
+      success: false,
+      error: {
+        code: 'rate-limit/exceeded',
+        message: 'Too many folder browsing requests. Please try again later.'
+      }
+    }
+  });
+  router.get('/:integrationId/folders', foldersLimiter, wrapAsyncHandler(browseIntegrationFolders));
   
   return router;
 }
