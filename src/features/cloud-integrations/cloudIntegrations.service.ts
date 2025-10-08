@@ -236,14 +236,9 @@ export class CloudIntegrationsService {
     tokenExpiresAt.setSeconds(tokenExpiresAt.getSeconds() + expiresIn);
     const now = new Date();
     
-    console.log(`[OAUTH-UPDATE-TOKENS] Before encryption: accessToken length=${accessToken.length}, refreshToken length=${refreshToken?.length || 0}, accessToken starts with: ${accessToken.substring(0, 20)}`);
-    const encryptedAccess = encrypt(accessToken);
-    const encryptedRefresh = refreshToken ? encrypt(refreshToken) : null;
-    console.log(`[OAUTH-UPDATE-TOKENS] After encryption: accessToken length=${encryptedAccess.length}, refreshToken length=${encryptedRefresh?.length || 0}`);
-    
     const updates: Record<string, any> = {
-      accessToken: encryptedAccess,
-      refreshToken: encryptedRefresh,
+      accessToken: encrypt(accessToken),
+      refreshToken: refreshToken ? encrypt(refreshToken) : null,
       tokenExpiresAt,
       status: 'active',
       connectedAt: now,
@@ -318,7 +313,6 @@ export class CloudIntegrationsService {
     message?: string;
   }> {
     try {
-      console.log(`[OAUTH-HEALTH-SERVICE] Starting health check for integration ${id} in tenant ${tenantId}`);
       const integration = await this.findById(id, tenantId);
       const now = new Date();
       
@@ -366,7 +360,6 @@ export class CloudIntegrationsService {
       try {
         // Decrypt token before testing with provider
         const decryptedAccessToken = decrypt(integration.accessToken);
-        console.log(`[OAUTH-HEALTH-SERVICE] Testing token with provider (token length: ${decryptedAccessToken.length})`);
         await this.testTokenWithProvider(decryptedAccessToken, provider);
         
         // Update the integration status to healthy if the test passes
@@ -439,35 +432,21 @@ export class CloudIntegrationsService {
     if (providerName === 'dropbox') {
       const apiBase = (provider?.metadata?.apiBaseUrl || 'https://api.dropboxapi.com/2').replace(/\/$/, '');
       const url = `${apiBase}/users/get_current_account`;
-      console.log(`[OAUTH-HEALTH-SERVICE] Calling Dropbox API: ${url}`);
-      console.log(`[OAUTH-HEALTH-SERVICE] Token for Dropbox: length=${accessToken.length}, first 30 chars: ${accessToken.substring(0, 30)}, last 30 chars: ${accessToken.substring(accessToken.length - 30)}`);
-      const t0 = Date.now();
-      try {
-        // Dropbox API expects POST with no body but application/json Content-Type
-        const resp = await axios({
-          method: 'POST',
-          url,
-          headers: {
-            Authorization: `Bearer ${accessToken}`,
-            'Content-Type': 'application/json'
-          },
-          data: null, // Explicitly null to prevent axios from setting form-urlencoded
-          timeout: 5000,
-          validateStatus: () => true // Don't throw on any status
-        });
-        console.log(`[OAUTH-HEALTH-SERVICE] Dropbox API response: status=${resp.status}, duration=${Date.now() - t0}ms, data=${JSON.stringify(resp.data).substring(0, 200)}`);
-        if (resp.status !== 200) {
-          throw new Error(`Dropbox API returned ${resp.status}: ${JSON.stringify(resp.data)}`);
-        }
-        if (process.env.OAUTH_DEBUG === 'true') {
-          logInfo('Health: Dropbox get_current_account result', { status: resp.status, durationMs: Date.now() - t0 });
-        }
-        logInfo('Token validation successful for provider Dropbox');
-        return;
-      } catch (err: any) {
-        console.log(`[OAUTH-HEALTH-SERVICE] Dropbox API ERROR: ${err.message}, status=${err.response?.status}, data=${JSON.stringify(err.response?.data).substring(0, 200)}`);
-        throw err;
-      }
+      
+      // Dropbox API expects POST with no body but application/json Content-Type
+      const resp = await axios({
+        method: 'POST',
+        url,
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          'Content-Type': 'application/json'
+        },
+        data: null, // Explicitly null to prevent axios from setting form-urlencoded
+        timeout: 5000
+      });
+      
+      logInfo('Token validation successful for provider Dropbox');
+      return;
     }
 
     // Generic fallbacks for other providers

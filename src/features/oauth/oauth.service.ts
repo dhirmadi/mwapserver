@@ -130,9 +130,6 @@ export class OAuthService {
       const response = await axios(tokenRequest);
       const duration = Date.now() - startTime;
       
-      // DEBUG: Log the raw response from provider
-      console.log(`[OAUTH-TOKEN-EXCHANGE-RAW] Provider ${provider.name} raw response: status=${response.status}, data keys=${Object.keys(response.data || {}).join(',')}, full response data:`, JSON.stringify(response.data).substring(0, 500));
-      
       // Handle different HTTP status codes
       if (response.status >= 400) {
         const errorData = response.data || {};
@@ -186,9 +183,6 @@ export class OAuthService {
         scopesGranted: response.data.scope ? response.data.scope.split(' ') : undefined,
         tokenType: response.data.token_type
       });
-      
-      // DEBUG: Log token lengths from provider response
-      console.log(`[OAUTH-TOKEN-EXCHANGE] Provider ${provider.name} returned: accessToken length=${response.data.access_token?.length}, refreshToken length=${response.data.refresh_token?.length}, accessToken starts with: ${response.data.access_token?.substring(0, 20)}`);
       
       // Parse the response (handling different provider formats)
       return {

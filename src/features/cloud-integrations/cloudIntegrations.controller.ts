@@ -235,8 +235,6 @@ export async function checkIntegrationHealth(req: Request, res: Response) {
     const user = getUserFromToken(req);
     const { tenantId, integrationId } = req.params;
     
-    // ALWAYS log entry to this function to verify it's being called
-    console.log(`[OAUTH-HEALTH] Checking health for integration ${integrationId} in tenant ${tenantId} by user ${user.sub}`);
     logInfo(`Checking health for integration ${integrationId} in tenant ${tenantId} by user ${user.sub}`);
     
     // Get the integration health status
@@ -258,8 +256,6 @@ export async function testIntegrationConnectivity(req: Request, res: Response) {
   const user = getUserFromToken(req);
   const { tenantId, integrationId } = req.params;
 
-  // ALWAYS log entry to this function to verify it's being called
-  console.log(`[OAUTH-TEST] Testing integration connectivity ${integrationId} for tenant ${tenantId} by user ${user.sub}`);
   logInfo(`Testing integration connectivity ${integrationId} for tenant ${tenantId} by user ${user.sub}`);
 
   const startedAt = Date.now();
@@ -269,10 +265,8 @@ export async function testIntegrationConnectivity(req: Request, res: Response) {
     const provider = await cloudProviderService.findById(integration.providerId.toString(), true);
 
     // 2) Decrypt tokens
-    console.log(`[OAUTH-TEST] Encrypted token length: ${integration.accessToken?.length || 0}`);
     const accessToken = integration.accessToken ? decrypt(integration.accessToken) : '';
     const refreshToken = integration.refreshToken ? decrypt(integration.refreshToken) : '';
-    console.log(`[OAUTH-TEST] Decrypted token length: ${accessToken.length}, starts with: ${accessToken.substring(0, 30)}`);
 
     if (!accessToken) {
       return res.status(200).json({
@@ -288,7 +282,6 @@ export async function testIntegrationConnectivity(req: Request, res: Response) {
 
     const doDropboxTest = async (token: string) => {
       const t0 = Date.now();
-      console.log(`[OAUTH-TEST] Calling Dropbox API with token (length: ${token.length}, first 20 chars: ${token.substring(0, 20)})`);
       try {
         // Dropbox API expects POST with no body but application/json Content-Type
         const resp = await axios({
@@ -303,10 +296,6 @@ export async function testIntegrationConnectivity(req: Request, res: Response) {
           validateStatus: () => true
         });
         const ms = Date.now() - t0;
-        console.log(`[OAUTH-TEST] Dropbox API response: status=${resp.status}, duration=${ms}ms`);
-        if (process.env.OAUTH_DEBUG === 'true') {
-          logInfo('Dropbox get_current_account result', { status: resp.status, durationMs: ms });
-        }
         if (resp.status === 200) {
           return { tokenValid: true, apiReachable: true, scopesValid: true, responseTime: ms };
         }
@@ -323,10 +312,6 @@ export async function testIntegrationConnectivity(req: Request, res: Response) {
       } catch (err: any) {
         const ms = Date.now() - t0;
         const isTimeout = err?.code === 'ECONNABORTED' || err?.message?.includes('timeout');
-        console.log(`[OAUTH-TEST] Dropbox API error: ${err?.message}, code=${err?.code}`);
-        if (process.env.OAUTH_DEBUG === 'true') {
-          logError('Dropbox get_current_account failed', { code: err?.code, message: err?.message } as any);
-        }
         return { tokenValid: false, apiReachable: false, scopesValid: false, responseTime: ms, networkError: true, timeout: isTimeout } as any;
       }
     };
