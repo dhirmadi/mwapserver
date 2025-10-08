@@ -443,7 +443,10 @@ export class CloudIntegrationsService {
       console.log(`[OAUTH-HEALTH-SERVICE] Token for Dropbox: length=${accessToken.length}, first 30 chars: ${accessToken.substring(0, 30)}, last 30 chars: ${accessToken.substring(accessToken.length - 30)}`);
       const t0 = Date.now();
       try {
-        const resp = await axios.post(url, null, {
+        // Dropbox API expects no body (undefined), not null or {}
+        const resp = await axios({
+          method: 'POST',
+          url,
           headers: {
             Authorization: `Bearer ${accessToken}`
           },

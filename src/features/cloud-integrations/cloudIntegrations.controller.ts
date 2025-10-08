@@ -290,17 +290,16 @@ export async function testIntegrationConnectivity(req: Request, res: Response) {
       const t0 = Date.now();
       console.log(`[OAUTH-TEST] Calling Dropbox API with token (length: ${token.length}, first 20 chars: ${token.substring(0, 20)})`);
       try {
-        const resp = await axios.post(
-          'https://api.dropboxapi.com/2/users/get_current_account',
-          null,
-          {
-            headers: {
-              Authorization: `Bearer ${token}`
-            },
-            timeout: 5000,
-            validateStatus: () => true
-          }
-        );
+        // Dropbox API expects no body (undefined), not null or {}
+        const resp = await axios({
+          method: 'POST',
+          url: 'https://api.dropboxapi.com/2/users/get_current_account',
+          headers: {
+            Authorization: `Bearer ${token}`
+          },
+          timeout: 5000,
+          validateStatus: () => true
+        });
         const ms = Date.now() - t0;
         console.log(`[OAUTH-TEST] Dropbox API response: status=${resp.status}, duration=${ms}ms`);
         if (process.env.OAUTH_DEBUG === 'true') {
