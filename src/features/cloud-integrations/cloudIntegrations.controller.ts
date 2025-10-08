@@ -292,11 +292,10 @@ export async function testIntegrationConnectivity(req: Request, res: Response) {
       try {
         const resp = await axios.post(
           'https://api.dropboxapi.com/2/users/get_current_account',
-          {},
+          null,
           {
             headers: {
-              Authorization: `Bearer ${token}`,
-              'Content-Type': 'application/json'
+              Authorization: `Bearer ${token}`
             },
             timeout: 5000,
             validateStatus: () => true

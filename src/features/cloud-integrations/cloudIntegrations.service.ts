@@ -443,10 +443,9 @@ export class CloudIntegrationsService {
       console.log(`[OAUTH-HEALTH-SERVICE] Token for Dropbox: length=${accessToken.length}, first 30 chars: ${accessToken.substring(0, 30)}, last 30 chars: ${accessToken.substring(accessToken.length - 30)}`);
       const t0 = Date.now();
       try {
-        const resp = await axios.post(url, {}, {
+        const resp = await axios.post(url, null, {
           headers: {
-            Authorization: `Bearer ${accessToken}`,
-            'Content-Type': 'application/json'
+            Authorization: `Bearer ${accessToken}`
           },
           timeout: 5000,
           validateStatus: () => true // Don't throw on any status
