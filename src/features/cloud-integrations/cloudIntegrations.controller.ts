@@ -269,8 +269,10 @@ export async function testIntegrationConnectivity(req: Request, res: Response) {
     const provider = await cloudProviderService.findById(integration.providerId.toString(), true);
 
     // 2) Decrypt tokens
+    console.log(`[OAUTH-TEST] Encrypted token length: ${integration.accessToken?.length || 0}`);
     const accessToken = integration.accessToken ? decrypt(integration.accessToken) : '';
     const refreshToken = integration.refreshToken ? decrypt(integration.refreshToken) : '';
+    console.log(`[OAUTH-TEST] Decrypted token length: ${accessToken.length}, starts with: ${accessToken.substring(0, 30)}`);
 
     if (!accessToken) {
       return res.status(200).json({
@@ -286,7 +288,7 @@ export async function testIntegrationConnectivity(req: Request, res: Response) {
 
     const doDropboxTest = async (token: string) => {
       const t0 = Date.now();
-      console.log(`[OAUTH-TEST] Calling Dropbox API with token (length: ${token.length})`);
+      console.log(`[OAUTH-TEST] Calling Dropbox API with token (length: ${token.length}, first 20 chars: ${token.substring(0, 20)})`);
       try {
         const resp = await axios.post(
           'https://api.dropboxapi.com/2/users/get_current_account',
