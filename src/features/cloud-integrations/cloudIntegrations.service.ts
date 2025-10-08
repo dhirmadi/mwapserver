@@ -432,13 +432,17 @@ export class CloudIntegrationsService {
     if (providerName === 'dropbox') {
       const apiBase = (provider?.metadata?.apiBaseUrl || 'https://api.dropboxapi.com/2').replace(/\/$/, '');
       const url = `${apiBase}/users/get_current_account`;
-      await axios.post(url, {}, {
+      const t0 = Date.now();
+      const resp = await axios.post(url, {}, {
         headers: {
           Authorization: `Bearer ${accessToken}`,
           'Content-Type': 'application/json'
         },
         timeout: 5000
       });
+      if (process.env.OAUTH_DEBUG === 'true') {
+        logInfo('Health: Dropbox get_current_account result', { status: resp.status, durationMs: Date.now() - t0 });
+      }
       logInfo('Token validation successful for provider Dropbox');
       return;
     }
