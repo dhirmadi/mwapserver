@@ -313,6 +313,7 @@ export class CloudIntegrationsService {
     message?: string;
   }> {
     try {
+      console.log(`[OAUTH-HEALTH-SERVICE] Starting health check for integration ${id} in tenant ${tenantId}`);
       const integration = await this.findById(id, tenantId);
       const now = new Date();
       
@@ -360,6 +361,7 @@ export class CloudIntegrationsService {
       try {
         // Decrypt token before testing with provider
         const decryptedAccessToken = decrypt(integration.accessToken);
+        console.log(`[OAUTH-HEALTH-SERVICE] Testing token with provider (token length: ${decryptedAccessToken.length})`);
         await this.testTokenWithProvider(decryptedAccessToken, provider);
         
         // Update the integration status to healthy if the test passes
@@ -432,6 +434,7 @@ export class CloudIntegrationsService {
     if (providerName === 'dropbox') {
       const apiBase = (provider?.metadata?.apiBaseUrl || 'https://api.dropboxapi.com/2').replace(/\/$/, '');
       const url = `${apiBase}/users/get_current_account`;
+      console.log(`[OAUTH-HEALTH-SERVICE] Calling Dropbox API: ${url}`);
       const t0 = Date.now();
       const resp = await axios.post(url, {}, {
         headers: {
@@ -440,6 +443,7 @@ export class CloudIntegrationsService {
         },
         timeout: 5000
       });
+      console.log(`[OAUTH-HEALTH-SERVICE] Dropbox API response: status=${resp.status}, duration=${Date.now() - t0}ms`);
       if (process.env.OAUTH_DEBUG === 'true') {
         logInfo('Health: Dropbox get_current_account result', { status: resp.status, durationMs: Date.now() - t0 });
       }
