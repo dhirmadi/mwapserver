@@ -358,7 +358,9 @@ export class CloudIntegrationsService {
       
       // Test the token by making a simple API call to the provider
       try {
-        await this.testTokenWithProvider(integration.accessToken, provider);
+        // Decrypt token before testing with provider
+        const decryptedAccessToken = decrypt(integration.accessToken);
+        await this.testTokenWithProvider(decryptedAccessToken, provider);
         
         // Update the integration status to healthy if the test passes
         await this.collection.updateOne(
@@ -424,7 +426,24 @@ export class CloudIntegrationsService {
    * Test a token with the cloud provider by making a simple API call
    */
   private async testTokenWithProvider(accessToken: string, provider: any): Promise<void> {
-    // Define test endpoints for different providers
+    const providerName = (provider?.name || provider?.slug || provider?.metadata?.providerType || '').toLowerCase();
+
+    // Dropbox requires POST to users/get_current_account
+    if (providerName === 'dropbox') {
+      const apiBase = (provider?.metadata?.apiBaseUrl || 'https://api.dropboxapi.com/2').replace(/\/$/, '');
+      const url = `${apiBase}/users/get_current_account`;
+      await axios.post(url, {}, {
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          'Content-Type': 'application/json'
+        },
+        timeout: 5000
+      });
+      logInfo('Token validation successful for provider Dropbox');
+      return;
+    }
+
+    // Generic fallbacks for other providers
     const testEndpoints: Record<string, string> = {
       'aws': 'https://sts.amazonaws.com/',
       'azure': 'https://management.azure.com/subscriptions?api-version=2020-01-01',
@@ -432,24 +451,17 @@ export class CloudIntegrationsService {
       'github': 'https://api.github.com/user',
       'gitlab': 'https://gitlab.com/api/v4/user'
     };
-    
-    // Get the test endpoint for this provider
-    const testUrl = testEndpoints[provider.name?.toLowerCase()] || provider.apiBaseUrl;
-    
+    const testUrl = testEndpoints[providerName] || provider?.metadata?.apiBaseUrl;
     if (!testUrl) {
-      throw new Error(`No test endpoint configured for provider: ${provider.name}`);
+      throw new Error(`No test endpoint configured for provider: ${provider?.name || providerName}`);
     }
-    
-    // Make a simple GET request to test the token
-    const response = await axios.get(testUrl, {
+    await axios.get(testUrl, {
       headers: {
-        'Authorization': `Bearer ${accessToken}`,
-        'Accept': 'application/json'
+        Authorization: `Bearer ${accessToken}`,
+        Accept: 'application/json'
       },
-      timeout: 10000 // 10 second timeout
+      timeout: 10000
     });
-    
-    // If we get here without an exception, the token is valid
-    logInfo(`Token validation successful for provider ${provider.name}`);
+    logInfo(`Token validation successful for provider ${provider?.name || providerName}`);
   }
 }
