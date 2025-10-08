@@ -1,3 +1,27 @@
+## 2025-10-08
+
+### Dropbox OAuth Integration Fix
+- **Fixed Dropbox API Integration**: Resolved HTTP 400 errors when calling Dropbox `/2/users/get_current_account` endpoint
+  - Root cause: Incorrect `Content-Type` header (was `application/x-www-form-urlencoded`, required `application/json`)
+  - Solution: Updated axios calls to explicitly set `Content-Type: application/json` with `data: null`
+  - Affected endpoints: Health check and test connectivity endpoints
+
+### New Features
+- **Integration Test Endpoint**: Added `POST /api/v1/tenants/:tenantId/integrations/:integrationId/test`
+  - Tests integration connectivity and token validity with one-time refresh retry on 401/403
+  - Rate limited: 10 requests per minute per integration
+  - Returns detailed status: `tokenValid`, `apiReachable`, `scopesValid`, `responseTime`
+
+### Improvements
+- **Enhanced Logging**: Added comprehensive OAuth flow debugging capabilities (production-ready with minimal overhead)
+- **Token Handling**: Verified encryption/decryption flow for long Dropbox tokens (1309 characters with `sl.u.` prefix)
+- **Error Handling**: Improved Dropbox API error messages and status code handling
+
+### Documentation Updates
+- Updated API reference with integration test endpoint documentation
+- Added troubleshooting guide for Dropbox OAuth integration
+- Documented Dropbox token format and Content-Type requirements
+
 ## 2025-09-29
 
 - OAuth callback security hardened; comprehensive state and ownership checks aligned with tests

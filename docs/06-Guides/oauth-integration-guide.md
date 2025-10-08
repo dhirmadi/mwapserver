@@ -573,6 +573,33 @@ Manually refresh OAuth access tokens.
 - Verify integration exists before starting OAuth
 - Check tenant ownership
 
+#### Dropbox API 400 Error
+**Symptom:** Health check or test endpoint returns "Token validation failed" with status 400  
+**Error Message:** `Bad HTTP "Content-Type" header` or `expected null, got value`  
+**Root Cause:** Dropbox `/2/users/get_current_account` endpoint requires:
+- `Content-Type: application/json` header
+- Request body must be `null` (not `{}` or empty string)
+
+**Solution (Fixed in v139+):**
+```typescript
+// Correct Dropbox API call format
+await axios({
+  method: 'POST',
+  url: 'https://api.dropboxapi.com/2/users/get_current_account',
+  headers: {
+    Authorization: `Bearer ${accessToken}`,
+    'Content-Type': 'application/json'  // Required!
+  },
+  data: null,  // Must be null, not {}
+  timeout: 5000
+});
+```
+
+**Notes:**
+- Dropbox tokens with `sl.u.` prefix are valid (1300+ characters is normal)
+- These are short-lived, user-scoped tokens with embedded metadata
+- The integration system correctly handles encryption/decryption of long tokens
+
 ---
 
 ## 📝 Best Practices

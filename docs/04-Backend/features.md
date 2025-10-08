@@ -449,8 +449,11 @@ Cloud Integrations enable tenant owners to connect their workspaces to supported
 | `DELETE /api/v1/tenants/:tenantId/integrations/:id` | DELETE | Tenant Owner | Delete integration |
 | `POST /api/v1/tenants/:tenantId/integrations/:id/refresh-token` | POST | Tenant Owner | Refresh OAuth tokens |
 | `GET /api/v1/tenants/:tenantId/integrations/:id/health` | GET | Tenant Owner | Check integration health |
+| `POST /api/v1/tenants/:tenantId/integrations/:id/test` | POST | Tenant Owner | Test integration connectivity (rate-limited: 10/min) |
 
-Note: The OAuth Refresh flow is also available under the OAuth API as `POST /api/v1/oauth/tenants/:tenantId/integrations/:integrationId/refresh` with an optional `{ force?: boolean }` request body to bypass cached validity checks.
+**Notes:**
+- The OAuth Refresh flow is also available under the OAuth API as `POST /api/v1/oauth/tenants/:tenantId/integrations/:integrationId/refresh` with an optional `{ force?: boolean }` request body to bypass cached validity checks.
+- The test endpoint validates token, API reachability, and scopes with optional one-time refresh retry on 401/403 errors.
 
 #### Data Model
 ```typescript
