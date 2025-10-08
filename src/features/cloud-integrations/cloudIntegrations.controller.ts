@@ -235,6 +235,8 @@ export async function checkIntegrationHealth(req: Request, res: Response) {
     const user = getUserFromToken(req);
     const { tenantId, integrationId } = req.params;
     
+    // ALWAYS log entry to this function to verify it's being called
+    console.log(`[OAUTH-HEALTH] Checking health for integration ${integrationId} in tenant ${tenantId} by user ${user.sub}`);
     logInfo(`Checking health for integration ${integrationId} in tenant ${tenantId} by user ${user.sub}`);
     
     // Get the integration health status
@@ -256,6 +258,8 @@ export async function testIntegrationConnectivity(req: Request, res: Response) {
   const user = getUserFromToken(req);
   const { tenantId, integrationId } = req.params;
 
+  // ALWAYS log entry to this function to verify it's being called
+  console.log(`[OAUTH-TEST] Testing integration connectivity ${integrationId} for tenant ${tenantId} by user ${user.sub}`);
   logInfo(`Testing integration connectivity ${integrationId} for tenant ${tenantId} by user ${user.sub}`);
 
   const startedAt = Date.now();
@@ -282,6 +286,7 @@ export async function testIntegrationConnectivity(req: Request, res: Response) {
 
     const doDropboxTest = async (token: string) => {
       const t0 = Date.now();
+      console.log(`[OAUTH-TEST] Calling Dropbox API with token (length: ${token.length})`);
       try {
         const resp = await axios.post(
           'https://api.dropboxapi.com/2/users/get_current_account',
@@ -296,6 +301,7 @@ export async function testIntegrationConnectivity(req: Request, res: Response) {
           }
         );
         const ms = Date.now() - t0;
+        console.log(`[OAUTH-TEST] Dropbox API response: status=${resp.status}, duration=${ms}ms`);
         if (process.env.OAUTH_DEBUG === 'true') {
           logInfo('Dropbox get_current_account result', { status: resp.status, durationMs: ms });
         }
@@ -315,6 +321,7 @@ export async function testIntegrationConnectivity(req: Request, res: Response) {
       } catch (err: any) {
         const ms = Date.now() - t0;
         const isTimeout = err?.code === 'ECONNABORTED' || err?.message?.includes('timeout');
+        console.log(`[OAUTH-TEST] Dropbox API error: ${err?.message}, code=${err?.code}`);
         if (process.env.OAUTH_DEBUG === 'true') {
           logError('Dropbox get_current_account failed', { code: err?.code, message: err?.message } as any);
         }
