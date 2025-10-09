@@ -533,24 +533,26 @@ export async function browseIntegrationFolders(req: Request, res: Response) {
     const ctx: ProviderContext = { accessToken, provider };
 
     const execList = async (): Promise<ListResult> => {
-      if (!query.containerId && !query.folderId) {
-        if (capabilities.supportsContainers) {
-          const containers = await adapter.listContainers(ctx, query.cursor);
-          containers.items = containers.items.map(i => ({ ...i, isContainer: true }));
-          return containers;
-        }
-        if (capabilities.supportsPath) return adapter.listFoldersByPath(ctx, undefined, '/', query.cursor);
-        throw new ApiError('Provider does not support path addressing', 400, 'capability/not-supported');
-      }
+      // 1) ID-first if provided
       if (query.folderId) {
         if (!capabilities.supportsId) throw new ApiError('Provider does not support id addressing', 400, 'capability/not-supported');
         return adapter.listFoldersById(ctx, query.containerId || '', query.folderId, query.cursor);
       }
-      if (query.path) {
+      // 2) Path-first if provided and supported (including non-root)
+      if (query.path && capabilities.supportsPath) {
         if (!capabilities.supportsPath) throw new ApiError('Provider does not support path addressing', 400, 'capability/not-supported');
         return adapter.listFoldersByPath(ctx, query.containerId, query.path, query.cursor);
       }
-      throw new ApiError('Invalid parameters', 400, 'validation/invalid-params');
+      // 3) Root resolution when no folderId/path provided
+      if (capabilities.supportsContainers) {
+        const containers = await adapter.listContainers(ctx, query.cursor);
+        containers.items = containers.items.map(i => ({ ...i, isContainer: true }));
+        return containers;
+      }
+      if (capabilities.supportsPath) {
+        return adapter.listFoldersByPath(ctx, query.containerId, '/', query.cursor);
+      }
+      throw new ApiError('Provider does not support path addressing', 400, 'capability/not-supported');
     };
 
     let result: ListResult | undefined;
@@ -575,24 +577,22 @@ export async function browseIntegrationFolders(req: Request, res: Response) {
           const ctxRefreshed: ProviderContext = { accessToken: tokenResp.accessToken, provider };
           // Re-run with new token
           const rerun = async (): Promise<ListResult> => {
-            if (!query.containerId && !query.folderId) {
-              if (capabilities.supportsContainers) {
-                const containers = await adapter.listContainers(ctxRefreshed, query.cursor);
-                containers.items = containers.items.map(i => ({ ...i, isContainer: true }));
-                return containers;
-              }
-              if (capabilities.supportsPath) return adapter.listFoldersByPath(ctxRefreshed, undefined, '/', query.cursor);
-              throw new ApiError('Provider does not support path addressing', 400, 'capability/not-supported');
-            }
             if (query.folderId) {
               if (!capabilities.supportsId) throw new ApiError('Provider does not support id addressing', 400, 'capability/not-supported');
               return adapter.listFoldersById(ctxRefreshed, query.containerId || '', query.folderId, query.cursor);
             }
-            if (query.path) {
-              if (!capabilities.supportsPath) throw new ApiError('Provider does not support path addressing', 400, 'capability/not-supported');
+            if (query.path && capabilities.supportsPath) {
               return adapter.listFoldersByPath(ctxRefreshed, query.containerId, query.path, query.cursor);
             }
-            throw new ApiError('Invalid parameters', 400, 'validation/invalid-params');
+            if (capabilities.supportsContainers) {
+              const containers = await adapter.listContainers(ctxRefreshed, query.cursor);
+              containers.items = containers.items.map(i => ({ ...i, isContainer: true }));
+              return containers;
+            }
+            if (capabilities.supportsPath) {
+              return adapter.listFoldersByPath(ctxRefreshed, query.containerId, '/', query.cursor);
+            }
+            throw new ApiError('Provider does not support path addressing', 400, 'capability/not-supported');
           };
           result = await rerun();
         } catch (refreshErr) {
