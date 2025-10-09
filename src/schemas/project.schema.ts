@@ -25,7 +25,7 @@ export const projectSchema = z.object({
   name: z.string().min(1).max(100).transform(sanitizeString),
   description: z.string().max(500).transform(sanitizeString).optional(),
   archived: z.boolean().default(false),
-  members: z.array(projectMemberSchema).max(10),
+  members: z.array(projectMemberSchema).max(10).optional(),
   createdAt: z.date(),
   updatedAt: z.date(),
   createdBy: z.string() // Auth0 sub
