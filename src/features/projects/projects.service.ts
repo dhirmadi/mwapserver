@@ -70,9 +70,17 @@ export class ProjectsService {
       }
       
       // Verify cloud integration exists and belongs to the tenant
+      // Be flexible on _id type (stored as string in some collections)
       const cloudIntegration = await getDB().collection('cloudProviderIntegrations').findOne({
-        _id: cloudIntegrationId,
-        tenantId: tenantId.toString()
+        $and: [
+          {
+            $or: [
+              { _id: cloudIntegrationId },
+              { _id: cloudIntegrationId.toString() }
+            ]
+          },
+          { tenantId: tenantId.toString() }
+        ]
       });
       
       if (!cloudIntegration) {

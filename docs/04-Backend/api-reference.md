@@ -349,15 +349,25 @@ Create a new project.
 **Authentication:** Required  
 **Authorization:** Tenant owner
 
-**Request Schema:**
+**Request Schema (current implementation):**
 ```typescript
 {
-  name: string;             // Project name
-  description?: string;     // Optional description
-  projectTypeId: string;    // Project type ID
-  config?: object;          // Project configuration (validated against project type schema)
+  tenantId: string;             // Tenant ID (ObjectId)
+  projectTypeId: string;        // Project type ID (ObjectId)
+  cloudIntegrationId: string;   // Cloud integration ID (ObjectId)
+  folderpath: string;           // Absolute display path (e.g., "/Projects/Photos")
+  name: string;                 // Project name (1–100)
+  description?: string;         // Optional description (≤500)
+  archived?: boolean;           // Default false
+  members?: Array<{             // Optional; OWNER auto-added if missing
+    userId: string;
+    role: 'OWNER' | 'DEPUTY' | 'MEMBER'
+  }>
 }
 ```
+Notes:
+- The backend validates the caller is the tenant owner, that the project type exists, and that the cloud integration belongs to the tenant.
+- The backend ensures at least one OWNER (adds the caller as OWNER if not present).
 
 ### Update Project
 Update project information.
@@ -366,12 +376,11 @@ Update project information.
 **Authentication:** Required  
 **Authorization:** Project DEPUTY or higher
 
-**Request Schema:**
+**Request Schema (current implementation):**
 ```typescript
 {
-  name?: string;            // Updated name
-  description?: string;     // Updated description
-  config?: object;          // Updated configuration
+  name?: string;            // Updated name (1–100)
+  description?: string;     // Updated description (≤500)
   archived?: boolean;       // Archive status
 }
 ```
