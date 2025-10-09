@@ -477,21 +477,21 @@ If the user is not a member of the project, this endpoint returns 404.
 
 ## 🔧 Project Types API
 
-All project type endpoints require SUPERADMIN role.
+Read-only GETs require Tenant owner or SUPERADMIN. Management (create/update/delete) requires SUPERADMIN.
 
 ### List Project Types
 Get all project types in the system.
 
 **Endpoint:** `GET /api/v1/project-types`  
 **Authentication:** Required  
-**Authorization:** SUPERADMIN
+**Authorization:** Tenant owner or SUPERADMIN (read-only)
 
 ### Get Project Type by ID
 Get a specific project type.
 
 **Endpoint:** `GET /api/v1/project-types/:id`  
 **Authentication:** Required  
-**Authorization:** SUPERADMIN
+**Authorization:** Tenant owner or SUPERADMIN (read-only)
 
 ### Create Project Type
 Create a new project type.
