@@ -301,30 +301,24 @@ Projects enable tenants to create and manage application instances with specific
 | `PATCH /api/v1/projects/:id/members/:userId` | PATCH | Project OWNER | Update member role |
 | `DELETE /api/v1/projects/:id/members/:userId` | DELETE | Project OWNER | Remove member |
 
-#### Data Model
+#### Data Model (current)
 ```typescript
 interface Project {
   _id: ObjectId;
-  name: string;                    // Unique per tenant
-  description?: string;
   tenantId: ObjectId;              // Reference to tenant
   projectTypeId: ObjectId;         // Reference to project type
-  config: Record<string, any>;     // Project-specific configuration
+  cloudIntegrationId: ObjectId;    // Reference to cloud integration
+  folderpath: string;              // Absolute display path ("/...")
+  name: string;                    // 1–100
+  description?: string;            // ≤500
+  archived: boolean;               // default false
   members: Array<{
     userId: string;                // Auth0 user ID
-    role: 'OWNER' | 'DEPUTY' | 'MEMBER';
-    addedAt: Date;
-    addedBy: string;               // User ID who added this member
-  }>;
-  folderPath?: string;             // Virtual folder path
-  integrations: Array<{
-    integrationId: ObjectId;       // Reference to cloud integration
-    enabled: boolean;
-    config?: Record<string, any>;
-  }>;
+    role: 'OWNER' | 'DEPUTY' | 'MEMBER'
+  }>;                              // OWNER ensured server-side
   createdAt: Date;
   updatedAt: Date;
-  archived: boolean;
+  createdBy: string;               // Auth0 sub
 }
 ```
 
