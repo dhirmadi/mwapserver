@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { requireSuperAdmin } from '../../middleware/auth.js';
+import { requireSuperAdmin, requireAnyTenantOwnerOrSuperAdmin } from '../../middleware/auth.js';
 import { wrapAsyncHandler } from '../../utils/response';
 import {
   getAllProjectTypes,
@@ -12,23 +12,14 @@ import {
 export function getProjectTypesRouter(): Router {
   const router = Router();
 
-  // All routes require SUPERADMIN role
-  router.use(requireSuperAdmin());
+  // Read-only GETs for Tenant Owner or SuperAdmin
+  router.get('/', requireAnyTenantOwnerOrSuperAdmin(), wrapAsyncHandler(getAllProjectTypes));
+  router.get('/:id', requireAnyTenantOwnerOrSuperAdmin(), wrapAsyncHandler(getProjectTypeById));
 
-  // GET /api/v1/project-types
-  router.get('/', wrapAsyncHandler(getAllProjectTypes));
-
-  // GET /api/v1/project-types/:id
-  router.get('/:id', wrapAsyncHandler(getProjectTypeById));
-
-  // POST /api/v1/project-types
-  router.post('/', wrapAsyncHandler(createProjectType));
-
-  // PATCH /api/v1/project-types/:id
-  router.patch('/:id', wrapAsyncHandler(updateProjectType));
-
-  // DELETE /api/v1/project-types/:id
-  router.delete('/:id', wrapAsyncHandler(deleteProjectType));
+  // Management endpoints require SuperAdmin
+  router.post('/', requireSuperAdmin(), wrapAsyncHandler(createProjectType));
+  router.patch('/:id', requireSuperAdmin(), wrapAsyncHandler(updateProjectType));
+  router.delete('/:id', requireSuperAdmin(), wrapAsyncHandler(deleteProjectType));
 
   return router;
 }

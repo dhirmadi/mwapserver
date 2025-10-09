@@ -125,6 +125,30 @@ export function requireSuperAdmin() {
 }
 
 /**
+ * Require user to be a tenant owner for any tenant, or SuperAdmin
+ */
+export function requireAnyTenantOwnerOrSuperAdmin() {
+  return async (req: Request, _res: Response, next: NextFunction) => {
+    try {
+      const user = getUserFromToken(req);
+      // Superadmin allowed
+      const superAdmin = await getDB().collection('superadmins').findOne({ userId: user.sub });
+      if (superAdmin) {
+        return next();
+      }
+      // Owner of any tenant allowed
+      const ownsAnyTenant = await getDB().collection('tenants').findOne({ ownerId: user.sub });
+      if (!ownsAnyTenant) {
+        throw new PermissionError('Tenant owner access required');
+      }
+      next();
+    } catch (error) {
+      next(error);
+    }
+  };
+}
+
+/**
  * Require tenant owner access
  */
 export function requireTenantOwner(tenantIdParam = 'tenantId') {
