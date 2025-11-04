@@ -106,9 +106,16 @@ src/
 
 **TypeScript Compilation Errors**
 ```
-❌ 14+ TypeScript errors in production code:
-- src/features/projects/projects.service.ts: Multiple 'possibly undefined' errors
-- src/features/projects/projects.controller.ts: Array access on possibly undefined
+❌ 14 TypeScript errors in production code (verified with npx tsc --noEmit):
+
+src/features/projects/projects.controller.ts(131,18): 
+  error TS18048: 'project.members' is possibly 'undefined'.
+
+src/features/projects/projects.service.ts:
+  - Line 79: Type mismatch in MongoDB filter (ObjectId vs string)
+  - Lines 135, 167, 191, 197, 203, 226, 232, 239, 241, 274, 280: 
+    'project.members' is possibly 'undefined'
+  - Line 248: Missing iterator on possibly undefined array
 ```
 
 **Example Issue:**
@@ -215,12 +222,33 @@ const ENCRYPTION_KEY = process.env.ENCRYPTION_KEY || 'a-very-secure-32-byte-encr
 
 **2. npm Security Vulnerabilities (CRITICAL)**
 ```
-axios (HIGH): DoS vulnerability
-form-data (CRITICAL): Unsafe random boundary
-vite (MODERATE): Multiple security issues
-brace-expansion (LOW): ReDoS vulnerability
+4 vulnerabilities identified:
+
+1. form-data (CRITICAL)
+   - GHSA-fjxv-7rqg-78g4
+   - Version: 4.0.0 - 4.0.3
+   - Issue: Uses unsafe random function for boundary generation
+   - Fix: npm audit fix
+
+2. axios (HIGH)
+   - GHSA-4hjh-wcwx-xvwj
+   - Version: 1.0.0 - 1.11.0
+   - Issue: DoS attack through lack of data size check
+   - Fix: npm audit fix
+
+3. vite (MODERATE)
+   - GHSA-g4jq-h2w9-997c, GHSA-jqfw-vq24-v9c3, GHSA-93m4-6634-74q7
+   - Version: 6.0.0 - 6.4.0
+   - Issues: File serving vulnerabilities, fs.deny bypass
+   - Fix: npm audit fix
+
+4. brace-expansion (LOW)
+   - GHSA-v6h2-p8h4-qcjw
+   - Version: 2.0.0 - 2.0.1
+   - Issue: Regular Expression Denial of Service (ReDoS)
+   - Fix: npm audit fix
 ```
-**Resolution:** Run `npm audit fix`
+**Resolution:** Run `npm audit fix` to update all packages
 
 **3. Weak Encryption Key Handling**
 ```typescript
@@ -404,7 +432,7 @@ throw new ApiError('Invalid project ID', 400);
 throw new ApiError(
   'The project ID format is invalid. Expected a 24-character hexadecimal string.',
   400,
-  ProjectErrorCodes.INVALID_ID
+  ProjectErrorCodes.INVALID_INPUT  // Using existing error code from schema
 );
 ```
 
@@ -1397,9 +1425,9 @@ export function logAudit(action: string, actor: string, target: string, ...): vo
 
 **1. Inconsistent Logging**
 ```bash
-# 67 direct console.log calls bypassing logger
-grep -r "console\." src/ | wc -l
-# Output: 67
+# Multiple direct console.log/error calls bypassing logger
+# Found throughout src/app.ts, src/config/db.ts, and other files
+grep -r "console\." src/ --include="*.ts"
 ```
 
 **Examples:**
